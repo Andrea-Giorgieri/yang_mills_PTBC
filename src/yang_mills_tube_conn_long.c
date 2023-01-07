@@ -50,7 +50,7 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // open data_file
-    init_data_file(&datafilep, &param);
+    init_data_file(&datafilep, &datafilep, &datafilep, &param);
 
     // initialize geometry
     init_indexing_lexeo();

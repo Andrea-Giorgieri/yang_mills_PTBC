@@ -1,0 +1,46 @@
+size 4 4 4 4  # Nt Nx Ny Nz
+
+# parallel tempering parameters (ONLY PARALLEL TEMPERING RUNS)
+defect_dir    1                # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z
+defect_size   2 2 2            # defect sizes along dirs orthogonal to <defect_dir>, ordered from 0 to 3 (skipping the <defect_dir> direction)
+N_replica_pt  10   1.0 0.89 0.78 0.68 0.61 0.54 0.39 0.27 0.13 0.0         # number of parallel tempering replica ___ boundary conditions coefficients
+
+# twist parameters
+k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...
+
+# hierarchical update parameters (ONLY PARALLEL TEMPERING RUNS): num of hierarc levels ___ extension of rectangles ___ num of sweeps per rectangle
+hierarc_upd 1	3	10
+
+# multicanonic parameters (ONLY MULTICANONIC RUNS)
+grid_step             0.05
+grid_max              5.0
+topo_potential_file   ToPotential
+
+# Simulation parameters
+beta       11.104
+theta      0.0
+sample     1
+thermal    0
+overrelax  5
+measevery  1
+randseed   42      # (0=time)
+
+start                    1     # 0=ordered  1=random  2=from saved configuration
+saveconf_back_every      0     # if 0 does not save, else save backup configurations every ... updates
+saveconf_analysis_every  0     # if 0 does not save, else save configurations for analysis every ... updates
+
+# cooling
+coolsteps             5   # number of cooling steps to be used
+coolrepeat            4  # number of times <coolsteps> are repeated (=> <coolsteps> * <coolrepeat> cooling steps are done, cool meas taken every <coolsteps> steps)
+chi_prime_meas        0   # 1=YES, 0=NO (YES = compute chi_prime, NO = do not compute chi_prime)
+topcharge_tcorr_meas  0   # 1=YES, 0=NO (YES = compute topcharge_tcorr, NO = do not compute topcharge_tcorr)
+
+# output files
+conf_file               ./data/conf.dat
+data_file               ./data/dati.dat
+chiprime_data_file      ./data/chi_prime_cool.dat   # chi_prime cool measures are written here only if chi_prime_meas==1
+topcharge_tcorr_file    ./data/topo_tcorr_cool.dat  # topcharge_tcorr cool measures are written here only if topcharge_tcorr_meas==1
+log_file                ./data/log.dat
+swap_acc_file           ./data/swap_acc.dat
+swap_track_file         ./data/swap_track.dat
+multicanonic_acc_file   ./data/multicanonic_acc.dat

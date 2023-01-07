@@ -25,7 +25,7 @@ void real_main(char *in_file)
     GParam param;
 
     int count;
-    FILE *datafilep;
+    FILE *datafilep, *chiprime_datafilep, *topcharge_tcorr_datafilep;
     time_t time1, time2;
 
     // to disable nested parallelism
@@ -50,7 +50,7 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // open data_file
-    init_data_file(&datafilep, &param);
+    init_data_file(&datafilep, &chiprime_datafilep, &topcharge_tcorr_datafilep, &param);
 
     // initialize geometry
     init_indexing_lexeo();

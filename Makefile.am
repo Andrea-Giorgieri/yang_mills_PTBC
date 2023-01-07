@@ -314,6 +314,6 @@ yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
                        $(tens_prod) \
                        $(u1)
 
-AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
+AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -pedantic -Wconversion @OPENMP_CFLAGS@
 
 CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tcorr_cool.dat*

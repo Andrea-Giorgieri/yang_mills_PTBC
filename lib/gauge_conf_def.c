@@ -198,7 +198,7 @@ void init_twist_cond(Gauge_Conf *GC, GParam const * const param)
 		err=posix_memalign((void**) &(GC->Z[r]), (size_t) DOUBLE_ALIGN, (size_t) param->d_n_planes * sizeof(complex double));
 		if(err!=0)
 		{
-			fprintf(stderr, "Problems in allocating the defect! (%s, %d)\n", __FILE__, __LINE__);
+			fprintf(stderr, "Problems in allocating the twist factors! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -492,26 +492,39 @@ void write_conf_on_file_back(Gauge_Conf const * const GC, GParam const * const p
 	}
 
 
-// allocate GC and initialize with GC2
+// allocate GC and initialize with GC2, including the twist factors
 void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param) 
 	{
 	long r;
-	int mu, err;
+	int err, j;
 
-	// allocate the lattice
+	// allocate the lattice and Z[r][j]
 	err=posix_memalign((void**)&(GC->lattice), (size_t) DOUBLE_ALIGN, (size_t) param->d_volume * sizeof(GAUGE_GROUP *));
 	if(err!=0)
 	{
-	fprintf(stderr, "Problems in allocating the lattice! (%s, %d)\n", __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
-	for(r=0; r<(param->d_volume); r++)
-	{
-	err=posix_memalign((void**)&(GC->lattice[r]), (size_t) DOUBLE_ALIGN, (size_t) STDIM * sizeof(GAUGE_GROUP));
-	if(err!=0)
-		{
 		fprintf(stderr, "Problems in allocating the lattice! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
+	}
+	err=posix_memalign((void**) &(GC->Z), (size_t) DOUBLE_ALIGN, (size_t) param->d_volume * sizeof(complex double *));
+	if(err!=0)
+	{
+		fprintf(stderr, "Problems in allocating the twist factors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	for(r=0; r<(param->d_volume); r++)
+	{
+		err=posix_memalign((void**)&(GC->lattice[r]), (size_t) DOUBLE_ALIGN, (size_t) STDIM * sizeof(GAUGE_GROUP));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating the lattice! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		err=posix_memalign((void**) &(GC->Z[r]), (size_t) DOUBLE_ALIGN, (size_t) param->d_n_planes * sizeof(complex double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating the twist factors! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -519,16 +532,22 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 	alloc_clover_array(GC, param);
 	#endif
 
-	// initialize GC
+	// initialize GC and Z[r][j]
 	for(r=0; r<(param->d_volume); r++)
 	{
-	for(mu=0; mu<STDIM; mu++)
+		for(j=0; j<STDIM; j++)
 		{
-		equal(&(GC->lattice[r][mu]), &(GC2->lattice[r][mu]) );
+			equal(&(GC->lattice[r][j]), &(GC2->lattice[r][j]) );
+		}
+		
+		for(j=0; j<param->d_n_planes; j++)
+		{
+			GC->Z[r][j]=GC2->Z[r][j];
 		}
 	}
 
 	GC->update_index=GC2->update_index;
+
 	}
 
 

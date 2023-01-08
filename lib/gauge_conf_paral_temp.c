@@ -236,40 +236,48 @@ void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double con
 		}
   }
 
-// translation of one lattice spacing of the configuration
+// translation of one lattice spacing of the configuration, including the twist factors
 // direction is chosen randomly, verse is always positive
 void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param)
-  {
-  double aux;
-  int dir=0,i;
+	{
+	double aux;
+	int dir,i;
 	long s;
 	Gauge_Conf aux_conf;
   
-  // extract random direction
+	// extract random direction
 	aux=STDIM*casuale();
 	for(i=0;i<STDIM;i++)
-		{
+	{
 		if ( (aux>=i) && (aux<(i+1)) ) dir=i;
-		}
+	}
 
-  // copy the conf in an auxiliary one (should be defined outside and passed to the function?)
+	// copy the conf in an auxiliary one (should be defined outside and passed to the function?), including the twist factors
 	init_gauge_conf_from_gauge_conf(&aux_conf, GC, param); // now aux_conf=GC
 
-  // translation in direction +dir
-  #ifdef OPENMP_MODE
-  #pragma omp parallel for num_threads(NTHREADS) private(s)
-  #endif
+	// translation in direction +dir, including the twist factors
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
 	for(s=0;s<(STDIM*(param->d_volume));s++)
-		{
+	{
 		// s = j * volume + r
 		long r = s % (param->d_volume);
 		int j = (int) ( (s-r)/(param->d_volume) );
 		equal(&(GC->lattice[r][j]), &(aux_conf.lattice[nnm(geo,r,dir)][j]) );
-		}
+	}
+	for(s=0;s<((param->d_n_planes)*(param->d_volume));s++)
+	{
+		// s = j * volume + r
+		long r = s % (param->d_volume);
+		int j = (int) ( (s-r)/(param->d_volume) );
+		GC->Z[r][j] = aux_conf.Z[nnm(geo,r,dir)][j];
+	}
 
-	// free auxiliary conf
-  free_gauge_conf(&aux_conf, param);
-  }
+	// free auxiliary conf, including the twist factors
+	free_gauge_conf(&aux_conf, param);
+	free_twist_cond(&aux_conf, param);
+	}
 	
 void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
   {

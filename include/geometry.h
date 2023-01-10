@@ -26,6 +26,7 @@ long (*lex_to_si)(long lex, GParam const * const param);          // lexicograph
 long (*si_to_lex)(long si, GParam const * const param);           // lexicographic -> single index
 long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);            // single index spatial and time -> single index tot
 void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param); // single index tot -> single index spatial and time
+int	dirs_to_si(int const i, int const j); //plane i-j -> single index, for twist factors
 
 long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
 

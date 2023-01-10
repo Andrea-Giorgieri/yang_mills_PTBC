@@ -30,7 +30,7 @@ typedef struct Gauge_Conf {
 	int conf_label;	// save the label of the configuration to keep track of the swaps
 
 	// for the twisted boundary conditions
-	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)/2], this factor implements the twist for the links on the boundary
+	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)], this factor implements the twist for the links on the boundary
 
 	// for computing the polyakov loop correlator with multilevel
 	TensProd ***ml_polycorr;	// [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
@@ -75,7 +75,9 @@ void init_twist_cond(Gauge_Conf *GC, GParam const * const param);
 void free_replica(Gauge_Conf *GC,
 									GParam const * const param);
 void free_bound_cond(Gauge_Conf *GC,
-										 GParam const * const param);
+					GParam const * const param);
+void free_twist_cond(Gauge_Conf *GC,
+					GParam const * const param);
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC,
 					 GParam const * const param, char const * const filename);
 void free_gauge_conf(Gauge_Conf *GC,

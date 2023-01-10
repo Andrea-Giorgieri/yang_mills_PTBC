@@ -18,30 +18,30 @@
 
 #include<time.h> // DEBUG
 
-// computation of the plaquette (1/NCOLOR the trace of) in position r and positive directions i,j
+// computation of the plaquette (1/NCOLOR the trace of, with twist factor) in position r and positive directions i,j
 double plaquettep(Gauge_Conf const * const GC,
                   Geometry const * const geo,
                   GParam const * const param,
                   long r,
                   int i,
                   int j)
-   {
-   GAUGE_GROUP matrix;
+	{
+	GAUGE_GROUP matrix;
 
-   #ifdef DEBUG
-   if(r >= param->d_volume)
-     {
-     fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   if(j >= STDIM || i >= STDIM)
-     {
-     fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   #else
-   (void) param; // just to avoid warning at compile time
-   #endif
+	#ifdef DEBUG
+	if(r >= param->d_volume)
+	{
+		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	if(j >= STDIM || i >= STDIM)
+	{
+		fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	#else
+	(void) param; // just to avoid warning at compile time
+	#endif
 
 //
 //       ^ i
@@ -54,39 +54,42 @@ double plaquettep(Gauge_Conf const * const GC,
 //       r   (4)
 //
 
-   equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
-   times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
-   times_equal_dag(&matrix, &(GC->lattice[r][i]));
-   times_equal(&matrix, &(GC->lattice[r][j]));
+	equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
+	times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
+	times_equal_dag(&matrix, &(GC->lattice[r][i]));
+	times_equal(&matrix, &(GC->lattice[r][j]));
+	
+	//twist factor: Z_\mu\nu for clockwise plaquette with \mu < \nu, matrix is the anticlockwise plaquette
+	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\nu\mu(x) = conj(Z_\mu\nu(x))
+	
+	return retr(&matrix);
+	}
 
-   return retr(&matrix);
-   }
 
-
-// computation of the plaquette (1/NCOLOR the trace of) in position r and positive directions i,j
+// computation of the plaquette (1/NCOLOR the trace of, with twist factor) in position r and positive directions i,j
 double complex plaquettep_complex(Gauge_Conf const * const GC,
                                   Geometry const * const geo,
                                   GParam const * const param,
                                   long r,
                                   int i,
                                   int j)
-   {
-   GAUGE_GROUP matrix;
-
-   #ifdef DEBUG
-   if(r >= param->d_volume)
-     {
-     fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   if(j >= STDIM || i >= STDIM)
-     {
-     fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   #else
-   (void) param; // just to avoid warning at compile time
-   #endif
+	{
+	GAUGE_GROUP matrix;
+	
+	#ifdef DEBUG
+	if(r >= param->d_volume)
+	{
+		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	if(j >= STDIM || i >= STDIM)
+		{
+		fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	#else
+	(void) param; // just to avoid warning at compile time
+	#endif
 
 //
 //       ^ i
@@ -99,16 +102,19 @@ double complex plaquettep_complex(Gauge_Conf const * const GC,
 //       r   (4)
 //
 
-   equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
-   times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
-   times_equal_dag(&matrix, &(GC->lattice[r][i]));
-   times_equal(&matrix, &(GC->lattice[r][j]));
+	equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
+	times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
+	times_equal_dag(&matrix, &(GC->lattice[r][i]));
+	times_equal(&matrix, &(GC->lattice[r][j]));
+	
+	//twist factor: Z_\mu\nu for clockwise plaquette with \mu < \nu, matrix is the anticlockwise plaquette
+	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+	
+	return retr(&matrix)+I*imtr(&matrix);
+	}
 
-   return retr(&matrix)+I*imtr(&matrix);
-   }
 
-
-// computation of the plaquette (matrix) in position r and positive directions i,j
+// computation of the plaquette with twist factor (matrix) in position r and positive directions i,j
 void plaquettep_matrix(Gauge_Conf const * const GC,
                        Geometry const * const geo,
                        GParam const * const param,
@@ -116,21 +122,21 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
                        int i,
                        int j,
                        GAUGE_GROUP *matrix)
-   {
-   #ifdef DEBUG
-   if(r >= param->d_volume)
-     {
-     fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   if(j >= STDIM || i >= STDIM)
-     {
-     fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-   #else
-   (void) param; // just to avoid warning at compile time
-   #endif
+	{
+	#ifdef DEBUG
+	if(r >= param->d_volume)
+	{
+		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	if(j >= STDIM || i >= STDIM)
+	{
+	fprintf(stderr, "i or j too large: (i=%d || j=%d) >= %d (%s, %d)\n", i, j, STDIM, __FILE__, __LINE__);
+	exit(EXIT_FAILURE);
+	}
+	#else
+	(void) param; // just to avoid warning at compile time
+	#endif
 
 //
 //       ^ j
@@ -143,11 +149,14 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
 //       r   (1)
 //
 
-   equal(matrix, &(GC->lattice[r][i]));
-   times_equal(matrix, &(GC->lattice[nnp(geo, r, i)][j]));
-   times_equal_dag(matrix, &(GC->lattice[nnp(geo, r, j)][i]));
-   times_equal_dag(matrix, &(GC->lattice[r][j]));
-   }
+	equal(matrix, &(GC->lattice[r][i]));
+	times_equal(matrix, &(GC->lattice[nnp(geo, r, i)][j]));
+	times_equal_dag(matrix, &(GC->lattice[nnp(geo, r, j)][i]));
+	times_equal_dag(matrix, &(GC->lattice[r][j]));
+	
+	//twist factor: Z_\mu\nu for clockwise plaquette with \mu < \nu, matrix is the anticlockwise plaquette
+	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+	}
 
 
 // compute the four-leaf clover in position r, in the plane i,j and save it in M
@@ -180,7 +189,7 @@ void clover(Gauge_Conf const * const GC,
    zero(M);
 
 //
-//                   i ^
+//                   j ^
 //                     |
 //             (14)    |     (3)
 //         +-----<-----++-----<-----+
@@ -189,7 +198,7 @@ void clover(Gauge_Conf const * const GC,
 //   (15)  V      (13) ^V (4)       ^ (2)
 //         |           ||           |
 //         |   (16)    || r   (1)   |
-//    p    +----->-----++----->-----+------>   j
+//    p    +----->-----++----->-----+------>   i
 //         +-----<-----++-----<-----+
 //         |    (9)    ||   (8)     |
 //         |           ||           |
@@ -200,35 +209,39 @@ void clover(Gauge_Conf const * const GC,
 //              (11)   k      (6)
 //
    // avanti-avanti
-   equal(&aux, &(GC->lattice[r][i]) );                           // 1
-   times_equal(&aux, &(GC->lattice[nnp(geo, r, i)][j]) );        // 2
-   times_equal_dag(&aux, &(GC->lattice[nnp(geo, r, j)][i]) );    // 3
-   times_equal_dag(&aux, &(GC->lattice[r][j]) );                 // 4
+   equal(&aux, &(GC->lattice[r][i]) );							// 1
+   times_equal(&aux, &(GC->lattice[nnp(geo, r, i)][j]) );		// 2
+   times_equal_dag(&aux, &(GC->lattice[nnp(geo, r, j)][i]) );	// 3
+   times_equal_dag(&aux, &(GC->lattice[r][j]) );				// 4
+   times_equal_complex(&aux, GC->Z[r][dirs_to_si(i,j)]);		// twist anticlockwise
    plus_equal(M, &aux);
 
    k=nnm(geo, r, j);
 
    // avanti-indietro
-   equal_dag(&aux, &(GC->lattice[k][j]) );                       // 5
-   times_equal(&aux, &(GC->lattice[k][i]) );                     // 6
-   times_equal(&aux, &(GC->lattice[nnp(geo, k, i)][j]) );        // 7
-   times_equal_dag(&aux, &(GC->lattice[r][i]) );                 // 8
+   equal_dag(&aux, &(GC->lattice[k][j]) );						// 5
+   times_equal(&aux, &(GC->lattice[k][i]) );					// 6
+   times_equal(&aux, &(GC->lattice[nnp(geo, k, i)][j]) );		// 7
+   times_equal_dag(&aux, &(GC->lattice[r][i]) );				// 8
+   times_equal_complex(&aux, GC->Z[k][dirs_to_si(i,j)]);		// twist anticlockwise
    plus_equal(M, &aux);
 
    p=nnm(geo, r, i);
 
    // indietro-indietro
-   equal_dag(&aux, &(GC->lattice[p][i]) );                       // 9
-   times_equal_dag(&aux, &(GC->lattice[nnm(geo, k, i)][j]) );    // 10
-   times_equal(&aux, &(GC->lattice[nnm(geo, k, i)][i]) );        // 11
-   times_equal(&aux, &(GC->lattice[k][j]) );                     // 12
+   equal_dag(&aux, &(GC->lattice[p][i]) );								// 9
+   times_equal_dag(&aux, &(GC->lattice[nnm(geo, k, i)][j]) );			// 10
+   times_equal(&aux, &(GC->lattice[nnm(geo, k, i)][i]) );				// 11
+   times_equal(&aux, &(GC->lattice[k][j]) );							// 12
+   times_equal_complex(&aux, GC->Z[nnm(geo, k, i)][dirs_to_si(i,j)]);	// twist anticlockwise
    plus_equal(M, &aux);
 
    // indietro-avanti
-   equal(&aux, &(GC->lattice[r][j]) );                            // 13
-   times_equal_dag(&aux, &(GC->lattice[nnp(geo, p, j)][i]) );     // 14
-   times_equal_dag(&aux, &(GC->lattice[p][j]) );                  // 15
-   times_equal(&aux, &(GC->lattice[p][i]) );                      // 16
+   equal(&aux, &(GC->lattice[r][j]) );							// 13
+   times_equal_dag(&aux, &(GC->lattice[nnp(geo, p, j)][i]) );	// 14
+   times_equal_dag(&aux, &(GC->lattice[p][j]) );				// 15
+   times_equal(&aux, &(GC->lattice[p][i]) );					// 16
+   times_equal_complex(&aux, GC->Z[p][dirs_to_si(i,j)]);		// twist anticlockwise
    plus_equal(M, &aux);
    }
 

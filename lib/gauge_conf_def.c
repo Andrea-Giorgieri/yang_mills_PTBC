@@ -216,7 +216,11 @@ void init_twist_cond(Gauge_Conf *GC, GParam const * const param)
 		si_to_cart(cartcoord, r, param);
 		for(i=0; i<STDIM; i++)
 			for(j=i+1; j<STDIM; j++)
-				if (cartcoord[i] == 0 && cartcoord[j] == 0) GC->Z[r][i*(STDIM-2)+j-1]=cexp(PI2*param->d_k_twist[i*(STDIM-2)+j-1]/NCOLOR);
+				if (cartcoord[i] == 0 && cartcoord[j] == 0)
+				{
+					GC->Z[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);	//for clockwise plaquette
+					GC->Z[r][dirs_to_si(j,i)] = conj(GC->Z[r][dirs_to_si(i,j)]);								//for anticlockwise plaquette
+				}
 	}
 }
 

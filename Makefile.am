@@ -1,21 +1,22 @@
 bin_PROGRAMS = conf_check \
-               debug_rng \
-               debug_su2 \
-               debug_su2_adj \
-               debug_sun \
-               debug_u1 \
-               yang_mills_local \
-               yang_mills_polycorr \
-               yang_mills_polycorr_long \
-               yang_mills_polycorradj \
-               yang_mills_t0 \
-               yang_mills_tube_conn \
-               yang_mills_tube_conn_long \
-               yang_mills_tube_disc \
-               yang_mills_tracedef \
-               yang_mills_local_pt \
-							 yang_mills_local_pt_multicanonic \
-							 yang_mills_gradient_flow 
+			debug_rng \
+			debug_su2 \
+			debug_su2_adj \
+			debug_sun \
+			debug_u1 \
+			debug_twist \
+			yang_mills_local \
+			yang_mills_polycorr \
+			yang_mills_polycorr_long \
+			yang_mills_polycorradj \
+			yang_mills_t0 \
+			yang_mills_tube_conn \
+			yang_mills_tube_conn_long \
+			yang_mills_tube_disc \
+			yang_mills_tracedef \
+			yang_mills_local_pt \
+			yang_mills_local_pt_multicanonic \
+			yang_mills_gradient_flow 
 
 align = ./include/aligncheck.h \
         ./lib/aligncheck.c
@@ -42,12 +43,12 @@ funcpoint = ./include/function_pointers.h \
             ./lib/function_pointers.c
 
 gauge_conf = ./include/gauge_conf.h \
-             ./lib/gauge_conf_def.c \
-             ./lib/gauge_conf_meas.c \
-             ./lib/gauge_conf_multilevel.c \
-             ./lib/gauge_conf_upd.c \
-						 ./lib/gauge_conf_paral_temp.c \
-						 ./lib/gauge_conf_multicanonic.c
+			./lib/gauge_conf_def.c \
+			./lib/gauge_conf_meas.c \
+			./lib/gauge_conf_multilevel.c \
+			./lib/gauge_conf_upd.c \
+			./lib/gauge_conf_paral_temp.c \
+			./lib/gauge_conf_multicanonic.c
 
 geometry = ./include/geometry.h \
            ./lib/geometry.c
@@ -133,6 +134,21 @@ debug_u1_SOURCES=./src/debug_u1.c \
                   ./include/macro.h \
                   $(random) \
                   $(u1)
+
+debug_twist_SOURCES=./src/debug_twist.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 yang_mills_local_SOURCES=./src/yang_mills_local.c \
                           $(align) \

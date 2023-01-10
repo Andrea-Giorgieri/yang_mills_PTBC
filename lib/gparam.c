@@ -822,7 +822,7 @@ void init_derived_constants(GParam *param)
 		param->d_n_grid=(int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
 	
 		// number of planes (twisted boundary conditions only)
-		param->d_n_planes = STDIM*(STDIM-1)/2;
+		param->d_n_planes = STDIM*(STDIM-1);
 	}
 
 // initialize data file

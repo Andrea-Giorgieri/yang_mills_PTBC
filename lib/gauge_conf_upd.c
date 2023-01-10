@@ -24,6 +24,7 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 	{
 	int j, l;
 	long k;
+	double complex factor;
 	GAUGE_GROUP link1, link2, link3, link12, stap;
 
 	#ifdef DEBUG
@@ -45,7 +46,7 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 
 	for(l=i+1; l< i + STDIM; l++)
 	{
-	j = (l % STDIM);
+		j = (l % STDIM);
 
 //
 //		i ^
@@ -60,14 +61,19 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 //		r	(3)
 //
 
-	equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-	equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-	equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
+		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
 
-	times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
-	times_dag2(&stap, &link12, &link3);	// stap=link12*stap^{dag}
-
-	plus_equal(M, &stap);
+		times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
+		times_dag2(&stap, &link12, &link3);	// stap=link12*stap^{dag}
+	
+		//twist (clockwise plaquette) modification
+		factor=GC->Z[r][dirs_to_si(i,j)];		//Z_\mu\nu(x)
+	
+		times_equal_complex(&stap, factor); // Z_\mu\nu(x) * staple
+	
+		plus_equal(M, &stap);
 
 //
 //		i ^
@@ -82,16 +88,21 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 //		k	(3)		r
 //
 
-	k=nnm(geo, r, j);
+		k=nnm(geo, r, j);
 
-	equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
-	equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
-	equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
+		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
+		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
 
-	times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-	times(&stap, &link12, &link3);		// stap=link12*link3
+		times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
+		times(&stap, &link12, &link3);		// stap=link12*link3
+		
+		//twist (anticlockwise plaquette) modification
+		factor=GC->Z[k][dirs_to_si(j,i)];	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+	
+		times_equal_complex(&stap, factor); // Z_\mu\nu(x-\nu) * staple
 
-	plus_equal(M, &stap);
+		plus_equal(M, &stap);
 	}
 	}
 
@@ -270,6 +281,9 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 
 	times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
 	times_dag2(&stap, &link12, &link3);	// stap=link12*stap^{dag}
+	
+	//twist (clockwise plaquette)		
+	times_equal_complex(&stap, C->Z[r][dirs_to_si(i,j)]); //Z_\mu\nu(x) * staple
 
 	plus_equal(M, &stap);
 
@@ -314,6 +328,9 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 
 	times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
 	times(&stap, &link12, &link3);		// stap=link12*link3
+	
+	//twist (anticlockwise plaquette)		
+	times_equal_complex(&stap, C->Z[k][dirs_to_si(j,i)]); //Z_\nu\mu(x) * staple
 
 	plus_equal(M, &stap);
 
@@ -424,7 +441,7 @@ void compute_clovers_replica_rect(Gauge_Conf const * const GC,
 	}
 	}
 
-// evaluate non-topo staples with defect in position r and direction i and save it in M
+// evaluate non-topo staples with defect and twist factors in position r and direction i and save it in M
 void calcstaples_wilson_with_defect(Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
@@ -480,8 +497,7 @@ void calcstaples_wilson_with_defect(Gauge_Conf const * const GC,
 		
 		// boundary condition and twist (clockwise plaquette) modification
 		factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-		if(i<j) factor*=GC->Z[r][i*(STDIM-2)+j-1];		//Z_\mu\nu(x)
-		else factor*=conj(GC->Z[r][j*(STDIM-2)+i-1]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+		factor*=GC->Z[r][dirs_to_si(i,j)];		//Z_\mu\nu(x)
 
 		times_equal_complex(&stap, factor); //K_\mu\nu(x) * Z_\mu\nu(x) * staple
 
@@ -511,8 +527,7 @@ void calcstaples_wilson_with_defect(Gauge_Conf const * const GC,
 
 		// boundary condition and twist (anticlockwise plaquette) modification
 		factor=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
-		if(i<j) factor*=conj(GC->Z[k][i*(STDIM-2)+j-1]);	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		else factor*=GC->Z[k][j*(STDIM-2)+i-1];				//Z_\nu\mu(x-\nu)
+		factor*=GC->Z[k][dirs_to_si(j,i)];	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
 
 		times_equal_complex(&stap, factor); //K_\mu\nu(x-\nu) * Z_\mu\nu(x-\nu) * staple
 
@@ -644,10 +659,9 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	times_equal_dag(&aux, &link3);		// *=link3^{dag}
 	plus_equal(&topo_stap, &aux);
 		
-	// boundary condition and twist (clockwise plaquette) modification (only affects non-topo staple)
+	// boundary condition modification (only affects non-topo staple) and twist (clockwise plaquette)
 	factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-	if(i<j) factor*=GC->Z[r][i*(STDIM-2)+j-1];		//Z_\mu\nu(x)
-	else factor*=conj(GC->Z[r][j*(STDIM-2)+i-1]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+	factor*=GC->Z[r][dirs_to_si(i,j)];		//Z_\mu\nu(x)
 		
 	times_equal_complex(&stap, factor); //K_\mu\nu(x) * Z_\mu\nu(x) * staple
 		
@@ -695,10 +709,9 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	times_equal(&aux, &link3);				// *=link3
 	minus_equal(&topo_stap, &aux);
 		
-	// boundary condition and twist (anticlockwise plaquette) modification (only affects non-topo staple)
+	// boundary condition modification (only affects non-topo staple) and twist (anticlockwise plaquette)
 	factor=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
-	if(i<j) factor*=conj(GC->Z[k][i*(STDIM-2)+j-1]);	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-	else factor*=GC->Z[k][j*(STDIM-2)+i-1];				//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+	factor*=GC->Z[k][dirs_to_si(j,i)];	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
 
 	times_equal_complex(&stap, factor); //K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 

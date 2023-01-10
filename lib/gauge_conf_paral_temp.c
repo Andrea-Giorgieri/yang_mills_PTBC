@@ -110,7 +110,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 	for(s=0;s<((num_swaps_2)*(swap_rectangle->d_vol_rect));s++)
 		{
 		long n = s%(swap_rectangle->d_vol_rect);
-		long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect
+		long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect (having swapped also twist factors) 
 		int l = (int) ( (s-n) / (swap_rectangle->d_vol_rect) );
 		int a = 2*l+is_even_first; // labels of replica
 		int b = a+1;
@@ -143,7 +143,7 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 {
 	double re_tr_plaq_a, re_tr_plaq_b, K_a, K_b, delta;
 
-	// plaquettes
+	// plaquettes, including twist factors in function plaquettep
 	re_tr_plaq_a = plaquettep(&(GC[a]),geo,param,r,i,j); // (Re Tr plaq_a(r,i,j) )/N_c , replica label = a
 	re_tr_plaq_b = plaquettep(&(GC[b]),geo,param,r,i,j); // (Re Tr plaq_b(r,i,j) )/N_c , replica label = b
 
@@ -151,7 +151,7 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 	K_a = (GC[a].C[r][i])*(GC[a].C[nnp(geo, r, i)][j])*(GC[a].C[nnp(geo, r, j)][i])*(GC[a].C[r][j]);
 	K_b = (GC[b].C[r][i])*(GC[b].C[nnp(geo, r, i)][j])*(GC[b].C[nnp(geo, r, j)][i])*(GC[b].C[r][j]);
 
-	// (swapped action - unswapped action) = beta * delta_K * delta_plaq
+	// (swapped action - unswapped action) = beta * delta_K * delta_plaq (twist factors swapped, otherwise delta_K -> K_a*Z_a-K_b*Z_b )
 	delta = param->d_beta * (K_a - K_b) * (re_tr_plaq_a - re_tr_plaq_b);
 	
 	return delta;
@@ -200,9 +200,9 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 	}
 */
 
-// metropolis step to swap replica a and b with probability p
+// metropolis step to swap replica a and b with probability p, including the twist factors
 void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double const p, Acc_Utils *acc_counters)
-  {
+	{
 	// acceptance initialized to 1
 	int acc=1;
 	// increase counter of tried swaps for replicas (a, a+1)
@@ -218,14 +218,18 @@ void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double con
 		}
 	}
 	
-	// if Metropolis is accepted, swap replicas
+	// if Metropolis is accepted, swap replicas, including the twist factors
 	if(acc==1)
 		{
 		// swap of configurations
 		GAUGE_GROUP **aux;
+		double complex **aux_Z;
 		aux=GC[a].lattice;
+		aux_Z=GC[a].Z;
 		GC[a].lattice=GC[b].lattice;
+		GC[a].Z=GC[b].Z;
 		GC[b].lattice=aux;
+		GC[b].Z=aux_Z;
 		acc_counters->num_accepted_swap[a]++; // increase counter of successfull swaps for replicas (a, a+1)
 
 		// swap of labels
@@ -234,7 +238,7 @@ void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double con
 		GC[a].conf_label=GC[b].conf_label;
 		GC[b].conf_label=aux_label;
 		}
-  }
+	}
 
 // translation of one lattice spacing of the configuration, including the twist factors
 // direction is chosen randomly, verse is always positive
@@ -259,18 +263,12 @@ void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const *
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
-	for(s=0;s<(STDIM*(param->d_volume));s++)
+	for(s=0; s<(param->d_n_planes)*(param->d_volume); s++)
 	{
 		// s = j * volume + r
 		long r = s % (param->d_volume);
 		int j = (int) ( (s-r)/(param->d_volume) );
-		equal(&(GC->lattice[r][j]), &(aux_conf.lattice[nnm(geo,r,dir)][j]) );
-	}
-	for(s=0;s<((param->d_n_planes)*(param->d_volume));s++)
-	{
-		// s = j * volume + r
-		long r = s % (param->d_volume);
-		int j = (int) ( (s-r)/(param->d_volume) );
+		if(j<STDIM) equal(&(GC->lattice[r][j]), &(aux_conf.lattice[nnm(geo,r,dir)][j]) );
 		GC->Z[r][j] = aux_conf.Z[nnm(geo,r,dir)][j];
 	}
 

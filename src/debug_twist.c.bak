@@ -103,7 +103,7 @@ int main(void)
 			if(j != i)
 			{
 				trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, r, j, i);
-				trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, nnm(&geo, r, j), i, j);
+				trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, nnm(&geo, r, j), j, i);
 			}
 		}
 		

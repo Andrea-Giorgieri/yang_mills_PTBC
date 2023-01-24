@@ -155,7 +155,7 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
 	times_equal_dag(matrix, &(GC->lattice[r][j]));
 	
 	//twist factor: Z_\mu\nu for clockwise plaquette with \mu < \nu, matrix is the anticlockwise plaquette
-	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+	times_equal_complex(matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
 	}
 
 
@@ -699,7 +699,7 @@ void topcharge_timeslices(Gauge_Conf const * const GC,
 void topcharge_timeslices_cooling(Gauge_Conf const * const GC,
                  Geometry const * const geo,
                  GParam const * const param, FILE *topchar_tcorr_filep)
-{
+	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 	{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -739,17 +739,74 @@ void topcharge_timeslices_cooling(Gauge_Conf const * const GC,
 		fflush(topchar_tcorr_filep);
 	}
 	free(sum_q_timeslices);
-}
+	}
+
+void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									FILE *topchar_tcorr_filep)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	
+	double *sum_q_timeslices;
+	int err=posix_memalign((void**) &(sum_q_timeslices), (size_t) DOUBLE_ALIGN, (size_t) param->d_size[0]*sizeof(double));
+	if(err!=0)
+	{
+		fprintf(stderr, "Problems in allocating the aux vector for topcharge tcorr meas! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	
+	if(param->d_ngfsteps>0)	// if using gradient flow
+	{	
+		Gauge_Conf helperconf, help1, help2; 
+		double plaqs, plaqt;
+		int count, meas_count;
+		
+		// measure no gradient flow
+		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
+		{
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, count, topchar_tcorr_filep);
+			}
+		}
+		
+		fflush(topchar_tcorr_filep);
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+	}
+	else	// no gradient flow
+	{
+		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
+		fflush(topchar_tcorr_filep);
+	}
+	free(sum_q_timeslices);
+	}
 
 
 // compute topological observables (Q, chi_prime) after some cooling
 // in the cooling procedure the action at theta=0 is minimized
 void topo_obs_cooling(Gauge_Conf const * const GC,
-                       Geometry const * const geo,
-                       GParam const * const param,
-                       double *charge,
-											 double *chi_prime,
-                       double *meanplaq)
+					Geometry const * const geo,
+					GParam const * const param,
+					double *charge,
+					double *chi_prime,
+					double *meanplaq)
    {
    if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
      {
@@ -807,6 +864,68 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
         }
      } 
    }
+   
+void topo_obs_gradflow(Gauge_Conf const * const GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											double *charge,
+											double *chi_prime,
+											double *meanplaq)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	if(param->d_ngfsteps>0)	// if using gradient flow
+	{	
+		Gauge_Conf helperconf, help1, help2; 
+		double plaqs, plaqt;
+		int count, meas_count;
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
+		{
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				charge[meas_count]=topcharge(&helperconf, geo, param);
+				chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
+				plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+				#if(STDIM==4)
+					meanplaq[meas_count]=0.5*(plaqs+plaqt);
+				#else
+					meanplaq[meas_count]=plaqt;
+				#endif
+			}
+		}
+
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+	}
+	else	// no gradient flow
+	{
+		double plaqs, plaqt; 
+		int iter;
+
+		charge[0]=topcharge(GC, geo, param);
+		chi_prime[0]=topo_chi_prime(GC, geo, param);
+		plaquette(GC, geo, param, &plaqs, &plaqt);
+		#if(STDIM==4)
+			meanplaq[0]=0.5*(plaqs+plaqt);
+		#else
+			meanplaq[0]=plaqt;
+		#endif
+	}
+	}
 
 /*---------------------------------------------*/
 // OBSERVABLE NEEDED JUST TO CHECK HOW COOLING DESTROYS TOPOLOGICAL CORRELATIONS
@@ -905,6 +1024,66 @@ void topcharge_cooling(Gauge_Conf const * const GC,
         }
      } 
    }
+
+void topcharge_gradflow(Gauge_Conf const * const GC,
+                       Geometry const * const geo,
+                       GParam const * const param,
+                       double *charge,
+                       double *meanplaq)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	if(param->d_ngfsteps>0)  // if using gradient flow
+	{  
+		Gauge_Conf helperconf, help1, help2; 
+		double plaqs, plaqt;
+		int count, meas_count;
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
+		{
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				charge[meas_count]=topcharge(&helperconf, geo, param);
+				plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+				#if(STDIM==4)
+					meanplaq[meas_count]=0.5*(plaqs+plaqt);
+				#else
+					meanplaq[meas_count]=plaqt;
+				#endif
+
+			}
+		}
+
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+	}
+	else   // no gradient flow
+	{
+		double plaqs, plaqt; 
+		int iter;
+
+		charge[0]=topcharge(GC, geo, param);
+		plaquette(GC, geo, param, &plaqs, &plaqt);
+		#if(STDIM==4)
+			meanplaq[0]=0.5*(plaqs+plaqt);
+		#else
+			meanplaq[0]=plaqt;
+		#endif
+	}
+	}
 
 
 // compute the correlator of the local topological charge
@@ -1082,6 +1261,90 @@ void perform_measures_localobs(Gauge_Conf *GC,
      fflush(datafilep);
    #endif
    }
+	
+void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+	{
+	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
+	int i, err, gradflowrepeat;
+	double plaqs, plaqt, polyre, polyim, *charge, *chi_prime, *meanplaq, charge_nogradflow, chi_prime_nogradflow;
+	
+	plaquette(GC, geo, param, &plaqs, &plaqt);
+	polyakov(GC, geo, param, &polyre, &polyim);
+	
+	charge_nogradflow=topcharge(GC, geo, param);
+	if (param->d_chi_prime_meas == 1 ) chi_prime_nogradflow=topo_chi_prime(GC, geo, param);
+	
+	// refresh topological charge of periodic replica (only for multicanonic)
+	GC->stored_topo_charge = charge_nogradflow;
+
+	fprintf(datafilep, "%ld %.12g %.12g %.12g %.12g %.12g ", GC->update_index, plaqs, plaqt, polyre, polyim, charge_nogradflow);
+	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime_nogradflow);
+
+	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+	if (gradflowrepeat > 0)
+	{
+		err=posix_memalign((void**)&charge, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		
+		if (param->d_chi_prime_meas == 1)
+		{
+			err=posix_memalign((void**)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		err=posix_memalign((void**)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		
+		if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_gradflow(GC, geo, param, topchar_tcorr_filep);
+		else {(void) topchar_tcorr_filep;}
+		if (param->d_chi_prime_meas == 1 ) topo_obs_gradflow(GC, geo, param, charge, chi_prime, meanplaq);
+		else topcharge_gradflow(GC, geo, param, charge, meanplaq);
+		for(i=0; i<gradflowrepeat; i++)
+		{
+			fprintf(datafilep, "%.12g %.12g ", charge[i], meanplaq[i]);
+			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
+		}
+	}
+	fprintf(datafilep, "\n");
+	
+	fflush(datafilep);
+	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	
+	free(charge);
+	if (param->d_chi_prime_meas == 1 ) free(chi_prime);
+	else 
+	{
+		(void) chiprimefilep;
+	}
+	free(meanplaq);
+
+	#else
+
+	double plaqs, plaqt, polyre, polyim;
+	
+	plaquette(GC, geo, param, &plaqs, &plaqt);
+	polyakov(GC, geo, param, &polyre, &polyim);
+	
+	fprintf(datafilep, "%.12g %.12g %.12g %.12g ", plaqs, plaqt, polyre, polyim);
+	fprintf(datafilep, "\n");
+	fflush(datafilep);
+	#endif
+	}
 
 
 // perform local observables in the case of trace deformation, it computes all the order parameters

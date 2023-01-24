@@ -86,6 +86,11 @@ void readinput(char *in_file, GParam *param)
 	}
 	param->d_N_replica_pt=1;
 	
+	// to avoid possible mistakes with uninitialized stuff 
+	param->d_ngfsteps = 0;
+	param->d_gf_meas_each = 1;
+	param->d_gfstep = 0.01;
+	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
 	{
@@ -325,7 +330,7 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					param->d_gfstep=temp_d;
+					if (temp_d > 0) param->d_gfstep=temp_d;
 					}
 
 			else if(strncmp(str, "num_gfsteps", 11)==0) // number of integration steps
@@ -336,7 +341,7 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					param->d_ngfsteps=temp_i;
+					if (temp_i > 0) param->d_ngfsteps=temp_i;
 					}
 					
 			else if(strncmp(str, "gf_meas_each", 12)==0) // number of integration steps
@@ -347,7 +352,7 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					param->d_gf_meas_each=temp_i;
+					if (temp_i > 0) param->d_gf_meas_each=temp_i;
 					}
 
 			else if(strncmp(str, "multihit", 8)==0)

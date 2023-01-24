@@ -300,6 +300,21 @@ yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
                           $(tens_prod) \
                           $(u1)
 
+yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
 yang_mills_local_pt_multicanonic_SOURCES=./src/yang_mills_local_pt_multicanonic.c \
                           $(align) \
                           $(dSFMT)  \

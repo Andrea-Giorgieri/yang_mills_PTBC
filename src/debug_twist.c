@@ -17,10 +17,10 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam con
 
 int main(void)
 	{
-	double plaqs, plaqt, plaqs_new, plaqt_new;
-	double complex z, w, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover;
+	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b;
+	double complex z, w, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover, Z_a, Z_b;
 	char in_file[] = "input_file_ym_pt";
-	int i, j, k;
+	int i, j, k, err;
 	long r=0;
 	
 	Gauge_Conf *GC;
@@ -34,6 +34,7 @@ int main(void)
 	
 	readinput(in_file, &param);
 	param.d_start = 1;
+	if(param.d_N_replica_pt<2) param.d_N_replica_pt = 2;
 	initrand(param.d_randseed);
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
@@ -132,7 +133,7 @@ int main(void)
 			clover(&(GC[0]), &geo, &param, r, i, j, &M);
 			trace_clover = retr(&M) + I*imtr(&M);
 		
-			trace_plaquettep = plaquettep_complex(&(GC[0]), &geo, &param, r, j, i);
+			trace_plaquettep = plaquettep_complex(&(GC[0]), &geo, &param, r, i, j);
 			trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, nnm(&geo, r, j), i, j);
 			trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, nnm(&geo, r, i), i, j);
 			trace_plaquettep += plaquettep_complex(&(GC[0]), &geo, &param, nnm(&geo, nnm(&geo, r, i), j), i, j);
@@ -183,6 +184,29 @@ int main(void)
 		}
 	}
 	
+	printf("\n\n");
+	printf("VERIFY THAT metropolis_single_swap SWAPS THE TWIST FACTORS ...\n\n");
+
+	err=0;
+	for(r=0; r<param.d_volume; r++)
+	{
+		for(j=0; j<param.d_n_planes; j++)
+		{
+			Z_a = GC[0].Z[r][j];
+			Z_b = GC[1].Z[r][j];
+			metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
+			
+			if(cabs(GC[1].Z[r][j]-Z_a)>MIN_VALUE || cabs(GC[0].Z[r][j]-Z_b)> MIN_VALUE)
+			{
+				err = 1;
+				printf("	ERROR!!!!!!!!!!!\n\n	");
+				printf("Error swapping Z[%ld][%d]\n\n", r, j);
+			}
+		}
+	}
+	if(err==0) printf("Z[r][j] swaps :	OK\n");
+	metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
+
 	free_replica(GC, &param);
 	free_geometry(&geo, &param);
 	free_rect_hierarc(most_update, clover_rectangle, &param);

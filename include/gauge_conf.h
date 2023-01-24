@@ -205,6 +205,9 @@ void topcharge_timeslices(Gauge_Conf const * const GC,
 void topcharge_timeslices_cooling(Gauge_Conf const * const GC,
 				 Geometry const * const geo,
 				 GParam const * const param, FILE*);
+void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
+				 Geometry const * const geo,
+				 GParam const * const param, FILE*);
 double topo_chi_prime(Gauge_Conf const * const GC,
 				 Geometry const * const geo,
 				 GParam const * const param);
@@ -212,9 +215,20 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
 						double *charge,
-											 double *chi_prime,
+						double *chi_prime,
+						double *meanplaq);
+void topo_obs_gradflow(Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						double *charge,
+						double *chi_prime,
 						double *meanplaq);
 void topcharge_cooling(Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						double *charge,
+						double *meanplaq);
+void topcharge_gradflow(Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
 						double *charge,
@@ -229,7 +243,10 @@ void perform_measures_localobs(Gauge_Conf *GC,
 								Geometry const * const geo,
 								GParam const * const param,
 								FILE *datafilep, FILE *chiprimefilep, FILE*);
-
+void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								FILE *datafilep, FILE *chiprimefilep, FILE*);
 void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
 											 Geometry const * const geo,
 											 GParam const * const param,

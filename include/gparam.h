@@ -15,6 +15,7 @@ typedef struct GParam {
 	double d_beta;
 	double d_h[NCOLOR]; // parameters for the trace deformation
 	double d_theta;
+	int d_use_clover_energy;
 	
 	// parallel tempering parameters
 	int d_defect_dir;				// defect boundary
@@ -104,6 +105,7 @@ void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tcorr_f, 
 void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);

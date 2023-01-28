@@ -80,7 +80,14 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
-			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			if (param.d_use_clover_energy == 0) 
+			{
+				perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			}
+			else 
+			{
+				perform_measures_localobs_clover_energy_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			}
 		}
 
 		// save configurations for backup
@@ -127,7 +134,7 @@ void real_main(char *in_file)
       }
 
     // print simulation details
-    print_parameters_local_pt(&param, time1, time2);
+    print_parameters_local_pt_gf(&param, time1, time2);
 		
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
@@ -182,6 +189,7 @@ void print_template_input(void)
 		fprintf(fp,"# Simulations parameters\n");
 		fprintf(fp, "beta  5.705\n");
 		fprintf(fp, "theta 1.5\n");
+		fprintf(fp, "use_clover_energy 0        # if != 0 replaces average plaquette with average clover energy in measures\n"); 
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");

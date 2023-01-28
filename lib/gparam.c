@@ -97,9 +97,10 @@ void readinput(char *in_file, GParam *param)
 		param->d_k_twist[i]=0;
 	}
 		
-	// default = do not compute chi_prime
+	// default = do not compute chi_prime, do not use clover disc energy
 	param->d_chi_prime_meas = 0;
 	param->d_topcharge_tcorr_meas = 0;
+	param->d_use_clover_energy=0;
 
 	input=fopen(in_file, "r"); // open the input file
 	if(input==NULL)
@@ -169,6 +170,22 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					param->d_theta=temp_d;
+					}
+					
+			else if(strncmp(str, "use_clover_energy", 17)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_use_clover_energy=temp_i;
+					else
+					{
+					fprintf(stderr, "Error: use_clover_energy must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
 					}
 
 			else if(strncmp(str, "sample", 6)==0)
@@ -331,6 +348,7 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					if (temp_d > 0) param->d_gfstep=temp_d;
+					else fprintf(stderr, "Error: gfstep must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 
 			else if(strncmp(str, "num_gfsteps", 11)==0) // number of integration steps
@@ -341,7 +359,8 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					if (temp_i > 0) param->d_ngfsteps=temp_i;
+					if (temp_i > -1) param->d_ngfsteps=temp_i;
+					else fprintf(stderr, "Error: num_gfsteps must be non negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 					
 			else if(strncmp(str, "gf_meas_each", 12)==0) // number of integration steps
@@ -353,6 +372,7 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					if (temp_i > 0) param->d_gf_meas_each=temp_i;
+					else fprintf(stderr, "Error: gf_meas_each must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 
 			else if(strncmp(str, "multihit", 8)==0)
@@ -1154,27 +1174,32 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 		fprintf(fp, "x%d", param->d_L_defect[i]);
 		}
 	fprintf(fp, "\n\n");
+	
 	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
-		fprintf(fp,"boundary condition constants: ");
-		for(i=0;i<param->d_N_replica_pt;i++)
-			fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
-		fprintf(fp,"\n");
-		fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
-		if(param->d_N_hierarc_levels>0)
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "twist parameters: ");
+	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
 			{
-			fprintf(fp,"extention of rectangles: ");
-			for(i=0;i<param->d_N_hierarc_levels;i++)
-				{
-				fprintf(fp,"%d ", param->d_L_rect[i]);
-				}
-			fprintf(fp,"\n");
-			fprintf(fp,"number of sweeps per hierarchical level: ");
-			for(i=0;i<param->d_N_hierarc_levels;i++)
-				{
-				fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
-				}
+			fprintf(fp,"%d ", param->d_L_rect[i]);
 			}
-		fprintf(fp,"\n\n");
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+	fprintf(fp,"\n\n");
 
 	fprintf(fp, "beta: %.10lf\n", param->d_beta);
 	#ifdef THETA_MODE
@@ -1191,6 +1216,111 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 	fprintf(fp, "start:						%d\n", param->d_start);
 	fprintf(fp, "saveconf_back_every:		%d\n", param->d_saveconf_back_every);
 	fprintf(fp, "saveconf_analysis_every:	%d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:	%d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+
+	if(endian()==0)
+		{
+		fprintf(fp, "Little endian machine\n\n");
+		}
+	else
+		{
+		fprintf(fp, "Big endian machine\n\n");
+		}
+
+	fclose(fp);
+	}
+	
+void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end)
+	{
+	FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+-----------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_pt_gf |\n");
+	fprintf(fp, "+-----------------------------------------------+\n\n");
+
+	#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for(i=1; i<STDIM-1; i++)
+		{
+		fprintf(fp, "x%d", param->d_L_defect[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "twist parameters: ");
+	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_L_rect[i]);
+			}
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+		fprintf(fp,"\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	#ifdef THETA_MODE
+		fprintf(fp, "theta: %.10lf\n", param->d_theta);
+	#endif
+	fprintf(fp, "use_clover_energy: %d\n", param->d_use_clover_energy);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:	%d\n", param->d_sample);
+	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:						%d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:		%d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every:	%d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "gfstep:		%lf\n", param->d_gfstep);
+	fprintf(fp, "num_gfsteps	%d\n",	param->d_ngfsteps);
+	fprintf(fp, "gf_meas_each	%d\n",	param->d_gf_meas_each);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);

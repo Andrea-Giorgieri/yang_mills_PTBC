@@ -539,76 +539,76 @@ void polyakov_with_tracedef(Gauge_Conf const * const GC,
 // compute the local topological charge at point r
 // see readme for more details
 double loc_topcharge(Gauge_Conf const * const GC,
-                     Geometry const * const geo,
-                     GParam const * const param,
-                     long r)
-   {
-   if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-     {
-     (void) GC;
-     (void) geo;
-     (void) param;
-     (void) r;
-     fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
-     exit(EXIT_FAILURE);
-     }
-
-   double ris;
-
-   #if (STDIM==4 && NCOLOR>1)
-     GAUGE_GROUP aux1, aux2, aux3;
-     double real1, real2, loc_charge;
-     const double chnorm=1.0/(128.0*PI*PI);
-     int i, dir[4][3], sign;
-
-     dir[0][0] = 0;
-     dir[0][1] = 0;
-     dir[0][2] = 0;
-
-     dir[1][0] = 1;
-     dir[1][1] = 2;
-     dir[1][2] = 3;
-
-     dir[2][0] = 2;
-     dir[2][1] = 1;
-     dir[2][2] = 1;
-
-     dir[3][0] = 3;
-     dir[3][1] = 3;
-     dir[3][2] = 2;
-
-     sign=-1;
-     loc_charge=0.0;
-
-     for(i=0; i<3; i++)
-        {
-        clover(GC, geo, param, r, dir[0][i], dir[1][i], &aux1);
-        clover(GC, geo, param, r, dir[2][i], dir[3][i], &aux2);
-
-        times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
-        real1=retr(&aux3)*NCOLOR;
-
-        times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
-        real2=retr(&aux3)*NCOLOR;
-
-        loc_charge+=((double) sign*(real1-real2));
-        sign=-sign;
-        }
-     ris=(loc_charge*chnorm);
-   #endif
-
-   #if (STDIM==2 && NCOLOR==1)
-     GAUGE_GROUP u1matrix;
-     double angle;
-
-     plaquettep_matrix(GC, geo, param, r, 0, 1, &u1matrix);
-     angle=atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
-
-     ris=angle;
-   #endif
-
-   return ris;
-   }
+					Geometry const * const geo,
+					GParam const * const param,
+					long r)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		(void) GC;
+		(void) geo;
+		(void) param;
+		(void) r;
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	
+	double ris;
+	
+	#if (STDIM==4 && NCOLOR>1)
+	GAUGE_GROUP aux1, aux2, aux3;
+	double real1, real2, loc_charge;
+	const double chnorm=1.0/(128.0*PI*PI);
+	int i, dir[4][3], sign;
+	
+	dir[0][0] = 0;
+	dir[0][1] = 0;
+	dir[0][2] = 0;
+	
+	dir[1][0] = 1;
+	dir[1][1] = 2;
+	dir[1][2] = 3;
+	
+	dir[2][0] = 2;
+	dir[2][1] = 1;
+	dir[2][2] = 1;
+	
+	dir[3][0] = 3;
+	dir[3][1] = 3;
+	dir[3][2] = 2;
+	
+	sign=-1;
+	loc_charge=0.0;
+	
+	for(i=0; i<3; i++)
+	{
+		clover(GC, geo, param, r, dir[0][i], dir[1][i], &aux1);
+		clover(GC, geo, param, r, dir[2][i], dir[3][i], &aux2);
+		
+		times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
+		real1=retr(&aux3)*NCOLOR;
+		
+		times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
+		real2=retr(&aux3)*NCOLOR;
+		
+		loc_charge+=((double) sign*(real1-real2));
+		sign=-sign;
+	}
+	ris=(loc_charge*chnorm);
+	#endif
+	
+	#if (STDIM==2 && NCOLOR==1)
+	GAUGE_GROUP u1matrix;
+	double angle;
+	
+	plaquettep_matrix(GC, geo, param, r, 0, 1, &u1matrix);
+	angle=atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
+	
+	ris=angle;
+	#endif
+	
+	return ris;
+	}
 
 
 // compute the topological charge
@@ -763,7 +763,6 @@ void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
 	if(param->d_ngfsteps>0)	// if using gradient flow
 	{	
 		Gauge_Conf helperconf, help1, help2; 
-		double plaqs, plaqt;
 		int count, meas_count;
 		
 		// measure no gradient flow
@@ -864,7 +863,7 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
         }
      } 
    }
-   
+	
 void topo_obs_gradflow(Gauge_Conf const * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
@@ -914,7 +913,6 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 	else	// no gradient flow
 	{
 		double plaqs, plaqt; 
-		int iter;
 
 		charge[0]=topcharge(GC, geo, param);
 		chi_prime[0]=topo_chi_prime(GC, geo, param);
@@ -924,6 +922,58 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 		#else
 			meanplaq[0]=plaqt;
 		#endif
+	}
+	}
+	
+void topo_obs_clover_energy_gradflow(Gauge_Conf const * const GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											double *charge,
+											double *chi_prime,
+											double *clover_energy)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	if(param->d_ngfsteps>0)	// if using gradient flow
+	{	
+		Gauge_Conf helperconf, help1, help2;
+		double tmp_energy;
+		int count, meas_count;
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
+		{
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				charge[meas_count]=topcharge(&helperconf, geo, param);
+				chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
+				clover_disc_energy(&helperconf, geo, param, &tmp_energy);
+				clover_energy[meas_count] = tmp_energy;
+			}
+		}
+
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+	}
+	else	// no gradient flow
+	{
+		double tmp_energy;
+		
+		charge[0]=topcharge(GC, geo, param);
+		chi_prime[0]=topo_chi_prime(GC, geo, param);
+		clover_disc_energy(GC, geo, param, &(clover_energy[0]));
 	}
 	}
 
@@ -1082,6 +1132,56 @@ void topcharge_gradflow(Gauge_Conf const * const GC,
 		#else
 			meanplaq[0]=plaqt;
 		#endif
+	}
+	}
+	
+void topcharge_clover_energy_gradflow(Gauge_Conf const * const GC,
+                       Geometry const * const geo,
+                       GParam const * const param,
+                       double *charge,
+                       double *clover_energy)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	if(param->d_ngfsteps>0)  // if using gradient flow
+	{  
+		Gauge_Conf helperconf, help1, help2;
+		double tmp_energy;
+		int count, meas_count;
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
+		{
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				charge[meas_count]=topcharge(&helperconf, geo, param);
+				clover_disc_energy(&helperconf, geo, param, &tmp_energy);
+				clover_energy[meas_count] = tmp_energy;
+			}
+		}
+
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+	}
+	else   // no gradient flow
+	{
+		double tmp_energy;
+		
+		charge[0]=topcharge(GC, geo, param);
+		clover_disc_energy(GC, geo, param, &tmp_energy);
+		clover_energy[0] = tmp_energy;
 	}
 	}
 
@@ -1319,20 +1419,17 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 			fprintf(datafilep, "%.12g %.12g ", charge[i], meanplaq[i]);
 			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
 		}
+		
+		free(meanplaq);
+		free(charge);
+		if (param->d_chi_prime_meas == 1 ) free(chi_prime);
+		else (void) chiprimefilep;
 	}
 	fprintf(datafilep, "\n");
 	
 	fflush(datafilep);
 	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
 	
-	free(charge);
-	if (param->d_chi_prime_meas == 1 ) free(chi_prime);
-	else 
-	{
-		(void) chiprimefilep;
-	}
-	free(meanplaq);
-
 	#else
 
 	double plaqs, plaqt, polyre, polyim;
@@ -1345,7 +1442,87 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 	fflush(datafilep);
 	#endif
 	}
+	
+void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+	{
+	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
+	int i, err, gradflowrepeat;
+	double clover_energy_nogradflow, charge_nogradflow, chi_prime_nogradflow, polyre, polyim, *clover_energy, *charge, *chi_prime;
+	
+	clover_disc_energy(GC, geo, param, &clover_energy_nogradflow);
+	polyakov(GC, geo, param, &polyre, &polyim);
+	
+	charge_nogradflow=topcharge(GC, geo, param);
+	if (param->d_chi_prime_meas == 1 ) chi_prime_nogradflow=topo_chi_prime(GC, geo, param);
+	
+	// refresh topological charge of periodic replica (only for multicanonic)
+	GC->stored_topo_charge = charge_nogradflow;
 
+	fprintf(datafilep, "%ld %.12g %.12g %.12g %.12g ", GC->update_index, clover_energy_nogradflow, polyre, polyim, charge_nogradflow);
+	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime_nogradflow);
+
+	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+	if (gradflowrepeat > 0)
+	{
+		err=posix_memalign((void**)&charge, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		
+		if (param->d_chi_prime_meas == 1)
+		{
+			err=posix_memalign((void**)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		err=posix_memalign((void**)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		
+		if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_gradflow(GC, geo, param, topchar_tcorr_filep);
+		else {(void) topchar_tcorr_filep;}
+		if (param->d_chi_prime_meas == 1 ) topo_obs_clover_energy_gradflow(GC, geo, param, charge, chi_prime, clover_energy);
+		else topcharge_clover_energy_gradflow(GC, geo, param, charge, clover_energy);
+		for(i=0; i<gradflowrepeat; i++)
+		{
+			fprintf(datafilep, "%.12g %.12g ", charge[i], clover_energy[i]);
+			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
+		}
+		
+		free(clover_energy);
+		free(charge);
+		if (param->d_chi_prime_meas == 1 ) free(chi_prime);
+		else (void) chiprimefilep;
+	}
+	fprintf(datafilep, "\n");
+	
+	fflush(datafilep);
+	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	
+	#else
+
+	double clover_energy, polyre, polyim;
+	
+	clover_disc_energy(GC, geo, param, &clover_energy);
+	polyakov(GC, geo, param, &polyre, &polyim);
+	
+	fprintf(datafilep, "%.12g %.12g %.12g ", clover_energy, polyre, polyim);
+	fprintf(datafilep, "\n");
+	fflush(datafilep);
+	#endif
+	}
 
 // perform local observables in the case of trace deformation, it computes all the order parameters
 void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,

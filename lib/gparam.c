@@ -97,10 +97,13 @@ void readinput(char *in_file, GParam *param)
 		param->d_k_twist[i]=0;
 	}
 		
-	// default = do not compute chi_prime, do not use clover disc energy
+	// default = compute only plaquette and topological charge
+	param->d_plaquette_meas=1;
+	param->d_clover_energy_meas=0;
+	param->d_charge_meas=1;
 	param->d_chi_prime_meas = 0;
+	param->d_polyakov_meas = 0;
 	param->d_topcharge_tcorr_meas = 0;
-	param->d_use_clover_energy=0;
 
 	input=fopen(in_file, "r"); // open the input file
 	if(input==NULL)
@@ -171,23 +174,8 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_theta=temp_d;
 					}
-					
-			else if(strncmp(str, "use_clover_energy", 17)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_use_clover_energy=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: use_clover_energy must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-
+			
+			
 			else if(strncmp(str, "sample", 6)==0)
 					{ 
 					err=fscanf(input, "%d", &temp_i);
@@ -295,6 +283,70 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_coolrepeat=temp_i;
 					}
+			
+			else if(strncmp(str, "plaquette_meas", 14)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_plaquette_meas=temp_i;
+					else
+					{
+					fprintf(stderr, "Error: plaquette_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					}
+					
+			else if(strncmp(str, "clover_energy_meas", 18)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_clover_energy_meas=temp_i;
+					else
+					{
+					fprintf(stderr, "Error: clover_energy_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					}
+					
+			else if(strncmp(str, "charge_meas", 11)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_charge_meas=temp_i;
+					else
+					{
+					fprintf(stderr, "Error: charge_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					}
+					
+			else if(strncmp(str, "polyakov_meas", 13)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_polyakov_meas=temp_i;
+					else
+					{
+					fprintf(stderr, "Error: polyakov_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					}
 					
 			else if(strncmp(str, "chi_prime_meas", 14)==0)
 					{
@@ -311,7 +363,7 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					}
-
+					
 			else if(strncmp(str, "topcharge_tcorr_meas", 20)==0)
 					{
 					err=fscanf(input, "%d", &temp_i);
@@ -323,20 +375,9 @@ void readinput(char *in_file, GParam *param)
 					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_topcharge_tcorr_meas=temp_i;
 					else
 					{
-					fprintf(stderr, "Error: chi_prime_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					fprintf(stderr, "Error: topcharge_tcorr_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					}
-									
-			else if(strncmp(str, "topcharge_tcorr_file", 20)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_topcharge_tcorr_file, temp_str);
 					}
 
 			else if(strncmp(str, "gfstep", 6)==0) // integration step
@@ -497,6 +538,17 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					strcpy(param->d_chiprime_file, temp_str);
+					}
+			
+			else if(strncmp(str, "topcharge_tcorr_file", 20)==0)
+					{ 
+					err=fscanf(input, "%s", temp_str);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					strcpy(param->d_topcharge_tcorr_file, temp_str);
 					}
 					
 			else if(strncmp(str, "log_file", 8)==0)
@@ -853,7 +905,7 @@ void init_derived_constants(GParam *param)
 // initialize data file
 void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GParam const * const param)
 {
-	int i;
+	int i, tmp;
 
 	if(param->d_start==2)
 	{
@@ -867,9 +919,24 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 		else
 		{
  			*dataf=fopen(param->d_data_file, "w");
-			fprintf(*dataf, "%d ", STDIM);
+			fprintf(*dataf, "# %d ", STDIM);
 			for(i=0; i<STDIM; i++) fprintf(*dataf, "%d ", param->d_size[i]);
-		fprintf(*dataf, "\n");
+			fprintf(*dataf, "\n");
+			fprintf(*dataf, "# upd_index ");
+			if (param->d_plaquette_meas==1) fprintf(*dataf, "plaqs plaqt ");
+			if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
+			if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
+			if (param->d_polyakov_meas==1) fprintf(*dataf, "polyre polyim ");
+			tmp = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+			if (tmp > 0)
+			{
+				fprintf(*dataf, "( ");
+				if (param->d_plaquette_meas==1) fprintf(*dataf, "plaq ");
+				if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
+				if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
+				fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", tmp, param->d_gf_meas_each*param->d_gfstep);
+			}
+			fprintf(*dataf, "\n");
 		}
 		// open chi prime data file
 		if (param->d_chi_prime_meas == 1)
@@ -883,7 +950,7 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 			else
 			{
  				*chiprimef=fopen(param->d_chiprime_file, "w");
-				fprintf(*chiprimef, "%d ", STDIM);
+				fprintf(*chiprimef, "# %d ", STDIM);
 				for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
 				fprintf(*chiprimef, "\n");
 			}
@@ -904,7 +971,7 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 			else
 			{
  				*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
-				fprintf(*topchar_tcorr_f, "%d ", STDIM);
+				fprintf(*topchar_tcorr_f, "# %d ", STDIM);
 				for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
 				fprintf(*topchar_tcorr_f, "\n");
 			}
@@ -917,18 +984,31 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 	else
 	{
 		// open std data file
-	*dataf=fopen(param->d_data_file, "w");
-	fprintf(*dataf, "%d ", STDIM);
-	for(i=0; i<STDIM; i++)
+		*dataf=fopen(param->d_data_file, "w");
+		fprintf(*dataf, "# %d ", STDIM);
+		for(i=0; i<STDIM; i++) fprintf(*dataf, "%d ", param->d_size[i]);
+		fprintf(*dataf, "\n");
+		fprintf(*dataf, "# upd_index ");
+		if (param->d_plaquette_meas==1) fprintf(*dataf, "plaqs plaqt ");
+		if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
+		if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
+		if (param->d_polyakov_meas==1) fprintf(*dataf, "polyre polyim ");
+		tmp = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+		if (tmp > 0)
 		{
-		fprintf(*dataf, "%d ", param->d_size[i]);
+			fprintf(*dataf, "( ");
+			if (param->d_plaquette_meas==1) fprintf(*dataf, "plaq ");
+			if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
+			if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
+			fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", tmp, param->d_gf_meas_each*param->d_gfstep);
 		}
-	fprintf(*dataf, "\n");
+		fprintf(*dataf, "\n");
+		
 		// open chi prime data file
 		if (param->d_chi_prime_meas == 1)
 		{
 		*chiprimef=fopen(param->d_chiprime_file, "w");
-		fprintf(*chiprimef, "%d ", STDIM);
+		fprintf(*chiprimef, "# %d ", STDIM);
 		for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
 		fprintf(*chiprimef, "\n");
 		}
@@ -940,7 +1020,7 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 		if (param->d_topcharge_tcorr_meas == 1)
 		{
 		*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
-		fprintf(*topchar_tcorr_f, "%d ", STDIM);
+		fprintf(*topchar_tcorr_f, "# %d ", STDIM);
 		for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
 		fprintf(*topchar_tcorr_f, "\n");
 		}
@@ -1304,7 +1384,13 @@ void print_parameters_local_pt_gf(GParam const * const param, time_t time_start,
 	#ifdef THETA_MODE
 		fprintf(fp, "theta: %.10lf\n", param->d_theta);
 	#endif
-	fprintf(fp, "use_clover_energy: %d\n", param->d_use_clover_energy);
+	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tcorr_meas: %d\n", param->d_topcharge_tcorr_meas);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "sample:	%d\n", param->d_sample);

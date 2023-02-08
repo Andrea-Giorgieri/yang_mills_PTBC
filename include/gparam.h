@@ -15,7 +15,6 @@ typedef struct GParam {
 	double d_beta;
 	double d_h[NCOLOR]; // parameters for the trace deformation
 	double d_theta;
-	int d_use_clover_energy;
 	
 	// parallel tempering parameters
 	int d_defect_dir;				// defect boundary
@@ -50,6 +49,12 @@ typedef struct GParam {
 	// for cooling in measures
 	int d_coolsteps;
 	int d_coolrepeat;
+	
+	// for observables to measure
+	int d_plaquette_meas;
+	int d_clover_energy_meas;
+	int d_charge_meas;
+	int d_polyakov_meas;
 	int d_chi_prime_meas;
 	int d_topcharge_tcorr_meas;
 

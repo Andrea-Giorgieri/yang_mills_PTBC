@@ -33,7 +33,6 @@ void real_main(char *in_file)
     FILE *datafilep, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep;
     time_t time1, time2;
 
-
     // to disable nested parallelism
     #ifdef OPENMP_MODE
 		// omp_set_nested(0); // deprecated
@@ -67,6 +66,8 @@ void real_main(char *in_file)
 		
 	// init acceptances array
 	init_swap_acc_arrays(&acc_counters, &param);
+	
+	
 
     // Monte Carlo begin
     time(&time1);
@@ -80,14 +81,7 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
-			if (param.d_use_clover_energy == 0) 
-			{
-				perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
-			}
-			else 
-			{
-				perform_measures_localobs_clover_energy_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
-			}
+			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
 		}
 
 		// save configurations for backup
@@ -189,7 +183,6 @@ void print_template_input(void)
 		fprintf(fp,"# Simulations parameters\n");
 		fprintf(fp, "beta  5.705\n");
 		fprintf(fp, "theta 1.5\n");
-		fprintf(fp, "use_clover_energy 0        # if != 0 replaces average plaquette with average clover energy in measures\n"); 
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");
@@ -207,6 +200,11 @@ void print_template_input(void)
 		fprintf(fp, "\n");
 		fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
 		fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+		fprintf(fp, "\n");
+		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
+		fprintf(fp, "clover_energy_meas    0  # 1=YES, 0=NO\n");
+		fprintf(fp, "charge_meas           0  # 1=YES, 0=NO\n");
+		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
 		fprintf(fp,"\n");

@@ -159,7 +159,7 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
 	}
 
 
-// compute the four-leaf clover in position r, in the plane i,j and save it in M
+// compute the four-leaf clover in position r, in the plane i,j and save it in M 
 void clover(Gauge_Conf const * const GC,
             Geometry const * const geo,
             GParam const * const param,
@@ -1369,30 +1369,75 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int i, err, gradflowrepeat;
-	double plaqs, plaqt, polyre, polyim, *charge, *chi_prime, *meanplaq, charge_nogradflow, chi_prime_nogradflow;
+	double plaqs, plaqt, polyre, polyim, clover_energy_nogradflow, charge_nogradflow, chi_prime_nogradflow;
+	double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime;
 	
-	plaquette(GC, geo, param, &plaqs, &plaqt);
-	polyakov(GC, geo, param, &polyre, &polyim);
-	
-	charge_nogradflow=topcharge(GC, geo, param);
+	// meas no gradflow
+	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy_nogradflow);
+	if (param->d_charge_meas == 1 ) charge_nogradflow=topcharge(GC, geo, param);
+	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
 	if (param->d_chi_prime_meas == 1 ) chi_prime_nogradflow=topo_chi_prime(GC, geo, param);
+	if (param->d_topcharge_tcorr_meas == 1 )
+	{
+		err=posix_memalign((void**) &(sum_q_timeslices), (size_t) DOUBLE_ALIGN, (size_t) param->d_size[0]*sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating the aux vector for topcharge tcorr meas! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
+	}
+	else {(void) topchar_tcorr_filep;}
 	
 	// refresh topological charge of periodic replica (only for multicanonic)
 	GC->stored_topo_charge = charge_nogradflow;
 
-	fprintf(datafilep, "%ld %.12g %.12g %.12g %.12g %.12g ", GC->update_index, plaqs, plaqt, polyre, polyim, charge_nogradflow);
+	// print meas no gradflow (topcharge_tcorr_timeslices already printed by topcharge_timeslices())
+	fprintf(datafilep, "%ld ", GC->update_index);
+	if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
+	if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy_nogradflow);
+	if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge_nogradflow);
+	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
 	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime_nogradflow);
-
+	
+	// meas gradflow
 	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
 	if (gradflowrepeat > 0)
 	{
-		err=posix_memalign((void**)&charge, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
-		if(err!=0)
-		{
-			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-		}
+		Gauge_Conf helperconf, help1, help2;
+		int count, meas_count;
 		
+		if (param->d_plaquette_meas == 1)
+		{
+			err=posix_memalign((void**)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		}
+			
+		if (param->d_clover_energy_meas == 1)
+		{
+			err=posix_memalign((void**)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		}
+			
+		if (param->d_charge_meas == 1)
+		{
+			err=posix_memalign((void**)&charge, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		}
+				
 		if (param->d_chi_prime_meas == 1)
 		{
 			err=posix_memalign((void**)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
@@ -1402,42 +1447,73 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 				exit(EXIT_FAILURE);
 			}
 		}
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 
-		err=posix_memalign((void**)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
-		if(err!=0)
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
 		{
-			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				if (param->d_plaquette_meas == 1 ) 
+				{
+					plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+					#if(STDIM==4)
+						meanplaq[meas_count]=0.5*(plaqs+plaqt);
+					#else
+						meanplaq[meas_count]=plaqt;
+					#endif
+				}
+				if (param->d_clover_energy_meas == 1 ) clover_disc_energy(&helperconf, geo, param, &clover_energy[meas_count]);
+				if (param->d_charge_meas == 1 ) charge[meas_count]=topcharge(&helperconf, geo, param);
+				if (param->d_topcharge_tcorr_meas == 1 )
+				{
+					topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, count, topchar_tcorr_filep);
+				}				
+				if (param->d_chi_prime_meas == 1) chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
+			}
 		}
 		
-		if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_gradflow(GC, geo, param, topchar_tcorr_filep);
-		else {(void) topchar_tcorr_filep;}
-		if (param->d_chi_prime_meas == 1 ) topo_obs_gradflow(GC, geo, param, charge, chi_prime, meanplaq);
-		else topcharge_gradflow(GC, geo, param, charge, meanplaq);
+		// print meas gradflow
 		for(i=0; i<gradflowrepeat; i++)
 		{
-			fprintf(datafilep, "%.12g %.12g ", charge[i], meanplaq[i]);
+			if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g ", meanplaq[i]);
+			if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy[i]);
+			if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge[i]);
 			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
 		}
 		
-		free(meanplaq);
-		free(charge);
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+		if (param->d_plaquette_meas == 1 ) free(meanplaq);
+		if (param->d_clover_energy_meas == 1 ) free(clover_energy);
+		if (param->d_charge_meas == 1 ) free(charge);
+		if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);
 		if (param->d_chi_prime_meas == 1 ) free(chi_prime);
-		else (void) chiprimefilep;
 	}
-	fprintf(datafilep, "\n");
 	
+	fprintf(datafilep, "\n");
 	fflush(datafilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
 	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
 	
 	#else
 
-	double plaqs, plaqt, polyre, polyim;
+	double plaqs, plaqt, clover_energy, polyre, polyim;
 	
-	plaquette(GC, geo, param, &plaqs, &plaqt);
-	polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy);
+	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
 	
-	fprintf(datafilep, "%.12g %.12g %.12g %.12g ", plaqs, plaqt, polyre, polyim);
+	if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
+	if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy);
+	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
 	fprintf(datafilep, "\n");
 	fflush(datafilep);
 	#endif
@@ -1450,23 +1526,47 @@ void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int i, err, gradflowrepeat;
-	double clover_energy_nogradflow, charge_nogradflow, chi_prime_nogradflow, polyre, polyim, *clover_energy, *charge, *chi_prime;
+	double clover_energy_nogradflow, polyre, polyim, *charge, *sum_q_timeslices, *chi_prime, *clover_energy, charge_nogradflow, chi_prime_nogradflow;
 	
+	// meas no gradflow
 	clover_disc_energy(GC, geo, param, &clover_energy_nogradflow);
-	polyakov(GC, geo, param, &polyre, &polyim);
-	
 	charge_nogradflow=topcharge(GC, geo, param);
+	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
 	if (param->d_chi_prime_meas == 1 ) chi_prime_nogradflow=topo_chi_prime(GC, geo, param);
+	if (param->d_topcharge_tcorr_meas == 1 )
+	{
+		err=posix_memalign((void**) &(sum_q_timeslices), (size_t) DOUBLE_ALIGN, (size_t) param->d_size[0]*sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating the aux vector for topcharge tcorr meas! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
+	}
+	else {(void) topchar_tcorr_filep;}
 	
 	// refresh topological charge of periodic replica (only for multicanonic)
 	GC->stored_topo_charge = charge_nogradflow;
 
-	fprintf(datafilep, "%ld %.12g %.12g %.12g %.12g ", GC->update_index, clover_energy_nogradflow, polyre, polyim, charge_nogradflow);
+	// print meas no gradflow
+	fprintf(datafilep, "%ld %.12g %.12g ", GC->update_index, clover_energy_nogradflow, charge_nogradflow);
+	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
 	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime_nogradflow);
-
+	
+	// meas gradflow
 	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
 	if (gradflowrepeat > 0)
 	{
+		Gauge_Conf helperconf, help1, help2;
+		int count, meas_count;
+		
+		err=posix_memalign((void**)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
+		if(err!=0)
+		{
+			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		
 		err=posix_memalign((void**)&charge, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
 		if(err!=0)
 		{
@@ -1483,32 +1583,48 @@ void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
 				exit(EXIT_FAILURE);
 			}
 		}
+		
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 
-		err=posix_memalign((void**)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double));
-		if(err!=0)
+		// count starts from 1 to avoid problems with %
+		for(count=1; count < (param->d_ngfsteps+1); count++)
 		{
-			fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			
+			if ( (count % param->d_gf_meas_each) == 0)
+			{
+				meas_count = count/param->d_gf_meas_each-1;
+				clover_disc_energy(&helperconf, geo, param, &clover_energy[meas_count]);
+				charge[meas_count]=topcharge(&helperconf, geo, param);
+				if (param->d_topcharge_tcorr_meas == 1 )
+				{
+					topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, count, topchar_tcorr_filep);
+				}				
+				if (param->d_chi_prime_meas == 1) chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
+			}
 		}
 		
-		if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_gradflow(GC, geo, param, topchar_tcorr_filep);
-		else {(void) topchar_tcorr_filep;}
-		if (param->d_chi_prime_meas == 1 ) topo_obs_clover_energy_gradflow(GC, geo, param, charge, chi_prime, clover_energy);
-		else topcharge_clover_energy_gradflow(GC, geo, param, charge, clover_energy);
+		// print meas gradflow
 		for(i=0; i<gradflowrepeat; i++)
 		{
-			fprintf(datafilep, "%.12g %.12g ", charge[i], clover_energy[i]);
+			fprintf(datafilep, "%.12g %.12g ", clover_energy[i], charge[i]);
 			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
 		}
 		
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
 		free(clover_energy);
 		free(charge);
+		if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);
 		if (param->d_chi_prime_meas == 1 ) free(chi_prime);
-		else (void) chiprimefilep;
 	}
-	fprintf(datafilep, "\n");
 	
+	fprintf(datafilep, "\n");
 	fflush(datafilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
 	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
 	
 	#else
@@ -1516,9 +1632,10 @@ void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
 	double clover_energy, polyre, polyim;
 	
 	clover_disc_energy(GC, geo, param, &clover_energy);
-	polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
 	
-	fprintf(datafilep, "%.12g %.12g %.12g ", clover_energy, polyre, polyim);
+	fprintf(datafilep, "%.12g ", clover_energy);
+	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
 	fprintf(datafilep, "\n");
 	fflush(datafilep);
 	#endif

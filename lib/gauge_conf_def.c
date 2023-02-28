@@ -83,6 +83,56 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	{
 	read_gauge_conf_from_file_with_name(GC, param, filename);
 	}
+	
+	if(param->d_start==3) // cold twisted start (only for one twist parameter)
+	{
+		int i, j, k_mu_nu, mu, nu, twisted_bc, cartcoord[STDIM];
+		double complex zf;
+		GAUGE_GROUP aux, Pmatrix, Qmatrix;
+		
+		if ((NCOLOR%2)==0) zf = cexp(I*PI/(double)NCOLOR);
+		else zf = 1.0 + 0.0*I;
+		
+		twisted_bc = 0;	// check if twist is non trivial and save parameters (only last occurence)
+		for(i=0; i<STDIM; i++)
+			for(j=i+1; j<STDIM; j++)
+				if (param->d_k_twist[dirs_to_si(i,j)] != 0)
+				{
+					twisted_bc = 1;
+					mu = i;
+					nu = j;
+					k_mu_nu = param->d_k_twist[dirs_to_si(i,j)];
+				}
+		
+		if (twisted_bc == 1)
+		{
+			// P matrix
+			zero(&Pmatrix);
+			for(i=0; i<(NCOLOR-1); i++) Pmatrix.comp[m(i+1,i)] = conj(zf);
+			Pmatrix.comp[m(0,2)] = conj(zf);
+			unitarize(&Pmatrix);
+		
+			// Q matrix
+			one(&aux);
+			zero(&Qmatrix);
+			for(i=0; i<NCOLOR; i++) Qmatrix.comp[m(i,i)] = zf*cexp(PI2*I*(i+1)/(double)NCOLOR);
+			for(i=0; i<k_mu_nu; i++) times_equal(&aux,&Qmatrix);
+			equal(&Qmatrix,&aux);
+			unitarize(&Qmatrix);
+		}
+		
+		GC->update_index=0;
+		for(r=0; r<(param->d_volume); r++)
+		{
+			si_to_cart(cartcoord, r, param);
+			for(i=0; i<STDIM; i++) one(&(GC->lattice[r][i])); // all links set to one
+			if (twisted_bc == 1) //overwrite links on the twisted plane
+			{
+				if (cartcoord[mu] == 0) equal(&(GC->lattice[r][mu]), &Pmatrix);
+				if (cartcoord[nu] == 0) equal(&(GC->lattice[r][nu]), &Qmatrix);
+			}
+		}
+	}
 	}
 
 void init_gauge_conf(Gauge_Conf *GC, GParam const * const param)

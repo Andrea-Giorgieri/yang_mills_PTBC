@@ -17,10 +17,10 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam con
 
 int main(void)
 	{
-	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b;
+	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b, energy;
 	double complex z, w, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover, Z_a, Z_b;
 	char in_file[] = "input_file_ym_pt";
-	int i, j, k, err;
+	int i, j, k, err=0;
 	long r=0;
 	
 	Gauge_Conf *GC;
@@ -33,8 +33,14 @@ int main(void)
 	int L_R_swap=1;
 	
 	readinput(in_file, &param);
-	param.d_start = 1;
 	if(param.d_N_replica_pt<2) param.d_N_replica_pt = 2;
+	param.d_plaquette_meas=1;
+	param.d_clover_energy_meas=1;
+	param.d_charge_meas=1;
+	param.d_chi_prime_meas = 1;
+	param.d_polyakov_meas = 1;
+	param.d_topcharge_tcorr_meas = 1;
+	
 	initrand(param.d_randseed);
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
@@ -62,6 +68,53 @@ int main(void)
 			printf("Z(%d, %d) = %g%s%gi\n", j, i, creal(z), (cimag(z)>=0.0f)? "+":"", cimag(z));
 		}
 	}
+	
+	printf("\n\n");
+	printf("VERIFY THAT TWISTED COLD START GIVES ZERO ENERGY ...\n\n");
+	
+	for(r=0; r<(param.d_volume); r++)
+	{
+		energy = 0;
+		for(i=0; i<STDIM; i++)
+			for(j=i+1; j<STDIM; j++)
+			{
+				clover(&(GC[0]), &geo, &param, r, i, j, &M);
+				ta(&M);
+				equal(&N, &M);
+				times_equal(&M, &N);
+				energy += -NCOLOR*retr(&M)/16.0;
+			}
+		if (fabs(energy) > MIN_VALUE)
+		{
+			err = 1;
+			printf("	ERROR!!!!!!!!!!!\n\n");
+			printf("	Pos %ld Energy = %g\n\n", r, energy);
+		}
+	}
+	if (err == 0) printf("Vacuum Energy :		OK\n");
+	err = 0;
+	r=0;
+	
+	for(r=0; r<(param.d_volume); r++)
+	{
+		energy = 0;
+		for(i=0; i<STDIM; i++)
+			for(j=i+1; j<STDIM; j++) 
+			{
+				trace_plaquettep = plaquettep_complex(&(GC[0]), &geo, &param, r, i, j);
+				if (cabs(trace_plaquettep - 1.0) > MIN_VALUE)
+				{
+					err = 1;
+					printf("	ERROR!!!!!!!!!!!\n\n");
+					printf("	Pos %ld dirs %d %d Plaquette = ", r, i, j);
+					printfc(trace_plaquettep);
+					printf("\n\n");
+				}
+			}
+	}
+	if (err == 0) printf("Vacuum Plaquette :	OK\n");
+	err = 0;
+	r=0;
 	
 	printf("\n\n");	
 	printf("VERIFY THAT plaquettep GETS CONJUGATED SWAPPING THE DIRS OF A PLAQUETTE AT ORIGIN...\n\n");

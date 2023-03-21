@@ -67,22 +67,28 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
 void init_gauge_conf(Gauge_Conf *GC,
 					 GParam const * const param);
 void init_gauge_conf_replica(Gauge_Conf **GC,
-															GParam const * const param);
+							GParam const * const param);
 void init_bound_cond(Gauge_Conf *GC,
-										 GParam const * const param,
-										 int const a);
-void init_twist_cond(Gauge_Conf *GC, GParam const * const param);
+					 GParam const * const param,
+					 int const a);
+void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const param,
+										char const * const filename);
 void free_replica(Gauge_Conf *GC,
-									GParam const * const param);
+					GParam const * const param);
 void free_bound_cond(Gauge_Conf *GC,
 					GParam const * const param);
 void free_twist_cond(Gauge_Conf *GC,
 					GParam const * const param);
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC,
 					 GParam const * const param, char const * const filename);
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, 
+										GParam const * const param, char const * const filename);
 void free_gauge_conf(Gauge_Conf *GC,
 					GParam const * const param);
 void write_conf_on_file_with_name(Gauge_Conf const * const GC,
+									GParam const * const param,
+									char const * const namefile);
+void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 									GParam const * const param,
 									char const * const namefile);
 void write_conf_on_file(Gauge_Conf const * const GC,
@@ -90,9 +96,9 @@ void write_conf_on_file(Gauge_Conf const * const GC,
 void write_conf_on_file_back(Gauge_Conf const * const GC,
 							GParam const * const param);
 void write_replica_on_file(Gauge_Conf const * const GC,
-														GParam const * const param);
+							GParam const * const param);
 void write_replica_on_file_back(Gauge_Conf const * const GC,
-																	GParam const * const param);
+								GParam const * const param);
 void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC,
 									 Gauge_Conf const * const GC2,
 									 GParam const * const param);
@@ -199,6 +205,9 @@ double loc_topcharge(Gauge_Conf const * const GC,
 double topcharge(Gauge_Conf const * const GC,
 				 Geometry const * const geo,
 				 GParam const * const param);
+double topcharge_prime(Gauge_Conf const * const GC,
+                 Geometry const * const geo,
+                 GParam const * const param, int const dir);
 void topcharge_timeslices(Gauge_Conf const * const GC,
 				 Geometry const * const geo,
 				 GParam const * const param, double *ris, int ncool, FILE*);

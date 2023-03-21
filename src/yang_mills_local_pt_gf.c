@@ -106,6 +106,11 @@ void real_main(char *in_file)
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&(GC[0]), &param, name);
+				
+				strcpy(name, param.d_twist_file);
+				strcat(name, "_step_");
+				strcat(name, aux);
+				write_twist_on_file_with_name(&(GC[0]), &param, name);
 			}
 		}
 	}

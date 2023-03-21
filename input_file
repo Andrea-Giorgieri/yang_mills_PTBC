@@ -30,10 +30,11 @@ plaquette_meas            1
 clover_energy_meas        1  
 charge_meas               1
 polyakov_meas             0
+charge_prime_meas         0
 chi_prime_meas            0
 topcharge_tcorr_meas      0
 
-start                    0     # 0=ordered  1=random  2=from saved configuration
+start                    3     # 0=ordered  1=random  2=from saved configuration  3=ordered with twist
 saveconf_back_every      0     # if 0 does not save, else save backup configurations every ... updates
 saveconf_analysis_every  0     # if 0 does not save, else save configurations for analysis every ... updates
 
@@ -48,6 +49,7 @@ coolrepeat            0  # number of times <coolsteps> are repeated (=> <coolste
 
 # output files
 conf_file               ./data/conf_beta62.dat
+twist_file               ./data/twist_beta62.dat
 data_file               ./data/dati_beta62.dat
 chiprime_data_file      ./data/chi_prime_cool_beta62.dat   # chi_prime cool measures are written here only if chi_prime_meas==1
 topcharge_tcorr_file    ./data/topo_tcorr_cool_beta62.dat  # topcharge_tcorr cool measures are written here only if topcharge_tcorr_meas==1

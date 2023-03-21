@@ -639,6 +639,66 @@ double topcharge(Gauge_Conf const * const GC,
    return ris;
    }
 
+// sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
+double topcharge_prime(Gauge_Conf const * const GC,
+                 Geometry const * const geo,
+                 GParam const * const param, int const dir)
+	{
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	{
+		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	
+	int i, err, cartcoord[STDIM];
+	double ris, *tmp;
+	long r;
+	
+	ris=0.0;
+	err=posix_memalign((void**)&tmp, (size_t)DOUBLE_ALIGN, (size_t) param->d_size[dir] * sizeof(double));
+	if(err!=0)
+	{
+		fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	for(i=0; i<param->d_size[dir]; i++) tmp[i] = 0;
+	
+	#ifdef OPENMP_MODE
+	#pragma omp parallel num_threads(NTHREADS)
+	#endif
+	{
+	int j;
+	double *tmp_private;
+	err=posix_memalign((void**)&tmp_private, (size_t)DOUBLE_ALIGN, (size_t) param->d_size[dir] * sizeof(double));
+	if(err!=0)
+	{
+		fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	for(j=0; j<param->d_size[dir]; j++) tmp_private[j] = 0;
+	
+	#ifdef OPENMP_MODE
+	#pragma omp for private(r, cartcoord) 
+	#endif
+	for(r=0; r<(param->d_volume); r++)
+	{
+		si_to_cart(cartcoord,r,param);
+		tmp_private[cartcoord[dir]]+=loc_topcharge(GC, geo, param, r);
+	}
+	#ifdef OPENMP_MODE
+	#pragma omp critical 
+	#endif
+	{
+		for(j=0; j<param->d_size[dir]; j++) tmp[j] += tmp_private[j];
+		free(tmp_private);
+	}
+	}
+
+	for(i=0; i<param->d_size[dir]; i++) ris += fabs(tmp[i]);
+	free(tmp);
+	return ris;
+	}
+
 // chi^\prime = (1/8) int d^4x |x|^2 <q(x)q(0)> = < (1/8) int d^4x |x|^2 q(x) q(0) > = < G2 >
 // This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensamble is a^2 chi^\prime
 // d(x,y) = lattice distance between sites x and y keeping periodic boundary conditions into account (i.e., the shortest distance between x and y)
@@ -1368,9 +1428,9 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
-	int i, err, gradflowrepeat;
-	double plaqs, plaqt, polyre, polyim, clover_energy_nogradflow, charge_nogradflow, chi_prime_nogradflow;
-	double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime;
+	int i, j, err, gradflowrepeat;
+	double plaqs, plaqt, polyre, polyim, clover_energy_nogradflow, charge_nogradflow, chi_prime_nogradflow, charge_prime_nogradflow[STDIM];
+	double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime, **charge_prime;
 	
 	// meas no gradflow
 	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
@@ -1378,6 +1438,7 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 	if (param->d_charge_meas == 1 ) charge_nogradflow=topcharge(GC, geo, param);
 	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
 	if (param->d_chi_prime_meas == 1 ) chi_prime_nogradflow=topo_chi_prime(GC, geo, param);
+	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) charge_prime_nogradflow[i]=topcharge_prime(GC, geo, param, i);
 	if (param->d_topcharge_tcorr_meas == 1 )
 	{
 		err=posix_memalign((void**) &(sum_q_timeslices), (size_t) DOUBLE_ALIGN, (size_t) param->d_size[0]*sizeof(double));
@@ -1400,6 +1461,7 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 	if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge_nogradflow);
 	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
 	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime_nogradflow);
+	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) fprintf(datafilep, "%.12g ", charge_prime_nogradflow[i]);
 	
 	// meas gradflow
 	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
@@ -1448,6 +1510,25 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 			}
 		}
 		
+		if (param->d_charge_prime_meas == 1)
+		{
+			err=posix_memalign((void**)&charge_prime, (size_t)DOUBLE_ALIGN, (size_t) gradflowrepeat * sizeof(double*));
+			if(err!=0)
+			{
+				fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+			for(i=0; i<gradflowrepeat; i++)
+			{
+				err=posix_memalign((void**)&(charge_prime[i]), (size_t)DOUBLE_ALIGN, (size_t) STDIM * sizeof(double));
+				if(err!=0)
+				{
+					fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		
 		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
 		init_gauge_conf_from_gauge_conf(&help1, GC, param);
 		init_gauge_conf_from_gauge_conf(&help2, GC, param);
@@ -1476,6 +1557,7 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 					topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, count, topchar_tcorr_filep);
 				}				
 				if (param->d_chi_prime_meas == 1) chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
+				if (param->d_charge_prime_meas == 1) for (i=0; i<STDIM; i++) charge_prime[meas_count][i]=topcharge_prime(&helperconf, geo, param, i);
 			}
 		}
 		
@@ -1486,6 +1568,7 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 			if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy[i]);
 			if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge[i]);
 			if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
+			if (param->d_charge_prime_meas == 1 ) for (j=0; j<STDIM; j++) fprintf(datafilep, "%.12g ", charge_prime[i][j]);
 		}
 		
 		free_gauge_conf(&helperconf, param);
@@ -1496,6 +1579,11 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 		if (param->d_charge_meas == 1 ) free(charge);
 		if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);
 		if (param->d_chi_prime_meas == 1 ) free(chi_prime);
+		if (param->d_charge_prime_meas == 1 )
+		{
+			for(i=0; i<gradflowrepeat; i++) free(charge_prime[i]);
+			free(charge_prime);
+		}
 	}
 	
 	fprintf(datafilep, "\n");

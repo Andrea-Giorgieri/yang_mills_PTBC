@@ -138,7 +138,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 void init_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	{
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
-	init_twist_cond(GC, param);
+	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
 	}
 
 // used to allocate all replicas in the parallel tempering
@@ -165,8 +165,14 @@ void init_gauge_conf_replica(Gauge_Conf **GC, GParam	const * const param)
 		sprintf(replica_index, "%d", i);
 		strcat(filename, replica_index); // filename = param->d_conf_file + "_replica_${i}"
 		init_gauge_conf_from_file_with_name(&((*GC)[i]), param, filename);
-		init_bound_cond(&((*GC)[i]),param,i);
-		init_twist_cond(&((*GC)[i]),param);
+		
+		strcpy(filename,param->d_twist_file); // filename = param->d_twist_file
+		strcat(filename,"_replica_");			
+		strcat(filename, replica_index); // filename = param->d_twist_file + "_replica_${i}"
+		init_twist_cond_from_file_with_name(&((*GC)[i]), param, filename);
+		
+		init_bound_cond(&((*GC)[i]), param, i);
+		
 		((*GC)[i]).conf_label=i;		
 		}
 	}
@@ -230,10 +236,10 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param, int const i)
 	}
 
 // initialization of the twist factors
-void init_twist_cond(Gauge_Conf *GC, GParam const * const param)
+void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 {
 	long r;
-	int err,i,j;
+	int err, i, j, x_mu, x_nu;
 	int cartcoord[STDIM];
 	
 	//allocation of Z[r][j]
@@ -259,14 +265,22 @@ void init_twist_cond(Gauge_Conf *GC, GParam const * const param)
 	for(r=0; r<param->d_volume; r++)
 		for(j=0; j<param->d_n_planes; j++)
 				GC->Z[r][j]=1.0+0.0*I;
-
-	// assign Z if r is on the corner of a plane
+	
+	x_mu = 0;
+	x_nu = 0;
+	
+	if(param->d_start==2) // initialize from stored conf
+	{
+		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, filename);
+	}
+	
+	// assign Z on positions x_mu, x_nu, 
 	for(r=0; r<param->d_volume; r++)
 	{
 		si_to_cart(cartcoord, r, param);
 		for(i=0; i<STDIM; i++)
 			for(j=i+1; j<STDIM; j++)
-				if (cartcoord[i] == 0 && cartcoord[j] == 0)
+				if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
 				{
 					GC->Z[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);	//for clockwise plaquette
 					GC->Z[r][dirs_to_si(j,i)] = conj(GC->Z[r][dirs_to_si(i,j)]);								//for anticlockwise plaquette
@@ -372,6 +386,57 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	#endif
 	}
 	}
+	
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, GParam const * const param, char const * const filename)
+	{
+	FILE *fp;
+	int err, i, tmp_i, dimension;
+
+	fp=fopen(filename, "r"); // open the configuration file
+	if(fp==NULL)
+	{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	else // read the configuration
+	{
+		err=fscanf(fp, "%d", &dimension);
+		if(err!=1)
+			{
+			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(dimension != STDIM)
+			{
+			fprintf(stderr, "The space time dimension of the configuration (%d) does not coincide with the one of the global parameter (%d)\n",
+				dimension, STDIM);
+			exit(EXIT_FAILURE);
+			}
+	
+		for(i=0; i<STDIM; i++)
+		{
+			err=fscanf(fp, "%d", &tmp_i);
+			if(err!=1)
+			{
+				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+			if(tmp_i != param->d_size[i])
+			{
+				fprintf(stderr, "The size of the configuration lattice does not coincide with the one of the global parameter\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+		
+		err=fscanf(fp, "%*d %*d %d %d ", x_mu, x_nu);
+		if(err!=2)
+			{
+				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+			}
+		fclose(fp);
+	}
+	}
 
 void free_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -474,11 +539,66 @@ void write_conf_on_file_with_name(Gauge_Conf const * const GC,
 	fclose(fp);
 	}
 	}
+	
+void write_twist_on_file_with_name(Gauge_Conf const * const GC,
+									GParam const * const param,
+									char const * const namefile)
+	{
+	int i, j, mu, nu, cartcoord[STDIM], twisted_bc;
+	FILE *fp;
+
+	fp=fopen(namefile, "w"); // open the twist configuration file
+	if(fp==NULL)
+	{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", namefile, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+	else
+	{
+		fprintf(fp, "%d ", STDIM);
+		for(i=0; i<STDIM; i++)
+			{
+			fprintf(fp, "%d ", param->d_size[i]);
+			}
+		fprintf(fp, "\n");
+		
+		twisted_bc = 0;	// check if twist non trivial, save its plane (mu,nu)
+		for(i=0; i<STDIM; i++)
+		{
+			cartcoord[i] = 0; // initialize to zero for later loop
+			for(j=i+1; j<STDIM; j++)
+				if (param->d_k_twist[dirs_to_si(i,j)] != 0)
+					{
+						twisted_bc = 1;
+						mu = i;
+						nu = j;
+					}
+		}
+		
+		if (twisted_bc == 1) // find twist cartcoord on plane cartcoord[i] = 0 for i != mu, nu (no need to read all volume)
+		{
+			for(i=0; i<param->d_size[mu]; i++)
+			{
+				cartcoord[mu] = i;
+				for(j=0; j<param->d_size[nu]; j++)
+				{
+					cartcoord[nu] = j;
+					if (cabs(GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(mu,nu)] - (1.0+0.0*I))> MIN_VALUE)
+					{
+						fprintf(fp, "%d %d %d %d \n", mu, nu, i, j);
+					}
+				}
+			}
+		}
+		fclose(fp);
+	}
+	}
 
 
 void write_conf_on_file(Gauge_Conf const * const GC, GParam const * const param)
 	{
 	write_conf_on_file_with_name(GC, param, param->d_conf_file);
+	write_twist_on_file_with_name(GC, param, param->d_twist_file);
 	}
 
 void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const param)
@@ -496,6 +616,11 @@ void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const par
 		sprintf(replica_index, "%d", i);
 		strcat(filename,replica_index); // filename = d_conf_file + "_replica_${i}"
 		write_conf_on_file_with_name(&(GC[i]),param,filename);
+		
+		strcpy(filename,param->d_twist_file);
+		strcat(filename,"_replica_");
+		strcat(filename,replica_index); // filename = d_twist_file + "_replica_${i}"
+		write_twist_on_file_with_name(&(GC[i]),param,filename);
 		}
 	}
 	
@@ -520,6 +645,12 @@ void write_replica_on_file_back(Gauge_Conf const * const GC, GParam const * cons
 		strcat(filename, replica_index);
 		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${i}_back${counter}"
 		write_conf_on_file_with_name(&(GC[i]),param,filename);
+		
+		strcpy(filename,param->d_twist_file);
+		strcat(filename,"_replica_");
+		strcat(filename, replica_index);
+		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${i}_back${counter}"
+		write_twist_on_file_with_name(&(GC[i]),param,filename);
 	}
 	counter=1-counter;
 	}
@@ -529,19 +660,23 @@ void write_conf_on_file_back(Gauge_Conf const * const GC, GParam const * const p
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	static int counter=0;
 
-	strcpy(name, param->d_conf_file);
 	if(counter==0)
 	{
-	sprintf(aux, "_back0");
+		sprintf(aux, "_back0");
 	}
 	else
 	{
-	sprintf(aux, "_back1");
+		sprintf(aux, "_back1");
 	}
+	
+	strcpy(name, param->d_conf_file);
 	strcat(name, aux);
-
 	write_conf_on_file_with_name(GC, param, name);
-
+	
+	strcpy(name, param->d_twist_file);
+	strcat(name, aux);
+	write_twist_on_file_with_name(GC, param, name);
+	
 	counter=1-counter;
 	}
 

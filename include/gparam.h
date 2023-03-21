@@ -56,6 +56,7 @@ typedef struct GParam {
 	int d_charge_meas;
 	int d_polyakov_meas;
 	int d_chi_prime_meas;
+	int d_charge_prime_meas;
 	int d_topcharge_tcorr_meas;
 
 	// for gradient-flow evolution
@@ -74,6 +75,7 @@ typedef struct GParam {
 
 	// output file names
 	char d_conf_file[STD_STRING_LENGTH];
+	char d_twist_file[STD_STRING_LENGTH];
 	char d_data_file[STD_STRING_LENGTH];
 	char d_chiprime_file[STD_STRING_LENGTH]; // print chi prime measures
 	char d_topcharge_tcorr_file[STD_STRING_LENGTH]; // print topological charge time correlator measures

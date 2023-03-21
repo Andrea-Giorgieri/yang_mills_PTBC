@@ -17,7 +17,7 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam con
 
 int main(void)
 	{
-	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b, energy;
+	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b, energy, action, swapped_action, re_tr_plaq_a, re_tr_plaq_b, K_a, K_b;
 	double complex z, w, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover, Z_a, Z_b;
 	char in_file[] = "input_file_ym_pt";
 	int i, j, k, err=0;
@@ -72,6 +72,8 @@ int main(void)
 	printf("\n\n");
 	printf("VERIFY THAT TWISTED COLD START GIVES ZERO ENERGY ...\n\n");
 	
+	param.d_start = 3;
+	init_gauge_conf_replica(&GC, &param);
 	for(r=0; r<(param.d_volume); r++)
 	{
 		energy = 0;
@@ -119,6 +121,8 @@ int main(void)
 	printf("\n\n");	
 	printf("VERIFY THAT plaquettep GETS CONJUGATED SWAPPING THE DIRS OF A PLAQUETTE AT ORIGIN...\n\n");
 	
+	param.d_start = 1;
+	init_gauge_conf_replica(&GC, &param);
 	for(i=0; i<STDIM; i++)
 	{
 		for(j=i+1; j<STDIM; j++)
@@ -259,6 +263,39 @@ int main(void)
 	}
 	if(err==0) printf("Z[r][j] swaps :	OK\n");
 	metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
+	
+	printf("\n\n");
+	printf("VERIFY THAT delta_action_swap IS CORRECT ...\n\n");
+	
+	err = 0;
+	param.d_start = 1;
+	init_gauge_conf_replica(&GC, &param);
+	for(i=0; r<STDIM; i++)
+		for(j=0; j<STDIM; j++)
+			for(r=0; r<param.d_volume; r++)
+			{
+				K_a = (GC[0].C[r][i])*(GC[0].C[nnp(&geo, r, i)][j])*(GC[0].C[nnp(&geo, r, j)][i])*(GC[0].C[r][j]);
+				K_b = (GC[1].C[r][i])*(GC[1].C[nnp(&geo, r, i)][j])*(GC[1].C[nnp(&geo, r, j)][i])*(GC[1].C[r][j]);
+				re_tr_plaq_a = plaquettep(&(GC[0]),&geo,&param,r,i,j);
+				re_tr_plaq_b = plaquettep(&(GC[1]),&geo,&param,r,i,j);
+				action = -param.d_beta*(K_a*re_tr_plaq_a+K_b*re_tr_plaq_b);
+				
+				metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
+				
+				K_a = (GC[0].C[r][i])*(GC[0].C[nnp(&geo, r, i)][j])*(GC[0].C[nnp(&geo, r, j)][i])*(GC[0].C[r][j]);
+				K_b = (GC[1].C[r][i])*(GC[1].C[nnp(&geo, r, i)][j])*(GC[1].C[nnp(&geo, r, j)][i])*(GC[1].C[r][j]);
+				re_tr_plaq_a = plaquettep(&(GC[0]),&geo,&param,r,i,j);
+				re_tr_plaq_b = plaquettep(&(GC[1]),&geo,&param,r,i,j);
+				swapped_action = -param.d_beta*(K_a*re_tr_plaq_a+K_b*re_tr_plaq_b);
+				
+				if(fabs(delta_action_swap(GC, &geo, &param, r, i, j, 0, 1)-(swapped_action-action))>MIN_VALUE )
+				{
+					err=1;
+					printf("	ERROR!!!!!!!!!!!\n\n	");
+					printf("Error site %ld, plane (%d,%d)\n\n", r, i, j);
+				}
+			}
+	if(err==0) printf("delta_action_swap :	OK\n");
 
 	free_replica(GC, &param);
 	free_geometry(&geo, &param);

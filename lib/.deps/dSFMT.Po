@@ -12,9 +12,9 @@ lib/dSFMT.o: lib/dSFMT.c /usr/include/stdc-predef.h /usr/include/stdio.h \
  lib/../include/dSFMT.h lib/../include/myrngparam.h /usr/include/assert.h \
  /usr/include/inttypes.h \
  /marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/stdint.h \
- /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stdint.h /usr/include/stdint.h \
- /usr/include/bits/wchar.h lib/../include/dSFMT-params132049.h \
- lib/../include/dSFMT-common.h
+ /marconi/prod/opt/compilers/gnu/8.3.0/none/bin/../lib/gcc/x86_64-pc-linux-gnu/8.3.0/include/stdint.h \
+ /usr/include/stdint.h /usr/include/bits/wchar.h \
+ lib/../include/dSFMT-params132049.h lib/../include/dSFMT-common.h
 
 /usr/include/stdc-predef.h:
 
@@ -72,7 +72,7 @@ lib/../include/myrngparam.h:
 
 /marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/stdint.h:
 
-/usr/lib/gcc/x86_64-redhat-linux/4.8.5/include/stdint.h:
+/marconi/prod/opt/compilers/gnu/8.3.0/none/bin/../lib/gcc/x86_64-pc-linux-gnu/8.3.0/include/stdint.h:
 
 /usr/include/stdint.h:
 

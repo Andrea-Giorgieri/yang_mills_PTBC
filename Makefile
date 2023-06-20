@@ -78,13 +78,14 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = conf_check$(EXEEXT) debug_rng$(EXEEXT) \
 	debug_su2$(EXEEXT) debug_su2_adj$(EXEEXT) debug_sun$(EXEEXT) \
-	debug_u1$(EXEEXT) yang_mills_local$(EXEEXT) \
-	yang_mills_polycorr$(EXEEXT) yang_mills_polycorr_long$(EXEEXT) \
+	debug_u1$(EXEEXT) debug_twist$(EXEEXT) \
+	yang_mills_local$(EXEEXT) yang_mills_polycorr$(EXEEXT) \
+	yang_mills_polycorr_long$(EXEEXT) \
 	yang_mills_polycorradj$(EXEEXT) yang_mills_t0$(EXEEXT) \
 	yang_mills_tube_conn$(EXEEXT) \
 	yang_mills_tube_conn_long$(EXEEXT) \
 	yang_mills_tube_disc$(EXEEXT) yang_mills_tracedef$(EXEEXT) \
-	yang_mills_local_pt$(EXEEXT) \
+	yang_mills_local_pt$(EXEEXT) yang_mills_local_pt_gf$(EXEEXT) \
 	yang_mills_local_pt_multicanonic$(EXEEXT) \
 	yang_mills_gradient_flow$(EXEEXT)
 subdir = .
@@ -141,11 +142,6 @@ am_debug_sun_OBJECTS = ./src/debug_sun.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_6) $(am__objects_7) $(am__objects_8)
 debug_sun_OBJECTS = $(am_debug_sun_OBJECTS)
 debug_sun_LDADD = $(LDADD)
-am_debug_u1_OBJECTS = ./src/debug_u1.$(OBJEXT) $(am__objects_1) \
-	$(am__objects_2) $(am__objects_3) $(am__objects_5) \
-	$(am__objects_6) $(am__objects_9)
-debug_u1_OBJECTS = $(am_debug_u1_OBJECTS)
-debug_u1_LDADD = $(LDADD)
 am__objects_10 = ./lib/gauge_conf_def.$(OBJEXT) \
 	./lib/gauge_conf_meas.$(OBJEXT) \
 	./lib/gauge_conf_multilevel.$(OBJEXT) \
@@ -155,6 +151,18 @@ am__objects_10 = ./lib/gauge_conf_def.$(OBJEXT) \
 am__objects_11 = ./lib/geometry.$(OBJEXT)
 am__objects_12 = ./lib/tens_prod.$(OBJEXT) \
 	./lib/tens_prod_adj.$(OBJEXT)
+am_debug_twist_OBJECTS = ./src/debug_twist.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_10) $(am__objects_11) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
+	$(am__objects_12) $(am__objects_9)
+debug_twist_OBJECTS = $(am_debug_twist_OBJECTS)
+debug_twist_LDADD = $(LDADD)
+am_debug_u1_OBJECTS = ./src/debug_u1.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_9)
+debug_u1_OBJECTS = $(am_debug_u1_OBJECTS)
+debug_u1_LDADD = $(LDADD)
 am_yang_mills_gradient_flow_OBJECTS =  \
 	./src/yang_mills_gradient_flow.$(OBJEXT) $(am__objects_1) \
 	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
@@ -178,6 +186,14 @@ am_yang_mills_local_pt_OBJECTS = ./src/yang_mills_local_pt.$(OBJEXT) \
 	$(am__objects_8) $(am__objects_12) $(am__objects_9)
 yang_mills_local_pt_OBJECTS = $(am_yang_mills_local_pt_OBJECTS)
 yang_mills_local_pt_LDADD = $(LDADD)
+am_yang_mills_local_pt_gf_OBJECTS =  \
+	./src/yang_mills_local_pt_gf.$(OBJEXT) $(am__objects_1) \
+	$(am__objects_2) $(am__objects_3) $(am__objects_4) \
+	$(am__objects_10) $(am__objects_11) $(am__objects_5) \
+	$(am__objects_6) $(am__objects_7) $(am__objects_8) \
+	$(am__objects_12) $(am__objects_9)
+yang_mills_local_pt_gf_OBJECTS = $(am_yang_mills_local_pt_gf_OBJECTS)
+yang_mills_local_pt_gf_LDADD = $(LDADD)
 am_yang_mills_local_pt_multicanonic_OBJECTS =  \
 	./src/yang_mills_local_pt_multicanonic.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
@@ -280,9 +296,10 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
-	$(debug_sun_SOURCES) $(debug_u1_SOURCES) \
-	$(yang_mills_gradient_flow_SOURCES) \
+	$(debug_sun_SOURCES) $(debug_twist_SOURCES) \
+	$(debug_u1_SOURCES) $(yang_mills_gradient_flow_SOURCES) \
 	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
+	$(yang_mills_local_pt_gf_SOURCES) \
 	$(yang_mills_local_pt_multicanonic_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
 	$(yang_mills_polycorr_long_SOURCES) \
@@ -292,9 +309,10 @@ SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(yang_mills_tube_disc_SOURCES)
 DIST_SOURCES = $(conf_check_SOURCES) $(debug_rng_SOURCES) \
 	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
-	$(debug_sun_SOURCES) $(debug_u1_SOURCES) \
-	$(yang_mills_gradient_flow_SOURCES) \
+	$(debug_sun_SOURCES) $(debug_twist_SOURCES) \
+	$(debug_u1_SOURCES) $(yang_mills_gradient_flow_SOURCES) \
 	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
+	$(yang_mills_local_pt_gf_SOURCES) \
 	$(yang_mills_local_pt_multicanonic_SOURCES) \
 	$(yang_mills_polycorr_SOURCES) \
 	$(yang_mills_polycorr_long_SOURCES) \
@@ -346,12 +364,12 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/missing aclocal-1.13
+ACLOCAL = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/missing aclocal-1.13
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/missing autoconf
-AUTOHEADER = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/missing autoheader
-AUTOMAKE = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/missing automake-1.13
+AUTOCONF = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/missing autoconf
+AUTOHEADER = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/missing autoheader
+AUTOMAKE = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/missing automake-1.13
 AWK = gawk
 CC = icc
 CCDEPMODE = depmode=gcc3
@@ -376,10 +394,10 @@ LDFLAGS =
 LIBOBJS = 
 LIBS = -lcrypto -ldl -lz -lc
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/missing makeinfo
+MAKEINFO = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/missing makeinfo
 MKDIR_P = /usr/bin/mkdir -p
 N_c = 3
-Num_levels = 
+Num_levels = 1
 Num_threads = 48
 OBJEXT = o
 OPENMP_CFLAGS = -fopenmp
@@ -394,12 +412,12 @@ PATH_SEPARATOR = :
 SET_MAKE = 
 SHELL = /bin/sh
 STRIP = 
-ST_dim = 
+ST_dim = 4
 VERSION = 0.7.3
-abs_builddir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC
-abs_srcdir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC
-abs_top_builddir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC
-abs_top_srcdir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC
+abs_builddir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW
+abs_srcdir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW
+abs_top_builddir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW
+abs_top_srcdir = /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW
 ac_ct_CC = icc
 am__include = include
 am__leading_dot = .
@@ -418,7 +436,7 @@ host_alias =
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBC/install-sh
+install_sh = ${SHELL} /marconi/home/userexternal/agiorgie/programs/yang_mills_PTBCTW/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -463,12 +481,12 @@ funcpoint = ./include/function_pointers.h \
             ./lib/function_pointers.c
 
 gauge_conf = ./include/gauge_conf.h \
-             ./lib/gauge_conf_def.c \
-             ./lib/gauge_conf_meas.c \
-             ./lib/gauge_conf_multilevel.c \
-             ./lib/gauge_conf_upd.c \
-						 ./lib/gauge_conf_paral_temp.c \
-						 ./lib/gauge_conf_multicanonic.c
+			./lib/gauge_conf_def.c \
+			./lib/gauge_conf_meas.c \
+			./lib/gauge_conf_multilevel.c \
+			./lib/gauge_conf_upd.c \
+			./lib/gauge_conf_paral_temp.c \
+			./lib/gauge_conf_multicanonic.c
 
 geometry = ./include/geometry.h \
            ./lib/geometry.c
@@ -554,6 +572,21 @@ debug_u1_SOURCES = ./src/debug_u1.c \
                   ./include/macro.h \
                   $(random) \
                   $(u1)
+
+debug_twist_SOURCES = ./src/debug_twist.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 yang_mills_local_SOURCES = ./src/yang_mills_local.c \
                           $(align) \
@@ -691,6 +724,21 @@ yang_mills_tracedef_SOURCES = ./src/yang_mills_tracedef.c \
                             $(u1) 
 
 yang_mills_local_pt_SOURCES = ./src/yang_mills_local_pt.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_pt_gf_SOURCES = ./src/yang_mills_local_pt_gf.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -898,13 +946,7 @@ debug_su2_adj$(EXEEXT): $(debug_su2_adj_OBJECTS) $(debug_su2_adj_DEPENDENCIES) $
 debug_sun$(EXEEXT): $(debug_sun_OBJECTS) $(debug_sun_DEPENDENCIES) $(EXTRA_debug_sun_DEPENDENCIES) 
 	@rm -f debug_sun$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(debug_sun_OBJECTS) $(debug_sun_LDADD) $(LIBS)
-./src/debug_u1.$(OBJEXT): src/$(am__dirstamp) \
-	src/$(DEPDIR)/$(am__dirstamp)
-
-debug_u1$(EXEEXT): $(debug_u1_OBJECTS) $(debug_u1_DEPENDENCIES) $(EXTRA_debug_u1_DEPENDENCIES) 
-	@rm -f debug_u1$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(debug_u1_OBJECTS) $(debug_u1_LDADD) $(LIBS)
-./src/yang_mills_gradient_flow.$(OBJEXT): src/$(am__dirstamp) \
+./src/debug_twist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 ./lib/gauge_conf_def.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
@@ -925,6 +967,18 @@ debug_u1$(EXEEXT): $(debug_u1_OBJECTS) $(debug_u1_DEPENDENCIES) $(EXTRA_debug_u1
 ./lib/tens_prod_adj.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
 
+debug_twist$(EXEEXT): $(debug_twist_OBJECTS) $(debug_twist_DEPENDENCIES) $(EXTRA_debug_twist_DEPENDENCIES) 
+	@rm -f debug_twist$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(debug_twist_OBJECTS) $(debug_twist_LDADD) $(LIBS)
+./src/debug_u1.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+debug_u1$(EXEEXT): $(debug_u1_OBJECTS) $(debug_u1_DEPENDENCIES) $(EXTRA_debug_u1_DEPENDENCIES) 
+	@rm -f debug_u1$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(debug_u1_OBJECTS) $(debug_u1_LDADD) $(LIBS)
+./src/yang_mills_gradient_flow.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
 yang_mills_gradient_flow$(EXEEXT): $(yang_mills_gradient_flow_OBJECTS) $(yang_mills_gradient_flow_DEPENDENCIES) $(EXTRA_yang_mills_gradient_flow_DEPENDENCIES) 
 	@rm -f yang_mills_gradient_flow$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_gradient_flow_OBJECTS) $(yang_mills_gradient_flow_LDADD) $(LIBS)
@@ -940,6 +994,12 @@ yang_mills_local$(EXEEXT): $(yang_mills_local_OBJECTS) $(yang_mills_local_DEPEND
 yang_mills_local_pt$(EXEEXT): $(yang_mills_local_pt_OBJECTS) $(yang_mills_local_pt_DEPENDENCIES) $(EXTRA_yang_mills_local_pt_DEPENDENCIES) 
 	@rm -f yang_mills_local_pt$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(yang_mills_local_pt_OBJECTS) $(yang_mills_local_pt_LDADD) $(LIBS)
+./src/yang_mills_local_pt_gf.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+
+yang_mills_local_pt_gf$(EXEEXT): $(yang_mills_local_pt_gf_OBJECTS) $(yang_mills_local_pt_gf_DEPENDENCIES) $(EXTRA_yang_mills_local_pt_gf_DEPENDENCIES) 
+	@rm -f yang_mills_local_pt_gf$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(yang_mills_local_pt_gf_OBJECTS) $(yang_mills_local_pt_gf_LDADD) $(LIBS)
 ./src/yang_mills_local_pt_multicanonic.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 
@@ -1030,10 +1090,12 @@ include ./src/$(DEPDIR)/debug_rng.Po
 include ./src/$(DEPDIR)/debug_su2.Po
 include ./src/$(DEPDIR)/debug_su2_adj.Po
 include ./src/$(DEPDIR)/debug_sun.Po
+include ./src/$(DEPDIR)/debug_twist.Po
 include ./src/$(DEPDIR)/debug_u1.Po
 include ./src/$(DEPDIR)/yang_mills_gradient_flow.Po
 include ./src/$(DEPDIR)/yang_mills_local.Po
 include ./src/$(DEPDIR)/yang_mills_local_pt.Po
+include ./src/$(DEPDIR)/yang_mills_local_pt_gf.Po
 include ./src/$(DEPDIR)/yang_mills_local_pt_multicanonic.Po
 include ./src/$(DEPDIR)/yang_mills_polycorr.Po
 include ./src/$(DEPDIR)/yang_mills_polycorr_long.Po

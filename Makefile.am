@@ -15,6 +15,7 @@ bin_PROGRAMS = conf_check \
 			yang_mills_tube_disc \
 			yang_mills_tracedef \
 			yang_mills_local_pt \
+			yang_mills_local_pt_gf \
 			yang_mills_local_pt_multicanonic \
 			yang_mills_gradient_flow 
 

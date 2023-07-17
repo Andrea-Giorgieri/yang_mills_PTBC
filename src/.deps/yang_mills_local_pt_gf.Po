@@ -12,6 +12,7 @@ src/yang_mills_local_pt_gf.o: src/yang_mills_local_pt_gf.c \
  /usr/include/bits/waitstatus.h /usr/include/bits/stdlib-float.h \
  /usr/include/string.h /usr/include/xlocale.h /usr/include/bits/string.h \
  /usr/include/bits/string2.h /usr/include/time.h /usr/include/bits/time.h \
+ /marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/omp.h \
  src/../include/function_pointers.h src/../include/su2.h \
  src/../include/tens_prod.h \
  /marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/complex.h \
@@ -88,6 +89,8 @@ src/../include/../config.h:
 /usr/include/time.h:
 
 /usr/include/bits/time.h:
+
+/marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/omp.h:
 
 src/../include/function_pointers.h:
 

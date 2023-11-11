@@ -81,7 +81,7 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
-			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
 		}
 
 		// save configurations for backup
@@ -133,7 +133,7 @@ void real_main(char *in_file)
       }
 
     // print simulation details
-    print_parameters_local_pt_gf(&param, time1, time2);
+    print_parameters_local_pt_agf(&param, time1, time2);
 		
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
@@ -176,7 +176,7 @@ void print_template_input(void)
 		fprintf(fp,"# parallel tempering parameters\n");
 		fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
 		fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
-		fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+		fprintf(fp,"N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
 		fprintf(fp,"\n");
 		fprintf(fp,"# twist parameters\n");
 		fprintf(fp,"k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...");
@@ -187,28 +187,30 @@ void print_template_input(void)
 		fprintf(fp,"\n");
 		fprintf(fp,"# Simulations parameters\n");
 		fprintf(fp, "beta  5.705\n");
-		fprintf(fp, "theta 1.5\n");
+		fprintf(fp, "theta 0\n");
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");
 		fprintf(fp, "overrelax  5\n");
 		fprintf(fp, "measevery  1\n");
 		fprintf(fp,"\n");
-		fprintf(fp, "start                    0  # 0=ordered  1=random  2=from saved configuration\n");
+		fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
 		fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
 		fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "#for gradient flow evolution\n");
-		fprintf(fp, "gfstep      0.01    # integration step for gradient flow\n");
-		fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
-		fprintf(fp, "gf_meas_each 5      # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+		fprintf(fp, "#for adaptive gradient flow evolution\n");
+		fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
+		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
+		fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
+		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
+		fprintf(fp, "agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-		fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+		fprintf(fp, "coolsteps             0  # number of cooling steps to be used\n");
+		fprintf(fp, "coolrepeat            0  # number of times 'coolsteps' are repeated\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
-		fprintf(fp, "clover_energy_meas    0  # 1=YES, 0=NO\n");
-		fprintf(fp, "charge_meas           0  # 1=YES, 0=NO\n");
+		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
+		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
 		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");

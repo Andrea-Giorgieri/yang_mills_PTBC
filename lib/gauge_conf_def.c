@@ -141,6 +141,40 @@ void init_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
 	}
 
+void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step, int *stop)
+	{
+	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+	FILE *file;
+	
+	//gauge conf filename at step
+	strcpy(name, param->d_conf_file);
+	strcat(name, "_step_");
+	sprintf(aux, "%ld", step);
+	strcat(name, aux);
+	
+	//check if conf file exists and initialize conf if it does
+	if ((file = fopen(name, "r")))
+	{
+		fclose(file);
+		init_gauge_conf_from_file_with_name(GC, param, name);
+	}
+	else *stop = 1;
+	
+	//twist filename at step
+	strcpy(name, param->d_twist_file);
+	strcat(name, "_step_");
+	strcat(name, aux);
+	
+	//check if twist file exists and initialize cond if it does
+	if ((file = fopen(name, "r")))
+	{
+		fclose(file);
+		init_twist_cond_from_file_with_name(GC, param, name);
+	}
+	else *stop = 1;
+	
+	}
+
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, GParam	const * const param)
 	{

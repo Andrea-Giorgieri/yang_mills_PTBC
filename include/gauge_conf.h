@@ -66,6 +66,8 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
 					 GParam const * const param, char const * const filename);
 void init_gauge_conf(Gauge_Conf *GC,
 					 GParam const * const param);
+void init_gauge_conf_step(Gauge_Conf *GC,
+					 GParam const * const param, long step, int *stop);
 void init_gauge_conf_replica(Gauge_Conf **GC,
 							GParam const * const param);
 void init_bound_cond(Gauge_Conf *GC,
@@ -267,6 +269,14 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 								Geometry const * const geo,
 								GParam const * const param,
 								FILE *datafilep, FILE *chiprimefilep, FILE*);
+void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											FILE *datafilep, FILE *chiprimefilep, FILE*);
+void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											FILE *datafilep, FILE *chiprimefilep, FILE*, FILE*);
 void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
 											Geometry const * const geo,
 											GParam const * const param,
@@ -466,6 +476,27 @@ void gradflow_RKstep(Gauge_Conf *GC,
 					 Geometry const * const geo,
 					 GParam const *const param,
 					 double dt);
+void gradflow_RKstep_adaptive(Gauge_Conf *GC,
+					Gauge_Conf *GC_old,
+					Gauge_Conf *helper1,
+					Gauge_Conf *helper2,
+					Gauge_Conf *helper3,
+					Geometry const * const geo,
+					GParam const *const param,
+					double *t,
+					double *dt,
+					int *accepted);
+void gradflow_RKstep_adaptive_debug(Gauge_Conf *GC,
+					Gauge_Conf *GC_old,
+					Gauge_Conf *helper1,
+					Gauge_Conf *helper2,
+					Gauge_Conf *helper3,
+					Geometry const * const geo,
+					GParam const *const param,
+					double *t,
+					double *dt,
+					int *accepted,
+					FILE *step_filep);
 void ape_smearing(Gauge_Conf *GC,
 					Geometry const * const geo,
 					GParam const *const param,

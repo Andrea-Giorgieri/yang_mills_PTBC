@@ -1642,9 +1642,324 @@ void gradflow_RKstep(Gauge_Conf *GC,
 		}
 	}
 	}
+	
+// perform a single step of the Runge Kutta integrator for the Wilson flow
+// with adaptive integration step as described in Fritzsch-Ramos arXiv:1301.4388 app. D
+void gradflow_RKstep_adaptive(Gauge_Conf *GC,
+					Gauge_Conf *GC_old,
+					Gauge_Conf *helper1,
+					Gauge_Conf *helper2,
+					Gauge_Conf *helper3,
+					Geometry const * const geo,
+					GParam const *const param,
+					double *t,
+					double *dt,
+					int *accepted)
+	{
+	long r;
+	int dir, err, j;
+	double max_dist, *local_max_dist;
 
+	// initialize
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		equal(&(GC_old->lattice[r][dir]), &(GC->lattice[r][dir]));
+		equal(&(helper1->lattice[r][dir]), &(GC->lattice[r][dir]));
+		}
+	}
+	// now helper1 = GC_old = GC = W_0
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, link;
 
+		calcstaples_wilson(helper1, geo, param, r, dir, &staple);
+		equal(&link, &(helper1->lattice[r][dir]));
+		times(&aux, &link, &staple);				// aux=link*staple
+		times_equal_real(&aux, -(*dt));
+		equal(&(helper2->lattice[r][dir]), &aux);	// helper2=aux
+		times_equal_real(&aux, 1.0/4.0);
+		taexp(&aux);
+		times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
+		}
+	}
+	// now helper1=W_0, helper2=Z_0 and GC=W_1
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, aux2, link;
 
+		calcstaples_wilson(GC, geo, param, r, dir, &staple);
+		equal(&link, &(GC->lattice[r][dir]));
+		times(&aux, &link, &staple);				// aux=link*staple
+		times_equal_real(&aux, -(*dt));
+		equal(&aux2, &aux);
+		
+		times_equal_real(&aux2, 2.0);
+		minus_equal(&aux2, &(helper2->lattice[r][dir]));
+		taexp(&aux2);
+		times(&(helper3->lattice[r][dir]), &aux2, &(helper1->lattice[r][dir])); // helper3=aux2*helper1
+		
+		times_equal_real(&aux, 8.0/9.0);
+		minus_equal_times_real(&aux, &(helper2->lattice[r][dir]), 17.0/36.0);
+		equal(&(helper2->lattice[r][dir]), &aux);
+		taexp(&aux);
+		times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
+		}
+	}
+	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0, helper3=W'_2, and GC=W_1
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, link;
+
+		calcstaples_wilson(helper1, geo, param, r, dir, &staple);
+		equal(&link, &(helper1->lattice[r][dir]));
+		times(&aux, &link, &staple);					// aux=link*staple
+		times_equal_real(&aux, -(*dt)*3.0/4.0);
+		minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
+		taexp(&aux);
+		times(&(GC->lattice[r][dir]), &aux, &link);	// GC=aux*link
+		}
+	}
+	// now helper3 = W'_2 and GC = W_3
+	
+	// final unitarization and error calculation
+	err=posix_memalign((void**) &(local_max_dist), (size_t) DOUBLE_ALIGN, (size_t) NTHREADS * sizeof(double));
+	if(err!=0)
+		{
+		fprintf(stderr, "Problems in allocating memory! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	for (j=0; j<NTHREADS; j++) local_max_dist[j] = 0;
+	
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<(param->d_volume); r++)
+		{
+		int i, thread_num;
+		double dist;
+		thread_num = 0;
+		#ifdef OPENMP_MODE
+		thread_num = omp_get_thread_num();
+		#endif
+		for(i=0; i<STDIM; i++)
+			{
+			unitarize(&(GC->lattice[r][i]));
+			unitarize(&(helper3->lattice[r][i]));
+			minus_equal(&(helper3->lattice[r][i]), &(GC->lattice[r][i]));
+			dist = norm(&(helper3->lattice[r][i]))/((double)NCOLOR*(double)NCOLOR);
+			if (dist > local_max_dist[thread_num]) local_max_dist[thread_num] = dist;
+			}
+		}
+	max_dist = param->d_agf_delta/pow(10.0, 6); //to avoid division by zero or dt -> 100dt in a single step
+	for (j=0; j<NTHREADS; j++)
+		{
+		if (local_max_dist[j] > max_dist) max_dist = local_max_dist[j];
+		}
+	
+	if (max_dist < param->d_agf_delta) //if the integration step is accepted, advance t
+		{
+		*accepted = 1;
+		*t = *t + *dt;
+		}
+	else //if the integration step is rejected, reset gauge conf
+		{
+		*accepted = 0;
+		for(dir=0; dir<STDIM; dir++)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS) private(r)
+			#endif
+			for(r=0; r<param->d_volume; r++)
+				{
+				equal(&(GC->lattice[r][dir]), &(GC_old->lattice[r][dir]));
+				}
+			}
+		}
+	// new integration step
+	*dt = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
+	
+	}
+	
+void gradflow_RKstep_adaptive_debug(Gauge_Conf *GC,
+					Gauge_Conf *GC_old,
+					Gauge_Conf *helper1,
+					Gauge_Conf *helper2,
+					Gauge_Conf *helper3,
+					Geometry const * const geo,
+					GParam const *const param,
+					double *t,
+					double *dt,
+					int *accepted,
+					FILE *step_filep)
+	{
+	long r;
+	int dir, err, j;
+	double max_dist, mean_dist, *local_max_dist;
+
+	// initialize
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		equal(&(GC_old->lattice[r][dir]), &(GC->lattice[r][dir]));
+		equal(&(helper1->lattice[r][dir]), &(GC->lattice[r][dir]));
+		}
+	}
+	// now helper1 = GC_old = GC = W_0
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, link;
+
+		calcstaples_wilson(helper1, geo, param, r, dir, &staple);
+		equal(&link, &(helper1->lattice[r][dir]));
+		times(&aux, &link, &staple);				// aux=link*staple
+		times_equal_real(&aux, -(*dt));
+		equal(&(helper2->lattice[r][dir]), &aux);	// helper2=aux
+		times_equal_real(&aux, 1.0/4.0);
+		taexp(&aux);
+		times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
+		}
+	}
+	// now helper1=W_0, helper2=Z_0 and GC=W_1
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, aux2, link;
+
+		calcstaples_wilson(GC, geo, param, r, dir, &staple);
+		equal(&link, &(GC->lattice[r][dir]));
+		times(&aux, &link, &staple);				// aux=link*staple
+		times_equal_real(&aux, -(*dt));
+		equal(&aux2, &aux);
+		
+		times_equal_real(&aux2, 2.0);
+		minus_equal(&aux2, &(helper2->lattice[r][dir]));
+		taexp(&aux2);
+		times(&(helper3->lattice[r][dir]), &aux2, &(helper1->lattice[r][dir])); // helper3=aux2*helper1
+		
+		times_equal_real(&aux, 8.0/9.0);
+		minus_equal_times_real(&aux, &(helper2->lattice[r][dir]), 17.0/36.0);
+		equal(&(helper2->lattice[r][dir]), &aux);
+		taexp(&aux);
+		times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
+		}
+	}
+	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0, helper3=W'_2, and GC=W_1
+	for(dir=0; dir<STDIM; dir++)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		GAUGE_GROUP staple, aux, link;
+
+		calcstaples_wilson(helper1, geo, param, r, dir, &staple);
+		equal(&link, &(helper1->lattice[r][dir]));
+		times(&aux, &link, &staple);					// aux=link*staple
+		times_equal_real(&aux, -(*dt)*3.0/4.0);
+		minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
+		taexp(&aux);
+		times(&(GC->lattice[r][dir]), &aux, &link);	// GC=aux*link
+		}
+	}
+	// now helper3 = W'_2 and GC = W_3
+	
+	// final unitarization and error calculation
+	err=posix_memalign((void**) &(local_max_dist), (size_t) DOUBLE_ALIGN, (size_t) NTHREADS * sizeof(double));
+	if(err!=0)
+		{
+		fprintf(stderr, "Problems in allocating memory! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	for (j=0; j<NTHREADS; j++) local_max_dist[j] = 0;
+	mean_dist = 0;
+	
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : mean_dist)
+	#endif
+	for(r=0; r<(param->d_volume); r++)
+		{
+		int i, thread_num;
+		double dist;
+		thread_num = 0;
+		#ifdef OPENMP_MODE
+		thread_num = omp_get_thread_num();
+		#endif
+		for(i=0; i<STDIM; i++)
+			{
+			unitarize(&(GC->lattice[r][i]));
+			unitarize(&(helper3->lattice[r][i]));
+			minus_equal(&(helper3->lattice[r][i]), &(GC->lattice[r][i]));
+			dist = norm(&(helper3->lattice[r][i]))/((double)NCOLOR*(double)NCOLOR);
+			if (dist > local_max_dist[thread_num]) local_max_dist[thread_num] = dist;
+			mean_dist += dist;
+			fprintf(step_filep, "%.12g ", dist);
+			}
+		}
+	max_dist = param->d_agf_delta/pow(10.0, 6); //to avoid dt -> 100dt or more in a single step
+	for (j=0; j<NTHREADS; j++)
+		{
+		if (local_max_dist[j] > max_dist) max_dist = local_max_dist[j];
+		}
+	mean_dist = mean_dist/(STDIM*param->d_volume);
+	
+	if (mean_dist < param->d_agf_delta) //if the integration step is accepted, advance t
+		{
+		*accepted = 1;
+		*t = *t + *dt;
+		}
+	else //if the integration step is rejected, reset gauge conf
+		{
+		*accepted = 0;
+		for(dir=0; dir<STDIM; dir++)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS) private(r)
+			#endif
+			for(r=0; r<param->d_volume; r++)
+				{
+				equal(&(GC->lattice[r][dir]), &(GC_old->lattice[r][dir]));
+				}
+			}
+		}
+	// new integration step
+	*dt = *dt * 0.95 * pow(param->d_agf_delta/mean_dist, 1.0/3.0);
+	
+	}
+	
 // n step of ape smearing with parameter alpha
 // new=Proj[old + alpha *staple ]
 void ape_smearing(Gauge_Conf *GC,

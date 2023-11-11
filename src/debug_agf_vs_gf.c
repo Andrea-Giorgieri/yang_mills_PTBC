@@ -30,8 +30,8 @@ void real_main(char *in_file)
 
     char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
     int count;
-    FILE *datafilep, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep;
-    time_t time1, time2;
+    FILE *datafilep, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep, *step_filep, *delta_filep;
+    time_t time1, time2, time3, time4, time5, time6, gf_time, agf_time, dagf_time;
 
     // to disable nested parallelism
     #ifdef OPENMP_MODE
@@ -47,6 +47,8 @@ void real_main(char *in_file)
 
     // open data_file
     init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
+	step_filep = fopen("./data/step_file.dat", "w");
+	delta_filep = fopen("./data/delta_file.dat", "w");
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
@@ -71,7 +73,9 @@ void real_main(char *in_file)
 
     // Monte Carlo begin
     time(&time1);
-
+	gf_time = 0;
+	agf_time = 0;
+	dagf_time = 0;
     for(count=0; count < param.d_sample; count++)
 	{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
@@ -81,7 +85,16 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
+			time(&time3);
+			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			time(&time4);
+			perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
+			time(&time5);
 			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			time(&time6);
+			agf_time += time4 - time3;
+			dagf_time += time5 - time4;
+			gf_time += time6 - time5;
 		}
 
 		// save configurations for backup
@@ -122,6 +135,8 @@ void real_main(char *in_file)
     fclose(datafilep);
 		if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
 		if (param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
+	fclose(step_filep);
+	fclose(delta_filep);
 		
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
@@ -133,7 +148,7 @@ void real_main(char *in_file)
       }
 
     // print simulation details
-    print_parameters_local_pt_gf(&param, time1, time2);
+    print_parameters_debug_agf_vs_gf(&param, time1, time2, agf_time, dagf_time, gf_time);
 		
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
@@ -198,17 +213,19 @@ void print_template_input(void)
 		fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
 		fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "#for gradient flow evolution\n");
-		fprintf(fp, "gfstep      0.01    # integration step for gradient flow\n");
-		fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
-		fprintf(fp, "gf_meas_each 5      # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+		fprintf(fp, "#for adaptive gradient flow evolution\n");
+		fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
+		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
+		fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
+		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
+		fprintf(fp, "agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
 		fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
-		fprintf(fp, "clover_energy_meas    0  # 1=YES, 0=NO\n");
-		fprintf(fp, "charge_meas           0  # 1=YES, 0=NO\n");
+		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
+		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
 		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");

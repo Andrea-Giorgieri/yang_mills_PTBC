@@ -84,12 +84,19 @@ void readinput(char *in_file, GParam *param)
 	{
 		param->d_L_defect[i]=0;
 	}
+	param->d_defect_dir=0;
 	param->d_N_replica_pt=1;
 	
 	// to avoid possible mistakes with uninitialized stuff 
 	param->d_ngfsteps = 0;
 	param->d_gf_meas_each = 1;
 	param->d_gfstep = 0.01;
+	
+	param->d_agf_length = 0.0;
+	param->d_agf_meas_each = 1.0;
+	param->d_agf_step = 0.01;
+	param->d_agf_delta = 0.001;
+	param->d_agf_time_bin = 0.000001;
 	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
@@ -126,7 +133,7 @@ void readinput(char *in_file, GParam *param)
 				exit(EXIT_FAILURE);
 			}
 
-			if(strncmp(str, "size", 4)==0)
+			if(strncmp(str, "size", 5)==0)
 			{
 				for(i=0; i<STDIM; i++)
 				{
@@ -431,6 +438,66 @@ void readinput(char *in_file, GParam *param)
 					}
 					if (temp_i > 0) param->d_gf_meas_each=temp_i;
 					else fprintf(stderr, "Error: gf_meas_each must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+			
+			else if(strncmp(str, "agf_length", 10)==0) // length of adaptive gradflow evolution
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d >= 0) param->d_agf_length=temp_d;
+					else fprintf(stderr, "Error: agf_length must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+					
+			else if(strncmp(str, "agf_meas_each", 13)==0) // time interval of adaptive gradflow measures
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_agf_meas_each=temp_d;
+					else fprintf(stderr, "Error: agf_meas_each must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+					
+			else if(strncmp(str, "agf_step", 8)==0) // initial size of integration with adaptive step
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_agf_step=temp_d;
+					else fprintf(stderr, "Error: agf_step must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+					
+			else if(strncmp(str, "agf_delta", 9)==0) // error threshold for adaptive gradflow integration 
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_agf_delta=temp_d;
+					else fprintf(stderr, "Error: adf_delta must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+					
+			else if(strncmp(str, "agf_time_bin", 12)==0) // error threshold for adaptive gradflow time of measure 
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_agf_time_bin=temp_d;
+					else fprintf(stderr, "Error: adf_time_bin must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 
 			else if(strncmp(str, "multihit", 8)==0)
@@ -776,7 +843,7 @@ void readinput(char *in_file, GParam *param)
 					strcpy(param->d_topo_potential_file, temp_str);
 					}
 				
-			else if(strncmp(str, "grid_step", 9)==0)
+			else if(strncmp(str, "grid_step ", 9)==0)
 					{
 					err=fscanf(input, "%lf", &temp_d);
 					if(err!=1)
@@ -786,7 +853,8 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_grid_step=temp_d;
 					}
-					else if(strncmp(str, "grid_max", 8)==0)
+			
+			else if(strncmp(str, "grid_max", 8)==0)
 					{
 					err=fscanf(input, "%lf", &temp_d);
 					if(err!=1)
@@ -868,28 +936,40 @@ void readinput(char *in_file, GParam *param)
 		fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
 		}
 				
-			// various checks on parallel tempering parameters
-			if(param->d_L_defect[0]>param->d_size[0])
-				{
-				fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			if(param->d_L_defect[1]>param->d_size[2])
-				{
-				fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			if(param->d_L_defect[2]>param->d_size[3])
-				{
-				fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			if(param->d_N_replica_pt<1)
-				{
-				fprintf(stderr, "Error: number of replica of parallel tempering must be greater than 0 (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-
+		// various checks on parallel tempering parameters
+		if(param->d_L_defect[0]>param->d_size[0])
+			{
+			fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(param->d_L_defect[1]>param->d_size[2])
+			{
+			fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(param->d_L_defect[2]>param->d_size[3])
+			{
+			fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(param->d_N_replica_pt<1)
+			{
+			fprintf(stderr, "Error: number of replica of parallel tempering must be greater than 0 (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		
+		// check on gradflow parameters
+		if(param->d_agf_meas_each > param->d_agf_length)
+			{
+			fprintf(stderr, "Error: agf_meas_each can't be smaller than agf_length (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(param->d_agf_meas_each < param->d_agf_time_bin)
+			{
+			fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		
 		init_derived_constants(param);
 		}
 	}
@@ -933,7 +1013,8 @@ void init_derived_constants(GParam *param)
 // initialize data file
 void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GParam const * const param)
 {
-	int i, tmp;
+	int i, gf_meas_num;
+	double gf_meas_each;
 
 	if(param->d_start==2)
 	{
@@ -956,15 +1037,25 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 			if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
 			if (param->d_polyakov_meas==1) fprintf(*dataf, "polyre polyim ");
 			if (param->d_charge_prime_meas==1) fprintf(*dataf, "charge_prime[%d] ", STDIM);
-			tmp = (int)(param->d_ngfsteps/param->d_gf_meas_each);
-			if (tmp > 0)
+			
+			if (param->d_agf_meas_each > 0) 
+				{
+				gf_meas_num = (int)(param->d_agf_length/param->d_agf_meas_each);
+				gf_meas_each = param->d_agf_meas_each;
+				}
+			else 
+				{
+				gf_meas_num = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+				gf_meas_each = param->d_gf_meas_each*param->d_gfstep;
+				}
+			if (gf_meas_num > 0)
 			{
 				fprintf(*dataf, "( ");
 				if (param->d_plaquette_meas==1) fprintf(*dataf, "plaq ");
 				if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
 				if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
 				if (param->d_charge_prime_meas==1) fprintf(*dataf, "charge_prime[%d] ", STDIM);
-				fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", tmp, param->d_gf_meas_each*param->d_gfstep);
+				fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
 			}
 			fprintf(*dataf, "\n");
 		}
@@ -1012,7 +1103,7 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 		}
 	}
 	else
-	{
+		{
 		// open std data file
 		*dataf=fopen(param->d_data_file, "w");
 		fprintf(*dataf, "# %d ", STDIM);
@@ -1024,43 +1115,53 @@ void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GPar
 		if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
 		if (param->d_polyakov_meas==1) fprintf(*dataf, "polyre polyim ");
 		if (param->d_charge_prime_meas==1) fprintf(*dataf, "charge_prime[%d] ", STDIM);
-		tmp = (int)(param->d_ngfsteps/param->d_gf_meas_each);
-		if (tmp > 0)
-		{
+
+		if (param->d_agf_meas_each > 0) 
+			{
+			gf_meas_num = (int)(param->d_agf_length/param->d_agf_meas_each);
+			gf_meas_each = param->d_agf_meas_each;
+			}
+		else 
+			{
+			gf_meas_num = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+			gf_meas_each = param->d_gf_meas_each*param->d_gfstep;
+			}
+		if (gf_meas_num > 0)
+			{
 			fprintf(*dataf, "( ");
 			if (param->d_plaquette_meas==1) fprintf(*dataf, "plaq ");
 			if (param->d_clover_energy_meas==1) fprintf(*dataf, "clover_energy ");
 			if (param->d_charge_meas==1) fprintf(*dataf, "charge ");
 			if (param->d_charge_prime_meas==1) fprintf(*dataf, "charge_prime[%d] ", STDIM);
-			fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", tmp, param->d_gf_meas_each*param->d_gfstep);
-		}
+			fprintf(*dataf, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
+			}
 		fprintf(*dataf, "\n");
 		
 		// open chi prime data file
 		if (param->d_chi_prime_meas == 1)
-		{
-		*chiprimef=fopen(param->d_chiprime_file, "w");
-		fprintf(*chiprimef, "# %d ", STDIM);
-		for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
-		fprintf(*chiprimef, "\n");
-		}
+			{
+			*chiprimef=fopen(param->d_chiprime_file, "w");
+			fprintf(*chiprimef, "# %d ", STDIM);
+			for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
+			fprintf(*chiprimef, "\n");
+			}
 		else
-		{
-		(void) chiprimef;
-		}
+			{
+			(void) chiprimef;
+			}
 		// open topocharge_tcorr data file
 		if (param->d_topcharge_tcorr_meas == 1)
-		{
-		*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
-		fprintf(*topchar_tcorr_f, "# %d ", STDIM);
-		for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
-		fprintf(*topchar_tcorr_f, "\n");
-		}
+			{
+			*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
+			fprintf(*topchar_tcorr_f, "# %d ", STDIM);
+			for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
+			fprintf(*topchar_tcorr_f, "\n");
+			}
 		else
-		{
-		(void) topchar_tcorr_f;
+			{
+			(void) topchar_tcorr_f;
+			}
 		}
-	}
 	fflush(*dataf);
 	if (param->d_chi_prime_meas == 1 ) fflush(*chiprimef);
 	else 
@@ -1449,6 +1550,236 @@ void print_parameters_local_pt_gf(GParam const * const param, time_t time_start,
 
 	diff_sec = difftime(time_end, time_start);
 	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+
+	if(endian()==0)
+		{
+		fprintf(fp, "Little endian machine\n\n");
+		}
+	else
+		{
+		fprintf(fp, "Big endian machine\n\n");
+		}
+
+	fclose(fp);
+	}
+	
+void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end)
+	{
+	FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+-----------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_pt_agf |\n");
+	fprintf(fp, "+-----------------------------------------------+\n\n");
+
+	#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for(i=1; i<STDIM-1; i++)
+		{
+		fprintf(fp, "x%d", param->d_L_defect[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "twist parameters: ");
+	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_L_rect[i]);
+			}
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+		fprintf(fp,"\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	#ifdef THETA_MODE
+		fprintf(fp, "theta: %.10lf\n", param->d_theta);
+	#endif
+	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tcorr_meas: %d\n", param->d_topcharge_tcorr_meas);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:	%d\n", param->d_sample);
+	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:						%d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:		%d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every:	%d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "agf_length		%lf\n",	param->d_agf_length);
+	fprintf(fp, "agf_step:		%lf\n", param->d_agf_step);
+	fprintf(fp, "agf_meas_each	%lf\n",	param->d_agf_meas_each);
+	fprintf(fp, "agf_delta		%lf\n",	param->d_agf_delta);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:	%d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+
+	if(endian()==0)
+		{
+		fprintf(fp, "Little endian machine\n\n");
+		}
+	else
+		{
+		fprintf(fp, "Big endian machine\n\n");
+		}
+
+	fclose(fp);
+	}
+	
+void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time)
+	{
+	FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+-----------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for debug_agf_vs_gf |\n");
+	fprintf(fp, "+-----------------------------------------------+\n\n");
+
+	#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for(i=1; i<STDIM-1; i++)
+		{
+		fprintf(fp, "x%d", param->d_L_defect[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "twist parameters: ");
+	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_L_rect[i]);
+			}
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+		fprintf(fp,"\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	#ifdef THETA_MODE
+		fprintf(fp, "theta: %.10lf\n", param->d_theta);
+	#endif
+	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tcorr_meas: %d\n", param->d_topcharge_tcorr_meas);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:	%d\n", param->d_sample);
+	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:						%d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:		%d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every:	%d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "agf_length		%lf\n",	param->d_agf_length);
+	fprintf(fp, "agf_step:		%lf\n", param->d_agf_step);
+	fprintf(fp, "agf_meas_each	%lf\n",	param->d_agf_meas_each);
+	fprintf(fp, "agf_delta		%lf\n",	param->d_agf_delta);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "gfstep:		%lf\n", param->d_gfstep);
+	fprintf(fp, "num_gfsteps	%d\n",	param->d_ngfsteps);
+	fprintf(fp, "gf_meas_each	%d\n",	param->d_gf_meas_each);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:	%d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time:              %.3lf seconds\n", diff_sec );
+	fprintf(fp, "Adaptive gradflow time:       %d seconds\n", (int)agf_time);
+	fprintf(fp, "Debug adaptive gradflow time: %d seconds\n", (int)dagf_time);
+	fprintf(fp, "Gradflow time:                %d seconds\n", (int)gf_time);
 	fprintf(fp, "\n");
 
 	if(endian()==0)

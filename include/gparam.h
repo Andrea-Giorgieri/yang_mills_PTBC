@@ -63,6 +63,13 @@ typedef struct GParam {
 	double d_gfstep;
 	int d_ngfsteps;
 	int d_gf_meas_each;
+	
+	// for adaptive-step gradient-flow evolution
+	double d_agf_length;
+	double d_agf_meas_each;
+	double d_agf_step;
+	double d_agf_delta;
+	double d_agf_time_bin;
 
 	// for multilevel
 	int d_multihit;
@@ -113,6 +120,8 @@ void free_hierarc_params(GParam *param);
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time);
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);

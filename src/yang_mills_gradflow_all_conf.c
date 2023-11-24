@@ -106,24 +106,24 @@ void print_template_input(void)
     }
   else
     {
-    fprintf(fp, "size 4 4 4 4\n");
+    fprintf(fp, "size 12 4 4 12\n");
     fprintf(fp,"\n");
-    fprintf(fp, "#for gradient flow evolution\n");
-    fprintf(fp, "gfstep      0.02    # integration step for gradient flow\n");
-    fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
-	fprintf(fp, "gfstep_each 5       # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+    fprintf(fp, "# For gradient flow evolution\n");
+    fprintf(fp, "gfstep       0.001     # integration step for gradient flow\n");
+	fprintf(fp, "num_gfsteps   1000     # number of integration steps for gradient flow\n");
+	fprintf(fp, "gf_meas_each   100     # compute observables every <gfstep_each> integration steps during the gradient flow\n");
 	fprintf(fp, "\n");
-	fprintf(fp, "#Simulation parameters\n");
-	fprintf(fp, "thermal 0\n");
+	fprintf(fp, "# Simulation parameters\n");
+	fprintf(fp, "thermal                    0\n");
 	fprintf(fp, "saveconf_analysis_every  100  # if 0 does not save, else save configurations for analysis every ... updates\n");
     fprintf(fp, "\n");
-	fprintf(fp, "#output files\n");
-    fprintf(fp, "conf_file  conf.dat\n");
-	fprintf(fp, "twist_file  twist.dat\n");
-    fprintf(fp, "data_file  dati.dat\n");
-	fprintf(fp, "chiprime_data_file chi_prime_cool.dat\n");
-	fprintf(fp, "topcharge_tcorr_file topo_tcorr_cool.dat\n");
-    fprintf(fp, "log_file   log.dat\n");
+	fprintf(fp, "# Output files\n");
+    fprintf(fp, "conf_file             conf.dat\n");
+	fprintf(fp, "twist_file            twist.dat\n");
+    fprintf(fp, "data_file             dati.dat\n");
+	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
+	fprintf(fp, "topcharge_tcorr_file  topo_tcorr_cool.dat\n");
+    fprintf(fp, "log_file              log.dat\n");
     fprintf(fp, "\n");
     fprintf(fp, "randseed 0    #(0=time)\n");
     fclose(fp);

@@ -171,23 +171,22 @@ void print_template_input(void)
     }
 	else
 	{
-		fprintf(fp,"size 4 4 4 4  # Nt Nx Ny Nz\n");
+		fprintf(fp,"size 12 4 4 12  # Nt Nx Ny Nz\n");
 		fprintf(fp,"\n");
-		fprintf(fp,"# parallel tempering parameters\n");
-		fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-		fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
+		fprintf(fp,"# Parallel tempering parameters\n");
+		fprintf(fp,"defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
+		fprintf(fp,"defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
 		fprintf(fp,"N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
 		fprintf(fp,"\n");
-		fprintf(fp,"# twist parameters\n");
+		fprintf(fp,"# Twist parameters\n");
 		fprintf(fp,"k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...");
 		fprintf(fp,"\n");
-		fprintf(fp,"# hierarchical update parameters\n");
+		fprintf(fp,"# Hierarchical update parameters\n");
 		fprintf(fp,"# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
 		fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
 		fprintf(fp,"\n");
 		fprintf(fp,"# Simulations parameters\n");
-		fprintf(fp, "beta  5.705\n");
-		fprintf(fp, "theta 0\n");
+		fprintf(fp, "beta  6.4881\n");
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");
@@ -198,16 +197,14 @@ void print_template_input(void)
 		fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
 		fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "#for adaptive gradient flow evolution\n");
+		fprintf(fp, "# For adaptive gradient flow evolution\n");
 		fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
 		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
 		fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
 		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
 		fprintf(fp, "agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "coolsteps             0  # number of cooling steps to be used\n");
-		fprintf(fp, "coolrepeat            0  # number of times 'coolsteps' are repeated\n");
-		fprintf(fp, "\n");
+		fprintf(fp, "# Observables to measure\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
 		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
@@ -215,7 +212,7 @@ void print_template_input(void)
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
 		fprintf(fp,"\n");
-		fprintf(fp, "# output files\n");
+		fprintf(fp, "# Output files\n");
 		fprintf(fp, "conf_file             conf.dat\n");
 		fprintf(fp, "twist_file            twist.dat\n");
 		fprintf(fp, "data_file             dati.dat\n");

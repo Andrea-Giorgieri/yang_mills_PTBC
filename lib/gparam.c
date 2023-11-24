@@ -56,7 +56,6 @@ void remove_white_line_and_comments(FILE *input)
 	}
 	}
 
-
 void readinput(char *in_file, GParam *param)
 	{
 	FILE *input;
@@ -98,16 +97,19 @@ void readinput(char *in_file, GParam *param)
 	param->d_agf_delta = 0.001;
 	param->d_agf_time_bin = 0.000001;
 	
+	param->d_coolsteps = 0;
+	param->d_coolrepeat = 0;
+	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
 	{
-		param->d_k_twist[i]=0;
+		param->d_k_twist[i] = 0;
 	}
 		
 	// default = compute only plaquette and topological charge
-	param->d_plaquette_meas=1;
-	param->d_clover_energy_meas=0;
-	param->d_charge_meas=1;
+	param->d_plaquette_meas = 1;
+	param->d_clover_energy_meas = 0;
+	param->d_charge_meas = 1;
 	param->d_chi_prime_meas = 0;
 	param->d_charge_prime_meas = 0;
 	param->d_polyakov_meas = 0;
@@ -205,6 +207,7 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_thermal=temp_i;
 					}
+			
 			else if(strncmp(str, "overrelax", 9)==0)
 					{ 
 					err=fscanf(input, "%d", &temp_i);
@@ -248,6 +251,7 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_saveconf_back_every=temp_i;
 					}
+			
 			else if(strncmp(str, "saveconf_analysis_every", 23)==0)
 					{
 					err=fscanf(input, "%d", &temp_i);
@@ -413,7 +417,11 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					if (temp_d > 0) param->d_gfstep=temp_d;
-					else fprintf(stderr, "Error: gfstep must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					else 
+					{
+					fprintf(stderr, "Error: gfstep must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
 					}
 
 			else if(strncmp(str, "num_gfsteps", 11)==0) // number of integration steps
@@ -959,11 +967,6 @@ void readinput(char *in_file, GParam *param)
 			}
 		
 		// check on gradflow parameters
-		if(param->d_agf_meas_each > param->d_agf_length)
-			{
-			fprintf(stderr, "Error: agf_meas_each can't be smaller than agf_length (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
 		if(param->d_agf_meas_each < param->d_agf_time_bin)
 			{
 			fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
@@ -973,7 +976,6 @@ void readinput(char *in_file, GParam *param)
 		init_derived_constants(param);
 		}
 	}
-
 
 void init_derived_constants(GParam *param)
 	{
@@ -1188,7 +1190,6 @@ void free_hierarc_params(GParam *param)
 		free(param->d_N_sweep_rect);
 		}
 	}
-
 
 // print simulation parameters
 
@@ -1872,7 +1873,6 @@ void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t ti
 	fclose(fp);
 	}
 
-
 // print simulation parameters
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end)
 	{
@@ -1951,7 +1951,6 @@ void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_en
 
 	fclose(fp);
 	}
-
 
 // print simulation parameters
 void print_parameters_t0(GParam * param, time_t time_start, time_t time_end)
@@ -2126,7 +2125,6 @@ void print_parameters_tracedef(GParam const * const param, time_t time_start, ti
 	fclose(fp);
 	}
 
-
 // print simulation parameters
 void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_end)
 	{
@@ -2207,7 +2205,6 @@ void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_e
 	fclose(fp);
 	}
 
-
 // print simulation parameters
 void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_end)
 	{
@@ -2287,7 +2284,6 @@ void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_e
 
 	fclose(fp);
 	}
-
 
 // print simulation parameters
 void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t time_end)

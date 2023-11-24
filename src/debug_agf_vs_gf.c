@@ -28,9 +28,10 @@ void real_main(char *in_file)
 	Acc_Utils acc_counters;
 	int L_R_swap=1;
 
-    char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+    char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH], name_gf[STD_STRING_LENGTH], name_agf[STD_STRING_LENGTH];
     int count;
-    FILE *datafilep, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep, *step_filep, *delta_filep;
+    FILE *datafilep_gf, *datafilep_agf, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep;
+	//FILE *step_filep;
     time_t time1, time2, time3, time4, time5, time6, gf_time, agf_time, dagf_time;
 
     // to disable nested parallelism
@@ -46,9 +47,17 @@ void real_main(char *in_file)
     initrand(param.d_randseed);
 
     // open data_file
-    init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-	step_filep = fopen("./data/step_file.dat", "w");
-	delta_filep = fopen("./data/delta_file.dat", "w");
+	strcpy(aux, param.d_data_file);
+	strcpy(name_gf, aux);
+	strcat(name_gf, "_gf");
+	strcpy(name_agf, aux);
+	strcat(name_gf, "_agf");
+	strcpy(param.d_data_file, name_gf);
+    init_data_file(&datafilep_gf, &chiprimefilep, &topchar_tcorr_filep, &param);
+	strcpy(param.d_data_file, name_agf);
+    init_data_file(&datafilep_agf, &chiprimefilep, &topchar_tcorr_filep, &param);
+	strcpy(param.d_data_file, aux);
+	//step_filep = fopen("./data/step_file.dat", "w");
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
@@ -86,11 +95,11 @@ void real_main(char *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
 			time(&time3);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, datafilep_agf, chiprimefilep, topchar_tcorr_filep);
 			time(&time4);
-			perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
+			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
 			time(&time5);
-			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, datafilep_gf, chiprimefilep, topchar_tcorr_filep);
 			time(&time6);
 			agf_time += time4 - time3;
 			dagf_time += time5 - time4;
@@ -132,11 +141,11 @@ void real_main(char *in_file)
     // Monte Carlo end
 
     // close data file
-    fclose(datafilep);
+    fclose(datafilep_gf);
+	fclose(datafilep_agf);
 		if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
 		if (param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
-	fclose(step_filep);
-	fclose(delta_filep);
+	//fclose(step_filep);
 		
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
@@ -186,43 +195,45 @@ void print_template_input(void)
     }
 	else
 	{
-		fprintf(fp,"size 4 4 4 4  # Nt Nx Ny Nz\n");
+		fprintf(fp,"size 12 4 4 12  # Nt Nx Ny Nz\n");
 		fprintf(fp,"\n");
-		fprintf(fp,"# parallel tempering parameters\n");
-		fprintf(fp,"defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-		fprintf(fp,"defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)\n");
-		fprintf(fp,"N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+		fprintf(fp,"# Parallel tempering parameters\n");
+		fprintf(fp,"defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
+		fprintf(fp,"defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
+		fprintf(fp,"N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
 		fprintf(fp,"\n");
-		fprintf(fp,"# twist parameters\n");
+		fprintf(fp,"# Twist parameters\n");
 		fprintf(fp,"k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...");
 		fprintf(fp,"\n");
-		fprintf(fp,"# hierarchical update parameters\n");
+		fprintf(fp,"# Hierarchical update parameters\n");
 		fprintf(fp,"# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
 		fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
 		fprintf(fp,"\n");
 		fprintf(fp,"# Simulations parameters\n");
-		fprintf(fp, "beta  5.705\n");
-		fprintf(fp, "theta 1.5\n");
+		fprintf(fp, "beta  6.4881\n");
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");
 		fprintf(fp, "overrelax  5\n");
 		fprintf(fp, "measevery  1\n");
 		fprintf(fp,"\n");
-		fprintf(fp, "start                    0  # 0=ordered  1=random  2=from saved configuration\n");
+		fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
 		fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
 		fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "#for adaptive gradient flow evolution\n");
+		fprintf(fp, "# For adaptive gradient flow evolution\n");
 		fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
 		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
 		fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
 		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
 		fprintf(fp, "agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
-		fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-		fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+		fprintf(fp, "# For gradient flow evolution\n");
+		fprintf(fp, "gfstep       0.001     # integration step for gradient flow\n");
+		fprintf(fp, "num_gfsteps  10000     # number of integration steps for gradient flow\n");
+		fprintf(fp, "gf_meas_each  1000     # compute observables every <gfstep_each> integration steps during the gradient flow\n");
 		fprintf(fp, "\n");
+		fprintf(fp, "# Observables to measure\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
 		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
@@ -230,7 +241,7 @@ void print_template_input(void)
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
 		fprintf(fp,"\n");
-		fprintf(fp, "# output files\n");
+		fprintf(fp, "# Output files\n");
 		fprintf(fp, "conf_file             conf.dat\n");
 		fprintf(fp, "twist_file            twist.dat\n");
 		fprintf(fp, "data_file             dati.dat\n");

@@ -20,7 +20,7 @@ bin_PROGRAMS = conf_check \
 			yang_mills_local_pt_agf \
 			yang_mills_local_pt_multicanonic \
 			yang_mills_gradient_flow \
-			yang_mills_gradflow_all_conf 
+			yang_mills_gradflow_all_conf
 
 align = ./include/aligncheck.h \
         ./lib/aligncheck.c

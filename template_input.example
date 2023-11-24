@@ -1,46 +1,51 @@
-size 4 4 4 4  # Nt Nx Ny Nz
+size 12 4 4 12  # Nt Nx Ny Nz
 
-# parallel tempering parameters
-defect_dir    1             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z
-defect_size   1 1 1         # size of the defect (order: y-size z-size t-size)
-N_replica_pt  2    0.0 1.0  # number of parallel tempering replica ____ boundary conditions coefficients
+# Parallel tempering parameters
+defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z
+defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)
+N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients
 
-# twist parameters
+# Twist parameters
 k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...
-# hierarchical update parameters
+# Hierarchical update parameters
 # Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle
 hierarc_upd 2    2 1    1 1
 
 # Simulations parameters
-beta  5.705
-theta 1.5
+beta  6.4881
 
 sample     10
 thermal    0
 overrelax  5
 measevery  1
 
-start                    0  # 0=ordered  1=random  2=from saved configuration
+start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc
 saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates
 saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates
 
-#for gradient flow evolution
-gfstep      0.01    # integration step for gradient flow
-num_gfsteps 100     # number of integration steps for gradient flow
-gf_meas_each 5      # compute observables every <gfstep_each> integration steps during the gradient flow
+# For adaptive gradient flow evolution
+agf_length       10    # total integration time for adaptive gradient flow
+agf_step       0.01    # initial integration step for adaptive gradient flow
+agf_meas_each     1    # time interval between measures during adaptive gradient flow
+agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow
+agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow
 
-coolsteps             3  # number of cooling steps to be used
-coolrepeat            5  # number of times 'coolsteps' are repeated
+# For gradient flow evolution
+gfstep       0.001     # integration step for gradient flow
+num_gfsteps  10000     # number of integration steps for gradient flow
+gf_meas_each  1000     # compute observables every <gfstep_each> integration steps during the gradient flow
 
+# Observables to measure
 plaquette_meas        0  # 1=YES, 0=NO
-clover_energy_meas    0  # 1=YES, 0=NO
-charge_meas           0  # 1=YES, 0=NO
+clover_energy_meas    1  # 1=YES, 0=NO
+charge_meas           1  # 1=YES, 0=NO
 polyakov_meas         0  # 1=YES, 0=NO
 chi_prime_meas        0  # 1=YES, 0=NO
 topcharge_tcorr_meas  0  # 1=YES, 0=NO
 
-# output files
+# Output files
 conf_file             conf.dat
+twist_file            twist.dat
 data_file             dati.dat
 chiprime_data_file    chiprime_cool.dat
 topcharge_tcorr_file  topo_tcorr_cool.dat

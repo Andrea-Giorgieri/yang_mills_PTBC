@@ -19,7 +19,7 @@
 // swaps are parallelized, evaluation of swap probabilities is parallelized
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
-  {
+	{
 	int aux_i, i, j, err, num_swaps, is_even, is_even_first;
 	long k, s, num_even, num_odd, num_swaps_1, num_swaps_2;
 	double *metro_swap_prob;
@@ -140,7 +140,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 
 double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
                          long const r, int const i, int const j, int const a, int const b)
-{
+	{
 	double re_tr_plaq_a, re_tr_plaq_b, K_a, K_b, delta;
 
 	// plaquettes, including twist factors in function plaquettep
@@ -155,7 +155,7 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 	delta = param->d_beta * (K_a - K_b) * (re_tr_plaq_a - re_tr_plaq_b);
 	
 	return delta;
-}
+	}
 
 // swaps are serial, evaluation of swap probability is parallelized (use this version of 'swap' if gcc_version < 6.0 or icc_version < 14.0)
 /*
@@ -278,7 +278,7 @@ void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const *
 	}
 	
 void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
-  {
+	{
 	if(param->d_N_replica_pt==1)
 		{
 		acc_counters->num_accepted_swap=NULL;
@@ -308,8 +308,8 @@ void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
 			acc_counters->num_swap[i]=0;
 			}
 		}
-  }
-	
+	}
+
 void end_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
 	{
 	if(param->d_N_replica_pt>1)
@@ -324,7 +324,7 @@ void end_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
 	}
   
 void print_acceptances(Acc_Utils const * const acc_counters, GParam const * const param)
-  {
+	{
 	if(param->d_N_replica_pt==1)
 		{
 		(void) acc_counters; // to suppress compiler warning of unused variable
@@ -356,52 +356,52 @@ void print_acceptances(Acc_Utils const * const acc_counters, GParam const * cons
 	}
 
 void init_swap_track_file(FILE **swaptrackfilep, GParam const * const param)
-{
-	if (param->d_N_replica_pt > 1)
 	{
-		if (param->d_start==2) // starting run from saved conf
+	if (param->d_N_replica_pt > 1)
 		{
+		if (param->d_start==2) // starting run from saved conf
+			{
 			*swaptrackfilep=fopen(param->d_swap_tracking_file, "r");
 			if(*swaptrackfilep!=NULL) // file exists -> close it and re-open it in append mode
-			{
+				{
 				fclose(*swaptrackfilep);
 				*swaptrackfilep=fopen(param->d_swap_tracking_file, "a");
-			}
+				}
 			else // file does not exist -> create it and write first line
-			{
+				{
 				*swaptrackfilep=fopen(param->d_swap_tracking_file, "w");
 				fprintf(*swaptrackfilep, "# MC_step    conf_labels\n");
 				fflush(*swaptrackfilep);
+				}
 			}
-		}
 		else // starting run from scratch
-		{
+			{
 			*swaptrackfilep=fopen(param->d_swap_tracking_file, "w");
 			fprintf(*swaptrackfilep, "# MC_step    conf_labels\n");
 			fflush(*swaptrackfilep);
+			}
 		}
-	}
 	else // no need of this file if num_replica = 1
-	{
+		{
 		(void) swaptrackfilep; // to suppress compiler warning of unused variable
 		(void) param; // to suppress compiler warning of unused variable
+		}
 	}
-}
-  
+
 void print_conf_labels(FILE *fp, Gauge_Conf const * const GC, GParam const * const param)
-{
-	if (param->d_N_replica_pt>1)
 	{
+	if (param->d_N_replica_pt>1)
+		{
 		fprintf(fp, "%ld      ",GC[0].update_index);
 		for(int r=0;r<(param->d_N_replica_pt);r++) fprintf(fp,"%d ",GC[r].conf_label);
 		fprintf(fp,"\n");
 		fflush(fp);
-	}
+		}
 	else
-	{
+		{
 		(void) fp; // to suppress compiler warning of unused variable
 		(void) GC; // to suppress compiler warning of unused variable
 		(void) param;  // to suppress compiler warning of unused variable
+		}
 	}
-}
 #endif

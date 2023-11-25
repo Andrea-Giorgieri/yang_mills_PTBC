@@ -51,7 +51,7 @@ void real_main(char *in_file)
 	strcpy(name_gf, aux);
 	strcat(name_gf, "_gf");
 	strcpy(name_agf, aux);
-	strcat(name_gf, "_agf");
+	strcat(name_agf, "_agf");
 	strcpy(param.d_data_file, name_gf);
     init_data_file(&datafilep_gf, &chiprimefilep, &topchar_tcorr_filep, &param);
 	strcpy(param.d_data_file, name_agf);

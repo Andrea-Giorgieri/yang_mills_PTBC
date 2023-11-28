@@ -73,10 +73,15 @@ void real_main(char *in_file)
     init_data_file(&datafilep3, &chiprimefilep, &topchar_tcorr_filep, &param);
 	strcpy(param.d_data_file, aux);
 	
-	step_filep0 = fopen("step_file0.dat", "w");
-	step_filep1 = fopen("step_file1.dat", "w");
-	step_filep2 = fopen("step_file2.dat", "w");
-	step_filep3 = fopen("step_file3.dat", "w");
+	
+	step_filep0 = fopen("step_file0.dat", "a");
+	if (step_filep0 == NULL) step_filep0 = fopen("step_file0.dat", "w");
+	step_filep1 = fopen("step_file1.dat", "a");
+	if (step_filep1 == NULL) step_filep0 = fopen("step_file1.dat", "w");
+	step_filep2 = fopen("step_file2.dat", "a");
+	if (step_filep2 == NULL) step_filep0 = fopen("step_file2.dat", "w");
+	step_filep3 = fopen("step_file3.dat", "a");
+	if (step_filep3 == NULL) step_filep0 = fopen("step_file3.dat", "w");
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);

@@ -504,7 +504,7 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					if (temp_d >= 0) param->d_agf_time_bin=temp_d;
+					if (temp_d >= 0) param->d_agf_time_bin=temp_d+MIN_VALUE;
 					else fprintf(stderr, "Error: adf_time_bin must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 

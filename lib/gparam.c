@@ -95,7 +95,7 @@ void readinput(char *in_file, GParam *param)
 	param->d_agf_meas_each = 1.0;
 	param->d_agf_step = 0.01;
 	param->d_agf_delta = 0.001;
-	param->d_agf_time_bin = 0.000001;
+	param->d_agf_time_bin = 0;
 	
 	param->d_coolsteps = 0;
 	param->d_coolrepeat = 0;
@@ -504,8 +504,8 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					if (temp_d > 0) param->d_agf_time_bin=temp_d;
-					else fprintf(stderr, "Error: adf_time_bin must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					if (temp_d >= 0) param->d_agf_time_bin=temp_d;
+					else fprintf(stderr, "Error: adf_time_bin must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 
 			else if(strncmp(str, "multihit", 8)==0)
@@ -1650,7 +1650,7 @@ void print_parameters_local_pt_agf(GParam const * const param, time_t time_start
 	fprintf(fp, "agf_length		%lf\n",	param->d_agf_length);
 	fprintf(fp, "agf_step:		%lf\n", param->d_agf_step);
 	fprintf(fp, "agf_meas_each	%lf\n",	param->d_agf_meas_each);
-	fprintf(fp, "agf_delta		%lf\n",	param->d_agf_delta);
+	fprintf(fp, "agf_delta		%e\n",	param->d_agf_delta);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);
@@ -1761,7 +1761,7 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 	fprintf(fp, "agf_length		%lf\n",	param->d_agf_length);
 	fprintf(fp, "agf_step:		%lf\n", param->d_agf_step);
 	fprintf(fp, "agf_meas_each	%lf\n",	param->d_agf_meas_each);
-	fprintf(fp, "agf_delta		%lf\n",	param->d_agf_delta);
+	fprintf(fp, "agf_delta		%e\n",	param->d_agf_delta);
 	fprintf(fp, "\n");
 	
 	fprintf(fp, "gfstep:		%lf\n", param->d_gfstep);
@@ -1795,6 +1795,124 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 	fclose(fp);
 	}
 
+void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3)
+	{
+	FILE *fp;
+	int i;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+-----------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for debug_agf_vs_gf |\n");
+	fprintf(fp, "+-----------------------------------------------+\n\n");
+
+	#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	#endif
+
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for(i=1; i<STDIM-1; i++)
+		{
+		fprintf(fp, "x%d", param->d_L_defect[i]);
+		}
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "twist parameters: ");
+	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_L_rect[i]);
+			}
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+		fprintf(fp,"\n\n");
+
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	#ifdef THETA_MODE
+		fprintf(fp, "theta: %.10lf\n", param->d_theta);
+	#endif
+	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tcorr_meas: %d\n", param->d_topcharge_tcorr_meas);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "sample:	%d\n", param->d_sample);
+	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:						%d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:		%d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every:	%d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "agf_length		%lf\n",	param->d_agf_length);
+	fprintf(fp, "agf_step:		%lf\n", param->d_agf_step);
+	fprintf(fp, "agf_meas_each	%lf\n",	param->d_agf_meas_each);
+	fprintf(fp, "agf_delta		%e\n",	param->d_agf_delta);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "gfstep:		%lf\n", param->d_gfstep);
+	fprintf(fp, "num_gfsteps	%d\n",	param->d_ngfsteps);
+	fprintf(fp, "gf_meas_each	%d\n",	param->d_gf_meas_each);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "coolsteps:		%d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:	%d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "Simulation time:              %d seconds\n", (int)time_mc );
+	fprintf(fp, "Adaptive gradflow time:\n");
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1.0000, (int)time_agf0);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/10.000, (int)time_agf1);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/100.00, (int)time_agf2);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1000.0, (int)time_agf3);
+	fprintf(fp, "\n");
+
+	if(endian()==0)
+		{
+		fprintf(fp, "Little endian machine\n\n");
+		}
+	else
+		{
+		fprintf(fp, "Big endian machine\n\n");
+		}
+	
+	fclose(fp);
+	}
 // print simulation parameters
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end)
 	{

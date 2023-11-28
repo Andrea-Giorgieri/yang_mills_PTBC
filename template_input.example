@@ -16,7 +16,7 @@ beta  6.4881
 
 sample     10
 thermal    0
-overrelax  5
+overrelax  1
 measevery  1
 
 start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc
@@ -28,12 +28,7 @@ agf_length       10    # total integration time for adaptive gradient flow
 agf_step       0.01    # initial integration step for adaptive gradient flow
 agf_meas_each     1    # time interval between measures during adaptive gradient flow
 agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow
-agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow
-
-# For gradient flow evolution
-gfstep       0.001     # integration step for gradient flow
-num_gfsteps  10000     # number of integration steps for gradient flow
-gf_meas_each  1000     # compute observables every <gfstep_each> integration steps during the gradient flow
+agf_time_bin      0    # error threshold on time of measures for adaptive gradient flow
 
 # Observables to measure
 plaquette_meas        0  # 1=YES, 0=NO

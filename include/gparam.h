@@ -122,6 +122,7 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time);
+void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3);
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);

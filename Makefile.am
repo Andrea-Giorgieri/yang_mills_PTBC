@@ -6,6 +6,7 @@ bin_PROGRAMS = conf_check \
 			debug_u1 \
 			debug_twist \
 			debug_agf_vs_gf \
+			debug_agf_vs_delta \
 			yang_mills_local \
 			yang_mills_polycorr \
 			yang_mills_polycorr_long \
@@ -380,6 +381,21 @@ yang_mills_gradflow_all_conf_SOURCES=./src/yang_mills_gradflow_all_conf.c \
                        $(u1)
 
 debug_agf_vs_gf_SOURCES=./src/debug_agf_vs_gf.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+debug_agf_vs_delta_SOURCES=./src/debug_agf_vs_delta.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

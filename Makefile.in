@@ -79,8 +79,9 @@ POST_UNINSTALL = :
 bin_PROGRAMS = conf_check$(EXEEXT) debug_rng$(EXEEXT) \
 	debug_su2$(EXEEXT) debug_su2_adj$(EXEEXT) debug_sun$(EXEEXT) \
 	debug_u1$(EXEEXT) debug_twist$(EXEEXT) \
-	debug_agf_vs_gf$(EXEEXT) yang_mills_local$(EXEEXT) \
-	yang_mills_polycorr$(EXEEXT) yang_mills_polycorr_long$(EXEEXT) \
+	debug_agf_vs_gf$(EXEEXT) debug_agf_vs_delta$(EXEEXT) \
+	yang_mills_local$(EXEEXT) yang_mills_polycorr$(EXEEXT) \
+	yang_mills_polycorr_long$(EXEEXT) \
 	yang_mills_polycorradj$(EXEEXT) yang_mills_t0$(EXEEXT) \
 	yang_mills_tube_conn$(EXEEXT) \
 	yang_mills_tube_conn_long$(EXEEXT) \
@@ -134,6 +135,13 @@ am__objects_10 = ./lib/gauge_conf_def.$(OBJEXT) \
 am__objects_11 = ./lib/geometry.$(OBJEXT)
 am__objects_12 = ./lib/tens_prod.$(OBJEXT) \
 	./lib/tens_prod_adj.$(OBJEXT)
+am_debug_agf_vs_delta_OBJECTS = ./src/debug_agf_vs_delta.$(OBJEXT) \
+	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
+	$(am__objects_5) $(am__objects_6) $(am__objects_7) \
+	$(am__objects_8) $(am__objects_12) $(am__objects_9)
+debug_agf_vs_delta_OBJECTS = $(am_debug_agf_vs_delta_OBJECTS)
+debug_agf_vs_delta_LDADD = $(LDADD)
 am_debug_agf_vs_gf_OBJECTS = ./src/debug_agf_vs_gf.$(OBJEXT) \
 	$(am__objects_1) $(am__objects_2) $(am__objects_3) \
 	$(am__objects_4) $(am__objects_10) $(am__objects_11) \
@@ -321,11 +329,11 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(conf_check_SOURCES) $(debug_agf_vs_gf_SOURCES) \
-	$(debug_rng_SOURCES) $(debug_su2_SOURCES) \
-	$(debug_su2_adj_SOURCES) $(debug_sun_SOURCES) \
-	$(debug_twist_SOURCES) $(debug_u1_SOURCES) \
-	$(yang_mills_gradflow_all_conf_SOURCES) \
+SOURCES = $(conf_check_SOURCES) $(debug_agf_vs_delta_SOURCES) \
+	$(debug_agf_vs_gf_SOURCES) $(debug_rng_SOURCES) \
+	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
+	$(debug_sun_SOURCES) $(debug_twist_SOURCES) \
+	$(debug_u1_SOURCES) $(yang_mills_gradflow_all_conf_SOURCES) \
 	$(yang_mills_gradient_flow_SOURCES) \
 	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
 	$(yang_mills_local_pt_agf_SOURCES) \
@@ -337,11 +345,11 @@ SOURCES = $(conf_check_SOURCES) $(debug_agf_vs_gf_SOURCES) \
 	$(yang_mills_tracedef_SOURCES) $(yang_mills_tube_conn_SOURCES) \
 	$(yang_mills_tube_conn_long_SOURCES) \
 	$(yang_mills_tube_disc_SOURCES)
-DIST_SOURCES = $(conf_check_SOURCES) $(debug_agf_vs_gf_SOURCES) \
-	$(debug_rng_SOURCES) $(debug_su2_SOURCES) \
-	$(debug_su2_adj_SOURCES) $(debug_sun_SOURCES) \
-	$(debug_twist_SOURCES) $(debug_u1_SOURCES) \
-	$(yang_mills_gradflow_all_conf_SOURCES) \
+DIST_SOURCES = $(conf_check_SOURCES) $(debug_agf_vs_delta_SOURCES) \
+	$(debug_agf_vs_gf_SOURCES) $(debug_rng_SOURCES) \
+	$(debug_su2_SOURCES) $(debug_su2_adj_SOURCES) \
+	$(debug_sun_SOURCES) $(debug_twist_SOURCES) \
+	$(debug_u1_SOURCES) $(yang_mills_gradflow_all_conf_SOURCES) \
 	$(yang_mills_gradient_flow_SOURCES) \
 	$(yang_mills_local_SOURCES) $(yang_mills_local_pt_SOURCES) \
 	$(yang_mills_local_pt_agf_SOURCES) \
@@ -861,6 +869,21 @@ debug_agf_vs_gf_SOURCES = ./src/debug_agf_vs_gf.c \
                           $(tens_prod) \
                           $(u1)
 
+debug_agf_vs_delta_SOURCES = ./src/debug_agf_vs_delta.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
 AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
 CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tcorr_cool.dat*
 all: config.h
@@ -1000,7 +1023,7 @@ lib/$(DEPDIR)/$(am__dirstamp):
 conf_check$(EXEEXT): $(conf_check_OBJECTS) $(conf_check_DEPENDENCIES) $(EXTRA_conf_check_DEPENDENCIES) 
 	@rm -f conf_check$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(conf_check_OBJECTS) $(conf_check_LDADD) $(LIBS)
-./src/debug_agf_vs_gf.$(OBJEXT): src/$(am__dirstamp) \
+./src/debug_agf_vs_delta.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 ./lib/gauge_conf_def.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
@@ -1020,6 +1043,12 @@ conf_check$(EXEEXT): $(conf_check_OBJECTS) $(conf_check_DEPENDENCIES) $(EXTRA_co
 	lib/$(DEPDIR)/$(am__dirstamp)
 ./lib/tens_prod_adj.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
+
+debug_agf_vs_delta$(EXEEXT): $(debug_agf_vs_delta_OBJECTS) $(debug_agf_vs_delta_DEPENDENCIES) $(EXTRA_debug_agf_vs_delta_DEPENDENCIES) 
+	@rm -f debug_agf_vs_delta$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(debug_agf_vs_delta_OBJECTS) $(debug_agf_vs_delta_LDADD) $(LIBS)
+./src/debug_agf_vs_gf.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 debug_agf_vs_gf$(EXEEXT): $(debug_agf_vs_gf_OBJECTS) $(debug_agf_vs_gf_DEPENDENCIES) $(EXTRA_debug_agf_vs_gf_DEPENDENCIES) 
 	@rm -f debug_agf_vs_gf$(EXEEXT)
@@ -1182,6 +1211,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./lib/$(DEPDIR)/u1.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./lib/$(DEPDIR)/u1_upd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/conf_check.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_agf_vs_delta.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_agf_vs_gf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_rng.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./src/$(DEPDIR)/debug_su2.Po@am__quote@

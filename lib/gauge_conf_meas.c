@@ -705,7 +705,7 @@ double topcharge_prime(Gauge_Conf const * const GC,
 double topo_chi_prime(Gauge_Conf const * const GC,
                  Geometry const * const geo,
                  GParam const * const param)
-{
+	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 	{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -731,7 +731,7 @@ double topo_chi_prime(Gauge_Conf const * const GC,
 void topcharge_timeslices(Gauge_Conf const * const GC,
                  Geometry const * const geo,
                  GParam const * const param, double *ris, int ncool, FILE *topchar_tcorr_filep)
-{
+	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 	{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -856,7 +856,6 @@ void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
 	}
 	free(sum_q_timeslices);
 	}
-
 
 // compute topological observables (Q, chi_prime) after some cooling
 // in the cooling procedure the action at theta=0 is minimized
@@ -1245,7 +1244,6 @@ void topcharge_clover_energy_gradflow(Gauge_Conf const * const GC,
 	}
 	}
 
-
 // compute the correlator of the local topological charge
 // after "ncool" cooling steps up to spatial distance "dist"
 void loc_topcharge_corr(Gauge_Conf const * const GC,
@@ -1254,7 +1252,7 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
                     int ncool,
                     int dist,
                     double *ris)
-   {
+	{
    if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
      {
      fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -1341,12 +1339,11 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
    free(topch);
    }
 
-
 void perform_measures_localobs(Gauge_Conf *GC,
                                Geometry const * const geo,
                                GParam const * const param,
                                FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
-   {
+	{
    #if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
      int i, err;
      double plaqs, plaqt, polyre, polyim, *charge, *chi_prime, *meanplaq, charge_nocooling, chi_prime_nocooling;
@@ -1921,10 +1918,11 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 		gftime = 0.0;
 		gftime_step = param->d_agf_step;
 		meas_count = 0;
+		fprintf(step_filep, "%ld %.12g %.12g ", GC->update_index, gftime, gftime_step);
 		while(meas_count < gradflowrepeat)
 			{
-			fprintf(step_filep, "%ld %.12g %.12g ", GC->update_index, gftime, gftime_step);
-			gradflow_RKstep_adaptive_debug(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted, step_filep);
+			gradflow_RKstep_adaptive(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted);
+			fprintf(step_filep, "%.12g %.12g ", gftime, gftime_step);
 			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) <= param->d_agf_time_bin ) 	//step accepted, perform measures
 				{
 				if (param->d_plaquette_meas == 1 ) 
@@ -1946,12 +1944,12 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 				if (param->d_charge_prime_meas == 1) for (i=0; i<STDIM; i++) charge_prime[meas_count][i]=topcharge_prime(&helperconf, geo, param, i);
 				meas_count = meas_count + 1;
 				}
-			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin ) //adapt step to the time of next measure
+			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin || meas_count+2 == gradflowrepeat) //adapt step to the time of next measure
 				{
 				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
 				}
-			fprintf(step_filep, "\n");
 			}
+		fprintf(step_filep, "\n");
 		
 		// print meas gradflow
 		for(i=0; i<gradflowrepeat; i++)
@@ -2129,7 +2127,7 @@ void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
                                              Geometry const * const geo,
                                              GParam const * const param,
                                              FILE *datafilep)
-   {
+	{
    #if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 
      int i, err;
@@ -2194,7 +2192,7 @@ void optimize_multihit_polycorr(Gauge_Conf *GC,
                                 Geometry const * const geo,
                                 GParam const * const param,
                                 FILE *datafilep)
-  {
+	{
   const int max_hit=50;
   const int dir=1;
 
@@ -2292,7 +2290,7 @@ void optimize_multilevel_polycorr(Gauge_Conf *GC,
                                   Geometry const * const geo,
                                   GParam const * const param,
                                   FILE *datafilep)
-   {
+	{
    int i, err;
    long r;
    double complex poly_corr;
@@ -2372,7 +2370,7 @@ void perform_measures_polycorr(Gauge_Conf *GC,
                                Geometry const * const geo,
                                GParam const * const param,
                                FILE *datafilep)
-   {
+	{
    #ifndef OPT_MULTIHIT
    #ifndef OPT_MULTILEVEL
      double ris;
@@ -2422,7 +2420,7 @@ void optimize_multihit_polycorradj(Gauge_Conf *GC,
                                    Geometry const * const geo,
                                    GParam const * const param,
                                    FILE *datafilep)
-  {
+	{
   const int max_hit=50;
   const int dir=1;
 
@@ -2528,7 +2526,7 @@ void optimize_multilevel_polycorradj(Gauge_Conf *GC,
                                      Geometry const * const geo,
                                      GParam const * const param,
                                      FILE *datafilep)
-   {
+	{
    int i, err;
    long r;
    double poly_corr, poly_corr_abs, poly_corr_fluct;
@@ -2608,7 +2606,7 @@ void perform_measures_polycorradj(Gauge_Conf *GC,
                                   Geometry const * const geo,
                                   GParam const * const param,
                                   FILE *datafilep)
-   {
+	{
    #ifndef OPT_MULTIHIT
    #ifndef OPT_MULTILEVEL
      double ris;
@@ -2657,7 +2655,7 @@ void perform_measures_polycorradj(Gauge_Conf *GC,
 void optimize_multilevel_polycorr_long(Gauge_Conf *GC,
                                        GParam const * const param,
                                        FILE *datafilep)
-   {
+	{
    int i, err;
    long r;
    double poly_corr_abs, poly_corr_fluct;
@@ -2737,7 +2735,7 @@ void optimize_multilevel_polycorr_long(Gauge_Conf *GC,
 void perform_measures_polycorr_long(Gauge_Conf *GC,
                                     GParam const * const param,
                                     FILE *datafilep)
-   {
+	{
    #ifdef OPT_MULTILEVEL
       optimize_multilevel_polycorr_long(GC, param, datafilep);
    #else
@@ -2775,7 +2773,7 @@ void perform_measures_tube_disc(Gauge_Conf *GC,
                                 Geometry const * const geo,
                                 GParam const * const param,
                                 FILE *datafilep)
-   {
+	{
    double risr, risi;
    long r;
    int i;
@@ -2830,7 +2828,7 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
                                 Geometry const * const geo,
                                 GParam const * const param,
                                 FILE *datafilep)
-   {
+	{
    double risr, risi;
    long r;
    int i;
@@ -2896,7 +2894,7 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 void perform_measures_tube_conn_long(Gauge_Conf *GC,
                                      GParam const * const param,
                                      FILE *datafilep)
-   {
+	{
    double risr, risi;
    long r;
    int i;

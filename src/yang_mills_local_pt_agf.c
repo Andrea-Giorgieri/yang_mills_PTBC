@@ -190,7 +190,7 @@ void print_template_input(void)
 		fprintf(fp,"\n");
 		fprintf(fp, "sample     10\n");
 		fprintf(fp, "thermal    0\n");
-		fprintf(fp, "overrelax  5\n");
+		fprintf(fp, "overrelax  1\n");
 		fprintf(fp, "measevery  1\n");
 		fprintf(fp,"\n");
 		fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
@@ -202,7 +202,7 @@ void print_template_input(void)
 		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
 		fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
 		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
-		fprintf(fp, "agf_time_bin 0.0001    # error threshold on time of measures for adaptive gradient flow\n");
+		fprintf(fp, "agf_time_bin      0    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "# Observables to measure\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");

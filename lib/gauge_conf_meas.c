@@ -1646,7 +1646,7 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC,
 	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) fprintf(datafilep, "%.12g ", charge_prime_nogradflow[i]);
 	
 	// meas gradflow
-	gradflowrepeat = (int)(param->d_agf_length/param->d_agf_meas_each);
+	gradflowrepeat = (int)round(param->d_agf_length/param->d_agf_meas_each);
 	if (gradflowrepeat > 0)
 		{
 		Gauge_Conf helperconf_old, helperconf, help1, help2, help3;
@@ -1842,7 +1842,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) fprintf(datafilep, "%.12g ", charge_prime_nogradflow[i]);
 	
 	// meas gradflow
-	gradflowrepeat = (int)(param->d_agf_length/param->d_agf_meas_each);
+	gradflowrepeat = (int)round(param->d_agf_length/param->d_agf_meas_each);
 	if (gradflowrepeat > 0)
 		{
 		Gauge_Conf helperconf_old, helperconf, help1, help2, help3;

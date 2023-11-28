@@ -1797,7 +1797,7 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 		}
 	// new integration step
 	*dt = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
-	
+	free(local_max_dist);
 	}
 	
 void gradflow_RKstep_adaptive_debug(Gauge_Conf *GC,
@@ -1957,7 +1957,7 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf *GC,
 		}
 	// new integration step
 	*dt = *dt * 0.95 * pow(param->d_agf_delta/mean_dist, 1.0/3.0);
-	
+	free(local_max_dist);
 	}
 	
 // n step of ape smearing with parameter alpha

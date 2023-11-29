@@ -791,6 +791,7 @@ void topcharge_timeslices_cooling(Gauge_Conf const * const GC,
 			topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, (iter+1)*param->d_coolsteps, topchar_tcorr_filep);
 		}
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		fflush(topchar_tcorr_filep);
 	}
 	else // no cooling
@@ -846,8 +847,11 @@ void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
 		
 		fflush(topchar_tcorr_filep);
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 	}
 	else	// no gradient flow
 	{
@@ -899,7 +903,8 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
         #endif
         }
 
-     free_gauge_conf(&helperconf, param); 
+     free_gauge_conf(&helperconf, param);
+	 free_twist_cond(&helperconf, param);
      }
    else   // no cooling
      {
@@ -966,8 +971,11 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 		}
 
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 	}
 	else	// no gradient flow
 	{
@@ -1023,8 +1031,11 @@ void topo_obs_clover_energy_gradflow(Gauge_Conf const * const GC,
 		}
 
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 	}
 	else	// no gradient flow
 	{
@@ -1058,7 +1069,8 @@ void check_correlation_decay_cooling(Gauge_Conf const * const GC, Geometry const
 			satd = sum_abs_topcharge_dens(&helperconf, geo, param);
 			ratio[iter] = (satd-Q)/satd;
 		}
-		free_gauge_conf(&helperconf, param); 
+		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 	}
 }
 
@@ -1112,7 +1124,8 @@ void topcharge_cooling(Gauge_Conf const * const GC,
         #endif
         }
 
-     free_gauge_conf(&helperconf, param); 
+     free_gauge_conf(&helperconf, param);
+	 free_twist_cond(&helperconf, param);
      }
    else   // no cooling
      {
@@ -1176,8 +1189,11 @@ void topcharge_gradflow(Gauge_Conf const * const GC,
 		}
 
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 	}
 	else   // no gradient flow
 	{
@@ -1231,8 +1247,11 @@ void topcharge_clover_energy_gradflow(Gauge_Conf const * const GC,
 		}
 
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 	}
 	else   // no gradient flow
 	{
@@ -1291,6 +1310,7 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 
      // free helperconf
      free_gauge_conf(&helperconf, param);
+	 free_twist_cond(&helperconf, param);
      }
    else
      {
@@ -1569,8 +1589,11 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 		}
 		
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 		if (param->d_plaquette_meas == 1 ) free(meanplaq);
 		if (param->d_clover_energy_meas == 1 ) free(clover_energy);
 		if (param->d_charge_meas == 1 ) free(charge);
@@ -1763,10 +1786,15 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC,
 			}
 		
 		free_gauge_conf(&helperconf_old, param);
+		free_twist_cond(&helperconf_old, param);
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 		free_gauge_conf(&help3, param);
+		free_twist_cond(&help3, param);
 		if (param->d_plaquette_meas == 1 ) free(meanplaq);
 		if (param->d_clover_energy_meas == 1 ) free(clover_energy);
 		if (param->d_charge_meas == 1 ) free(charge);
@@ -1962,10 +1990,15 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 			}
 		
 		free_gauge_conf(&helperconf_old, param);
+		free_twist_cond(&helperconf_old, param);
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 		free_gauge_conf(&help3, param);
+		free_twist_cond(&help3, param);
 		if (param->d_plaquette_meas == 1 ) free(meanplaq);
 		if (param->d_clover_energy_meas == 1 ) free(clover_energy);
 		if (param->d_charge_meas == 1 ) free(charge);
@@ -2095,8 +2128,11 @@ void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
 		}
 		
 		free_gauge_conf(&helperconf, param);
+		free_twist_cond(&helperconf, param);
 		free_gauge_conf(&help1, param);
+		free_twist_cond(&help1, param);
 		free_gauge_conf(&help2, param);
+		free_twist_cond(&help2, param);
 		free(clover_energy);
 		free(charge);
 		if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);

@@ -17,10 +17,10 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam con
 
 int main(void)
 	{
-	double plaqs, plaqt, plaqs_new, plaqt_new, C_a, C_b, energy, action, swapped_action, re_tr_plaq_a, re_tr_plaq_b, K_a, K_b;
-	double complex z, w, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover, Z_a, Z_b;
+	double plaqs, plaqt, plaqs_new, plaqt_new, energy, action, swapped_action, re_tr_plaq_a, re_tr_plaq_b, K_a, K_b;
+	double complex z, trace_calcstaples, trace_plaquettep, trace_plaquettep_swap, trace_clover, Z_a, Z_b;
 	char in_file[] = "input_file_ym_pt";
-	int i, j, k, err=0;
+	int i, j, err=0;
 	long r=0;
 	
 	Gauge_Conf *GC;
@@ -311,7 +311,6 @@ int main(void)
 
 void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param, int dir)
 	{
-	double aux;
 	long s;
 	Gauge_Conf aux_conf;
 

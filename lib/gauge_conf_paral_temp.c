@@ -8,6 +8,7 @@
 #include<stdlib.h>
 #include<math.h>
 
+#include"../include/memalign.h"
 #include"../include/gparam.h"
 #include"../include/geometry.h"
 #include"../include/gauge_conf.h"
@@ -20,7 +21,7 @@
 void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
 				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
 	{
-	int aux_i, i, j, err, num_swaps, is_even, is_even_first;
+	int aux_i, i, j, num_swaps, is_even, is_even_first;
 	long k, s, num_even, num_odd, num_swaps_1, num_swaps_2;
 	double *metro_swap_prob;
 	
@@ -31,12 +32,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 	num_swaps = ((param->d_N_replica_pt)-1);
 	
 	// define auxiliary array to store metropolis swap probabilities
-	err=posix_memalign( (void **) &(metro_swap_prob), (size_t) DOUBLE_ALIGN, (size_t) num_swaps * sizeof(double));
-	if(err!=0)
-		{
-		fprintf(stderr, "Problems in allocating the acceptances array (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	allocate_array_double(&metro_swap_prob, num_swaps, __FILE__, __LINE__);
 	
 	// set all probabilities to 0
 	for(k=0; k<num_swaps; k++)
@@ -274,7 +270,6 @@ void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const *
 
 	// free auxiliary conf, including the twist factors
 	free_gauge_conf(&aux_conf, param);
-	free_twist_cond(&aux_conf, param);
 	}
 	
 void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
@@ -286,23 +281,9 @@ void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
 		}
 	else
 		{
-		int i,err;
-	
-		err=posix_memalign( (void **) &(acc_counters->num_accepted_swap), (size_t) INT_ALIGN, (size_t) ((param->d_N_replica_pt)-1) * sizeof(long));
-		if(err!=0)
-			{
-			fprintf(stderr, "Problems in allocating the acceptances array (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-
-		err=posix_memalign( (void **) &(acc_counters->num_swap), (size_t) INT_ALIGN, (size_t) ((param->d_N_replica_pt)-1) * sizeof(long));
-		if(err!=0)
-			{
-			fprintf(stderr, "Problems in allocating the acceptances array (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-	
-		for(i=0;i<((param->d_N_replica_pt)-1);i++) 
+		allocate_array_long(&(acc_counters->num_accepted_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
+		allocate_array_long(&(acc_counters->num_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
+		for(int i=0; i<(param->d_N_replica_pt-1); i++) 
 			{
 			acc_counters->num_accepted_swap[i]=0;
 			acc_counters->num_swap[i]=0;

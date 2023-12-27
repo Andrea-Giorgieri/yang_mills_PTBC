@@ -59,7 +59,7 @@
 #define NLEVELS 1
 
 /* Number of threads to be used in OpenMP */
-#define NTHREADS 48
+#define NTHREADS 32
 
 /* Enable the use of openmp */
 #define OPENMP_MODE /**/

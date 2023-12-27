@@ -5,30 +5,26 @@ defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2
 defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)
 N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients
 
-# Twist parameters
-k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...
 # Hierarchical update parameters
 # Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle
 hierarc_upd 2    2 1    1 1
+
+# Twist parameters
+k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...
 
 # Simulations parameters
 beta  6.4881
 
 sample     10
 thermal    0
-overrelax  1
+overrelax  5
 measevery  1
 
 start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc
 saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates
 saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates
 
-# For adaptive gradient flow evolution
-agf_length       10    # total integration time for adaptive gradient flow
-agf_step       0.01    # initial integration step for adaptive gradient flow
-agf_meas_each     1    # time interval between measures during adaptive gradient flow
-agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow
-agf_time_bin      0    # error threshold on time of measures for adaptive gradient flow
+randseed 0    # (0=time)
 
 # Observables to measure
 plaquette_meas        0  # 1=YES, 0=NO
@@ -38,14 +34,20 @@ polyakov_meas         0  # 1=YES, 0=NO
 chi_prime_meas        0  # 1=YES, 0=NO
 topcharge_tcorr_meas  0  # 1=YES, 0=NO
 
+# For adaptive gradient flow evolution
+agf_length       10    # total integration time for adaptive gradient flow
+agf_step       0.01    # initial integration step for adaptive gradient flow
+agf_meas_each     1    # time interval between measures during adaptive gradient flow
+agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow
+agf_time_bin      0    # error threshold on time of measures for adaptive gradient flow
+
 # Output files
 conf_file             conf.dat
 twist_file            twist.dat
 data_file             dati.dat
-chiprime_data_file    chiprime_cool.dat
+chiprime_data_file    chi_prime_cool.dat
 topcharge_tcorr_file  topo_tcorr_cool.dat
 log_file              log.dat
 swap_acc_file         swap_acc.dat
 swap_track_file       swap_track.dat
 
-randseed 0    # (0=time)

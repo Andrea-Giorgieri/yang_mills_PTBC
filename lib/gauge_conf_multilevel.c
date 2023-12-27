@@ -9,6 +9,7 @@
 #endif
 #include<stdlib.h>
 
+#include"../include/memalign.h"
 #include"../include/function_pointers.h"
 #include"../include/gauge_conf.h"
 #include"../include/gparam.h"

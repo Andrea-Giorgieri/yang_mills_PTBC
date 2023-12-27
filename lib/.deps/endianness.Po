@@ -1,13 +1,18 @@
 lib/endianness.o: lib/endianness.c /usr/include/stdc-predef.h \
- /usr/include/stdlib.h /usr/include/features.h /usr/include/sys/cdefs.h \
- /usr/include/bits/wordsize.h /usr/include/gnu/stubs.h \
+ /usr/include/stdlib.h /usr/include/bits/libc-header-start.h \
+ /usr/include/features.h /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
+ /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h \
- /marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/stddef.h \
- /usr/include/bits/stdlib-float.h lib/../include/endianness.h
+ /leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/intel-oneapi-compilers-2023.0.0-ad24mh4soaclwr7gkzad65dglmi5ideg/compiler/2023.0.0/linux/bin/intel64/../../compiler/include/icc/stddef.h \
+ /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
+ /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
+ lib/../include/endianness.h
 
 /usr/include/stdc-predef.h:
 
 /usr/include/stdlib.h:
+
+/usr/include/bits/libc-header-start.h:
 
 /usr/include/features.h:
 
@@ -15,11 +20,19 @@ lib/endianness.o: lib/endianness.c /usr/include/stdc-predef.h \
 
 /usr/include/bits/wordsize.h:
 
+/usr/include/bits/long-double.h:
+
 /usr/include/gnu/stubs.h:
 
 /usr/include/gnu/stubs-64.h:
 
-/marconi/prod/opt/compilers/intel/pe-xe-2018/binary/compilers_and_libraries_2018.5.274/linux/compiler/include/stddef.h:
+/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/intel-oneapi-compilers-2023.0.0-ad24mh4soaclwr7gkzad65dglmi5ideg/compiler/2023.0.0/linux/bin/intel64/../../compiler/include/icc/stddef.h:
+
+/usr/include/bits/floatn.h:
+
+/usr/include/bits/floatn-common.h:
+
+/usr/include/bits/stdlib-bsearch.h:
 
 /usr/include/bits/stdlib-float.h:
 

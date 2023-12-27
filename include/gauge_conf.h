@@ -5,18 +5,18 @@
 
 #include<complex.h>
 #ifdef HASH_MODE
-	#include<openssl/md5.h>
+#include<openssl/md5.h>
 #endif
 #include<stdio.h>
 
 #include"gparam.h"
 #include"geometry.h"
+//#include"memalign.h"
+#include"u1.h"
 #include"su2.h"
 #include"sun.h"
 #include"tens_prod.h"
 #include"tens_prod_adj.h"
-#include"u1.h"
-
 
 typedef struct Gauge_Conf {
 
@@ -62,6 +62,7 @@ typedef struct Acc_Utils {
 
 
 // in gauge_conf_def.c
+void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const param);
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
 					 GParam const * const param, char const * const filename);
 void init_gauge_conf(Gauge_Conf *GC,
@@ -261,10 +262,22 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 					int ncool,
 					int dist,
 					double *ris);
+void perform_measures_aux(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+							int const meas_count, double * const meanplaq, double * const clover_energy,
+							double * const charge, double * const sum_q_timeslices, double * const chi_prime,
+							double * const (charge_prime[STDIM]), FILE * const topchar_tcorr_filep);
 void perform_measures_localobs(Gauge_Conf *GC,
 								Geometry const * const geo,
 								GParam const * const param,
 								FILE *datafilep, FILE *chiprimefilep, FILE*);
+void perform_measures_localobs_notopo(Gauge_Conf *GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								FILE *datafilep);
+void perform_measures_localobs_cooling(Gauge_Conf *GC,
+                               Geometry const * const geo,
+                               GParam const * const param,
+                               FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep);
 void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
 								Geometry const * const geo,
 								GParam const * const param,
@@ -277,10 +290,10 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											FILE *datafilep, FILE *chiprimefilep, FILE*, FILE*);
-void perform_measures_localobs_clover_energy_with_gradflow(Gauge_Conf *GC,
+void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											FILE *datafilep, FILE *chiprimefilep, FILE*);
+											FILE *datafilep, FILE *chiprimefilep, FILE*, FILE*);
 void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
 											 Geometry const * const geo,
 											 GParam const * const param,
@@ -329,6 +342,18 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 void perform_measures_tube_conn_long(Gauge_Conf *GC,
 									 GParam const * const param,
 									 FILE *datafilep);
+
+void allocate_measures_arrays(int const num_meas, GParam const * const param, double **meanplaq,
+								double **clover_energy, double **charge, double **sum_q_timeslices,
+								double **chi_prime, double ***charge_prime);
+void allocate_measures_arrays_cooling(int const num_meas, GParam const * const param,
+										double **meanplaq, double **charge, double **chi_prime);
+void print_measures_arrays(int const num_meas, long const update_index, GParam const * const param, double *meanplaq,
+							double *clover_energy, double *charge, double *chi_prime, double **charge_prime,
+							FILE *datafilep, FILE *chiprimefilep);
+void free_measures_arrays(int const num_meas, GParam const * const param, double *meanplaq, double *clover_energy,
+							double *charge, double *sum_q_timeslices,
+							double *chi_prime, double **charge_prime);
 
 // in gauge_conf_multilevel.c
 void multihit(Gauge_Conf const * const GC,
@@ -381,7 +406,7 @@ void multilevel_tube_conn_long(Gauge_Conf * GC,
 // in gauge_conf_upd.c
 void calcstaples_wilson(Gauge_Conf const * const GC,
 						Geometry const * const geo,
-						GParam const * const gparam,
+						GParam const * const GParam,
 						long r,
 						int i,
 						GAUGE_GROUP *M);
@@ -495,8 +520,17 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf *GC,
 					GParam const *const param,
 					double *t,
 					double *dt,
-					int *accepted,
-					FILE *step_filep);
+					int *accepted, double *total_error);
+void gradflow_RKstep_adaptive_debug2(Gauge_Conf *GC,
+					Gauge_Conf *GC_old,
+					Gauge_Conf *helper1,
+					Gauge_Conf *helper2,
+					Gauge_Conf *helper3,
+					Geometry const * const geo,
+					GParam const *const param,
+					double *t,
+					double *dt,
+					int *accepted, double *total_error);
 void ape_smearing(Gauge_Conf *GC,
 					Geometry const * const geo,
 					GParam const *const param,

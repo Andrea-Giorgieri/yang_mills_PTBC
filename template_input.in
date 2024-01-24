@@ -1,0 +1,25 @@
+size 12 4 4 12  # Nt Nx Ny Nz
+
+# For adaptive gradient flow evolution
+agf_length       10    # total integration time for adaptive gradient flow
+agf_step       0.01    # initial integration step for adaptive gradient flow
+agf_meas_each     1    # time interval between measures during adaptive gradient flow
+agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow
+agf_time_bin  0.001    # error threshold on time of measures for adaptive gradient flow
+
+# Observables to measure
+plaquette_meas        0  # 1=YES, 0=NO
+clover_energy_meas    1  # 1=YES, 0=NO
+charge_meas           1  # 1=YES, 0=NO
+polyakov_meas         0  # 1=YES, 0=NO
+chi_prime_meas        0  # 1=YES, 0=NO
+topcharge_tprof_meas  0  # 1=YES, 0=NO
+
+# Output files
+conf_file             conf.dat
+data_file             dati.dat
+chiprime_data_file    chi_prime_cool.dat
+topcharge_tprof_file  topo_tprof_cool.dat
+log_file              log.dat
+
+randseed 0    #(0=time)

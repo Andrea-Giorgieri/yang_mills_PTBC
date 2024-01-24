@@ -84,7 +84,7 @@ void real_main(char *in_file)
 	time(&time1);
 	if (param.d_sample == 0) // no update is done, only measures are performed on read configuration
 	{
-		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+		perform_measures_localobs_cooling(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 	}
 	else
 	{
@@ -96,7 +96,7 @@ void real_main(char *in_file)
 			// measure local observables
 			if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 			{
-				perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
+				perform_measures_localobs_cooling(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 			}
 
 			// save configuration for backup

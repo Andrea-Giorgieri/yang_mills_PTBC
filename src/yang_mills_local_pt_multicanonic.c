@@ -93,7 +93,7 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 		{
-			perform_measures_localobs(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep); // N.B. Here, the stored running charge of GC[0] is refreshed
+			perform_measures_localobs_cooling(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep); // N.B. Here, the stored running charge of GC[0] is refreshed
 			refresh_topo_charge_replica(GC, &geo, &param); // refresh topological charge also for the other replicas
 		}
 

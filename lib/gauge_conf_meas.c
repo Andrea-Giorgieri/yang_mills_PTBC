@@ -1,4 +1,4 @@
-﻿#ifndef GAUGE_CONF_MEAS_C
+#ifndef GAUGE_CONF_MEAS_C
 #define GAUGE_CONF_MEAS_C
 
 #include"../include/macro.h"
@@ -959,8 +959,53 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
    free(topch);
    }
 
+void perform_measures_localobs(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
+								FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tprof_filep)
+	{
+	int i;
+	double plaqs, plaqt, polyre, polyim, clover_energy, charge=0.0, chi_prime=0.0, charge_prime[STDIM]; // =0.0 to suppress gcc warning
+	double *sum_q_timeslices;
+	
+	// perform meas
+	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy);
+	if (param->d_charge_meas == 1 ) charge=topcharge(GC, geo, param);
+	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_chi_prime_meas == 1 ) chi_prime=topo_chi_prime(GC, geo, param);
+	//if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) charge_prime[i]=topcharge_prime(GC, geo, param, i); // not implemented on this branch
+	if (param->d_topcharge_tprof_meas == 1 )
+		{
+		if(posix_memalign((void **)&sum_q_timeslices, (size_t)DOUBLE_ALIGN, (size_t)param->d_size[0]*sizeof(double)) != 0)
+			{
+			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tprof_filep);
+		}
+	else {(void) topchar_tprof_filep;}
+	
+	// refresh topological charge of periodic replica (only for multicanonic)
+	GC->stored_topo_charge = charge;
 
-void perform_measures_localobs(Gauge_Conf *GC,
+	// print meas (topcharge_tprof_timeslices already printed by topcharge_timeslices())
+	fprintf(datafilep, "%ld ", GC->update_index);
+	if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
+	if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy);
+	if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge);
+	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
+	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime);
+	//if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) fprintf(datafilep, "%.12g ", charge_prime[i]); // not implemented on this branch
+
+	fflush(datafilep);
+	if (param->d_topcharge_tprof_meas == 1 ) 
+		{
+		free(sum_q_timeslices);
+		fflush(topchar_tprof_filep);
+		}
+	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	}
+
+void perform_measures_localobs_cooling(Gauge_Conf *GC,
                                Geometry const * const geo,
                                GParam const * const param,
                                FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tprof_filep)
@@ -1119,7 +1164,6 @@ void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
 
    #endif
    }
-
 
 // to optimize the number of hits to be used in multilevel
 void optimize_multihit_polycorr(Gauge_Conf *GC,

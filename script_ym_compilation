@@ -1,0 +1,43 @@
+#!/bin/bash
+
+NCOLORS=3
+STDIM=4
+NLEVELS=1
+
+NTHREADS=32
+
+compile_targets='yang_mills_adaptive_gradient_flow'
+
+# compile everything
+#compile_targets='conf_check debug_rng debug_su2 debug_su2_adj debug_sun debug_u1 yang_mills_local yang_mills_polycorr yang_mills_polycorr_long yang_mills_polycorradj yang_mills_t0 yang_mills_tube_conn yang_mills_tube_conn_long yang_mills_tube_disc yang_mills_tracedef yang_mills_local_pt yang_mills_local_pt_multicanonic yang_mills_gradient_flow yang_mills_adaptive_gradient_flow'
+
+# 1=yes, 0=no
+ENABLE_THETA=0
+ENABLE_OPENMP=1
+
+flag_theta=''
+flag_openmp=''
+if [ "${ENABLE_THETA}" -eq '1' ]; then flag_theta='--enable-use-theta'; fi
+if [ "${ENABLE_OPENMP}" -eq '1' ]; then flag_openmp='--enable-use-openmp'; fi
+
+chmod +x configure
+if [ -d lib/.deps ]; then make clean; fi
+
+aclocal
+autoheader
+autoconf
+automake
+
+# optimized configuration for Marconi (optimized compilation with Intel compiler on Intel Skylake processors)
+module load intel
+./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=skylake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
+
+# optimized configuration for Leonardo (optimized compilation with Intel compiler on Intel Icelake processors)
+#module load intel-oneapi-compilers
+#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
+
+# optimized compilation with gcc
+#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=gcc CFLAGS='-O3' LIBS="-ldl -lz -lc"
+
+# compile
+make ${compile_targets} -j 32

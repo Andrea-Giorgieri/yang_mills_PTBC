@@ -20,7 +20,7 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the <omp.h> header file. */
-/* #undef HAVE_OMP_H */
+#define HAVE_OMP_H 1
 
 /* Define to 1 if you have the <openssl/md5.h> header file. */
 #define HAVE_OPENSSL_MD5_H 1
@@ -59,10 +59,10 @@
 #define NLEVELS 1
 
 /* Number of threads to be used in OpenMP */
-#define NTHREADS 1
+#define NTHREADS 32
 
 /* Enable the use of openmp */
-/* #undef OPENMP_MODE */
+#define OPENMP_MODE /**/
 
 /* Name of package */
 #define PACKAGE "yang_mills"

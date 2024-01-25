@@ -1566,6 +1566,40 @@ void print_parameters_gf(GParam * param, time_t time_start, time_t time_end)
 	fclose(fp);
 	}
 
+void print_parameters_agf(GParam * param, time_t time_start, time_t time_end)
+	{
+	FILE *fp;
+	int i;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+----------------------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_adaptive_gradient_flow |\n");
+	fprintf(fp, "+----------------------------------------------------------+\n\n");
+	
+	print_configuration_parameters(fp);
+	
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+	
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
+	fprintf(fp, "\n\n");
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+	
+	print_adaptive_gradflow_parameters(fp, param);
+	
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+	
+	fclose(fp);
+	}
+
 void print_parameters_tracedef(GParam const * const param, time_t time_start, time_t time_end, double acc)
 	{
 	FILE *fp;

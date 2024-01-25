@@ -143,6 +143,7 @@ void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t ti
 void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_t0(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_gf(GParam * param, time_t time_start, time_t time_end);
+void print_parameters_agf(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_tracedef(GParam const * const param, time_t time_start, time_t time_end, double acc);
 void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_end);

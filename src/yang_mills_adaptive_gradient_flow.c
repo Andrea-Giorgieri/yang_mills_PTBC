@@ -26,9 +26,9 @@ void real_main(char *in_file)
 
 	int meas_count, gradflowrepeat, accepted;
 	double gftime, gftime_step;
-	double 	*meanplaq, *clover_energy, *chi_prime, *charge, *sum_q_timeslices;
+	double 	*meanplaq, *clover_energy, *chi_prime, *charge, **charge_prime, *sum_q_timeslices;
 
-	FILE *datafilep, *chiprimefilep, *topchar_tprod_filep;
+	FILE *datafilep, *chiprimefilep, *topchar_tcorr_filep;
 	time_t time1, time2;
 
 	// to disable nested parallelism
@@ -47,7 +47,7 @@ void real_main(char *in_file)
 	initrand(param.d_randseed);
 
 	// open data files
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tprod_filep, &param);
+	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
 
 	// initialize geometry
 	init_indexing_lexeo();
@@ -65,7 +65,7 @@ void real_main(char *in_file)
 	allocate_measures_arrays(gradflowrepeat, &param, &meanplaq, &clover_energy, &charge, &sum_q_timeslices, &chi_prime, &charge_prime);
 	
 	// meas no gradflow
-	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprod_filep);
+	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
 
 	// gradflow starts
 	time(&time1);
@@ -99,7 +99,7 @@ void real_main(char *in_file)
 	fprintf(datafilep, "\n");
 	fclose(datafilep);
 	if (param.d_chi_prime_meas == 1 ) fclose(chiprimefilep);
-	if (param.d_topcharge_tprod_meas == 1 ) fclose(topchar_tprod_filep);
+	if (param.d_topcharge_tcorr_meas == 1 ) fclose(topchar_tcorr_filep);
 
 	// free memory
 	free_measures_arrays(gradflowrepeat, &param, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime);
@@ -120,11 +120,11 @@ void print_template_input(void)
 	{
 	FILE *fp;
 
-	fp = fopen("template_input.in", "w");
+	fp = fopen("template_input.example", "w");
 
 	if(fp == NULL)
 		{
-		fprintf(stderr, "Error in opening the file template_input.in (%s, %d)\n", __FILE__, __LINE__);
+		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
 	else

@@ -118,11 +118,11 @@ void print_template_input(void)
 	{
 	FILE *fp;
 	
-	fp=fopen("template_input.in", "w");
+	fp=fopen("template_input.example", "w");
 	
 	if(fp==NULL)
 		{
-		fprintf(stderr, "Error in opening the file template_input.in (%s, %d)\n", __FILE__, __LINE__);
+		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
 	else

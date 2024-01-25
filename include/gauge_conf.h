@@ -11,7 +11,6 @@
 
 #include"gparam.h"
 #include"geometry.h"
-//#include"memalign.h"
 #include"u1.h"
 #include"su2.h"
 #include"sun.h"
@@ -342,7 +341,6 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 void perform_measures_tube_conn_long(Gauge_Conf *GC,
 									 GParam const * const param,
 									 FILE *datafilep);
-
 void allocate_measures_arrays(int const num_meas, GParam const * const param, double **meanplaq,
 								double **clover_energy, double **charge, double **sum_q_timeslices,
 								double **chi_prime, double ***charge_prime);
@@ -406,7 +404,7 @@ void multilevel_tube_conn_long(Gauge_Conf * GC,
 // in gauge_conf_upd.c
 void calcstaples_wilson(Gauge_Conf const * const GC,
 						Geometry const * const geo,
-						GParam const * const GParam,
+						GParam const * const gparam,
 						long r,
 						int i,
 						GAUGE_GROUP *M);

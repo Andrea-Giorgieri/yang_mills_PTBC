@@ -2,10 +2,6 @@
 #define MEMALIGN_H
 
 #include"macro.h"
-
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
 #include<complex.h>
 
 #include"u1.h"

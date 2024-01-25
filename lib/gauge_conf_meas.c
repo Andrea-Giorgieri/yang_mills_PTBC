@@ -1,4 +1,4 @@
-﻿#ifndef GAUGE_CONF_MEAS_C
+#ifndef GAUGE_CONF_MEAS_C
 #define GAUGE_CONF_MEAS_C
 
 #include"../include/macro.h"
@@ -517,14 +517,14 @@ double loc_topcharge(Gauge_Conf const * const GC,
 					long r)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		(void) GC;
 		(void) geo;
 		(void) param;
 		(void) r;
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 	
 	double ris;
 	
@@ -554,7 +554,7 @@ double loc_topcharge(Gauge_Conf const * const GC,
 	loc_charge=0.0;
 	
 	for(i=0; i<3; i++)
-	{
+		{
 		clover(GC, geo, param, r, dir[0][i], dir[1][i], &aux1);
 		clover(GC, geo, param, r, dir[2][i], dir[3][i], &aux2);
 		
@@ -566,7 +566,7 @@ double loc_topcharge(Gauge_Conf const * const GC,
 		
 		loc_charge+=((double) sign*(real1-real2));
 		sign=-sign;
-	}
+		}
 	ris=(loc_charge*chnorm);
 	#endif
 	
@@ -619,10 +619,10 @@ double topcharge_prime(Gauge_Conf const * const GC,
 						GParam const * const param, int const dir)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 	
 	int i, cartcoord[STDIM];
 	double ris, *tmp;
@@ -699,10 +699,10 @@ void topcharge_timeslices(Gauge_Conf const * const GC,
 						GParam const * const param, double *ris, int ncool, FILE *topchar_tcorr_filep)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 
 	long r;
 	int N_t = param->d_size[0];
@@ -712,10 +712,10 @@ void topcharge_timeslices(Gauge_Conf const * const GC,
 	#pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+:ris[:N_t])
 	#endif
 	for(r=0; r<(param->d_volume); r++)
-	{
+		{
 		int t = geo->d_timeslice[r];
 		ris[t] += loc_topcharge(GC, geo, param, r);
-	}
+		}
 
 	fprintf(topchar_tcorr_filep, "%ld %d ", GC->update_index, ncool);
 	for (int i=0; i<param->d_size[0]; i++) fprintf(topchar_tcorr_filep, " %.12g", ris[i]);
@@ -770,10 +770,10 @@ void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
 									FILE *topchar_tcorr_filep)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 	
 	double *sum_q_timeslices;
 	
@@ -834,7 +834,7 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 	if(param->d_coolsteps>0)	// if using cooling
 		{	
 		Gauge_Conf helperconf; 
-		double ris, plaqs, plaqt;
+		double plaqs, plaqt;
 		int iter;
 
 		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
@@ -843,18 +843,15 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
 			cooling(&helperconf, geo, param, param->d_coolsteps);
-
-			ris=topcharge(&helperconf, geo, param);
-			charge[iter]=ris;
-
-				ris=topo_chi_prime(&helperconf, geo, param);
-				chi_prime[iter]=ris;
-
+			
+			charge[iter] = topcharge(&helperconf, geo, param);
+			chi_prime[iter] = topo_chi_prime(&helperconf, geo, param);
+			
 			plaquette(&helperconf, geo, param, &plaqs, &plaqt);
 			#if(STDIM==4)
-			 meanplaq[iter]=0.5*(plaqs+plaqt);
+			meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			 meanplaq[iter]=plaqt;
+			meanplaq[iter]=plaqt;
 			#endif
 			}
 
@@ -866,20 +863,20 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 		int iter;
 
 		ris=topcharge(GC, geo, param);
-		 ris2=topo_chi_prime(GC, geo, param);
+		ris2=topo_chi_prime(GC, geo, param);
 		plaquette(GC, geo, param, &plaqs, &plaqt);
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
 			charge[iter]=ris;
-				chi_prime[iter]=ris2;
+			chi_prime[iter]=ris2;
 			#if(STDIM==4)
-			 meanplaq[iter]=0.5*(plaqs+plaqt);
+			meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			 meanplaq[iter]=plaqt;
+			meanplaq[iter]=plaqt;
 			#endif
 			}
-		} 
+		}
 	}
 	
 
@@ -891,13 +888,13 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 											double *meanplaq)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 
 	if(param->d_ngfsteps>0)	// if using gradient flow
-	{	
+		{	
 		Gauge_Conf helperconf, help1, help2; 
 		double plaqs, plaqt;
 		int count, meas_count;
@@ -905,14 +902,14 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
 		init_gauge_conf_from_gauge_conf(&help1, GC, param);
 		init_gauge_conf_from_gauge_conf(&help2, GC, param);
-
+		
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
-		{
+			{
 			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
-			{
+				{
 				meas_count = count/param->d_gf_meas_each-1;
 				charge[meas_count]=topcharge(&helperconf, geo, param);
 				chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
@@ -922,17 +919,17 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 				#else
 					meanplaq[meas_count]=plaqt;
 				#endif
+				}
 			}
-		}
-
+		
 		free_gauge_conf(&helperconf, param);
 		free_gauge_conf(&help1, param);
 		free_gauge_conf(&help2, param);
-	}
+		}
 	else	// no gradient flow
-	{
+		{
 		double plaqs, plaqt; 
-
+		
 		charge[0]=topcharge(GC, geo, param);
 		chi_prime[0]=topo_chi_prime(GC, geo, param);
 		plaquette(GC, geo, param, &plaqs, &plaqt);
@@ -941,7 +938,7 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 		#else
 			meanplaq[0]=plaqt;
 		#endif
-	}
+		}
 	}
 
 	
@@ -999,7 +996,7 @@ void topo_obs_clover_energy_gradflow(Gauge_Conf const * const GC,
 /*---------------------------------------------*/
 // OBSERVABLE NEEDED JUST TO CHECK HOW COOLING DESTROYS TOPOLOGICAL CORRELATIONS
 void check_correlation_decay_cooling(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param, double *ratio)
-{
+	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -1020,18 +1017,18 @@ void check_correlation_decay_cooling(Gauge_Conf const * const GC, Geometry const
 			}
 		free_gauge_conf(&helperconf, param);
 		}
-}
+	}
 
 
 double sum_abs_topcharge_dens(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param)
-{
+	{
 	double sum=0.0;
 	for (long r=0; r<(param->d_volume); r++)
-	{
+		{
 		sum += fabs(loc_topcharge(GC, geo, param, r));
-	}
+		}
 	return sum;
-}
+	}
 
 /*---------------------------------------------*/
 
@@ -1048,28 +1045,27 @@ void topcharge_cooling(Gauge_Conf const * const GC,
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-
+	
 	if(param->d_coolsteps>0)	// if using cooling
 		{	
 		Gauge_Conf helperconf; 
-		double ris, plaqs, plaqt;
+		double plaqs, plaqt;
 		int iter;
-
+		
 		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
 		// helperconf is a copy of the configuration
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
 			cooling(&helperconf, geo, param, param->d_coolsteps);
-
-			ris=topcharge(&helperconf, geo, param);
-			charge[iter]=ris;
-
+			
+			charge[iter] = topcharge(&helperconf, geo, param);
+			
 			plaquette(&helperconf, geo, param, &plaqs, &plaqt);
 			#if(STDIM==4)
-			 meanplaq[iter]=0.5*(plaqs+plaqt);
+				meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			 meanplaq[iter]=plaqt;
+				meanplaq[iter]=plaqt;
 			#endif
 			}
 
@@ -1087,9 +1083,9 @@ void topcharge_cooling(Gauge_Conf const * const GC,
 			{
 			charge[iter]=ris;
 			#if(STDIM==4)
-			 meanplaq[iter]=0.5*(plaqs+plaqt);
+				meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			 meanplaq[iter]=plaqt;
+				meanplaq[iter]=plaqt;
 			#endif
 			}
 		} 
@@ -1232,13 +1228,13 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 	if(ncool>0)
 		{
 		Gauge_Conf helperconf;
-
+		
 		// helperconf is a copy of GC
 		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-
+		
 		// cool helperconf
 		cooling(&helperconf, geo, param, ncool);
-
+		
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
@@ -1246,7 +1242,7 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 			{
 			topch[r]=loc_topcharge(&helperconf, geo, param, r);
 			}
-
+		
 		// free helperconf
 		free_gauge_conf(&helperconf, param);
 		}
@@ -1260,7 +1256,7 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 			topch[r]=loc_topcharge(GC, geo, param, r);
 			}
 		}
-
+	
 	// compute correlators
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(i)
@@ -1270,13 +1266,13 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 		double aux;
 		long r1, r2;
 		int j, dir;
-
+		
 		ris[i]=0.0;
-
+		
 		for(r1=0; r1<param->d_volume; r1++)
 			{
 			aux=0.0;
-
+			
 			for(dir=1; dir<STDIM; dir++)
 				{
 				r2=r1;
@@ -1287,12 +1283,12 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 				aux+=topch[r2];
 				}
 			aux/=(double)(STDIM-1);
-
+			
 			ris[i]+=aux*topch[r1];
 			}
 		ris[i]*=param->d_inv_vol;
 		}
-
+	
 	// free memory
 	free(topch);
 	}

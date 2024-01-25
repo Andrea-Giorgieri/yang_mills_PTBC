@@ -203,7 +203,10 @@ int main (int argc, char **argv)
 	
 	if(argc != 2)
 		{
-		printf("\nSU(N) Hasenbusch Parallel Tempering + multicanonic algorithm implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+		int parallel_tempering = 1;
+		int twisted_bc = 0;
+		print_authors(parallel_tempering, twisted_bc);
+		
 		printf("Usage: %s input_file\n\n", argv[0]);
 		
 		print_compilation_details();

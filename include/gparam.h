@@ -8,13 +8,6 @@
 #include<time.h>
 #include<complex.h>
 
-//#include"u1.h"
-//#include"su2.h"
-//#include"sun.h"
-//#include"geometry.h"
-//#include"tens_prod.h"
-//#include"tens_prod_adj.h"
-
 typedef struct GParam {
 	// lattice dimensions
 	int d_size[STDIM];
@@ -117,7 +110,7 @@ typedef struct GParam {
 	double d_grid_step;
 	double d_grid_max;
 
-} GParam;
+	} GParam;
 
 
 void readinput(char *in_file, GParam *param);
@@ -168,22 +161,8 @@ void print_template_multicanonic_parameters(FILE *fp);
 void print_template_multilevel_parameters(FILE *fp);
 void print_template_output_parameters(FILE *fp);
 
-// print compilation details
+// print program details
+void print_authors(int parallel_tempering, int twisted_bc);
 void print_compilation_details();
 
-/*
-// allocate arrays
-void allocate_array_int(int **const array, long size, char const * const file, int const line);
-void allocate_array_long(long **const array, long size, char const * const file, int const line);
-void allocate_array_long_pointer(long ***const array, long size, char const * const file, int const line);
-void allocate_array_Rectangle(Rectangle **const array, long size, char const * const file, int line);
-void allocate_array_double(double **const array, long size, char const * const file, int const line);
-void allocate_array_double_pointer(double ***const array, long size, char const * const file, int const line);
-void allocate_array_double_complex(double complex **const array, long size, char const * const file, int const line);
-void allocate_array_double_complex_pointer(double complex ***const array, long size, char const * const file, int line);
-void allocate_array_GAUGE_GROUP(GAUGE_GROUP **const array, long size, char const * const file, int line);
-void allocate_array_GAUGE_GROUP_pointer(GAUGE_GROUP ***const array, long size, char const * const file, int line);
-void allocate_array_GAUGE_GROUP_pointer_pointer(GAUGE_GROUP ****const array, long size, char const * const file, int line);
-void allocate_array_Gauge_Conf(Gauge_Conf **const array, long size, char const * const file, int line);
-*/
 #endif

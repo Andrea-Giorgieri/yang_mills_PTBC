@@ -1798,14 +1798,25 @@ void print_template_output_parameters(FILE *fp)
 	fprintf(fp, "\n");
 	}
 
-// print compilation details
+// print program details
+
+void print_authors(int parallel_tempering, int twisted_bc)
+	{
+	printf("\n");
+	if(parallel_tempering==1)
+		printf("SU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com)\n");
+	if(twisted_bc==1)
+		printf("Twisted Boundary Conditions implemented by Andrea Giorgieri (andrea.giorgieri.pi@gmail.com)\n");
+	if(parallel_tempering==1 || twisted_bc==1)
+		printf("within yang-mills package\n\n");
+	
+	printf("Details about yang-mills package:\n");
+	printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
+	}
 
 void print_compilation_details()
 	{
-	printf("\nDetails about yang-mills package:\n");
-	printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
-	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
-	
 	printf("Compilation details:\n");
 	printf("\tN_c (number of colors): %d\n", NCOLOR);
 	printf("\tST_dim (space-time dimensionality): %d\n", STDIM);
@@ -1844,7 +1855,7 @@ void print_compilation_details()
 	printf("\tcompiled with gcc version: %d.%d.%d\n",
 		__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 	#endif
+	printf("\n");
 	}
 
 #endif
-

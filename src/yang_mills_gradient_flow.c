@@ -124,6 +124,10 @@ int main (int argc, char **argv)
 	
 	if(argc != 2)
 		{
+		int parallel_tempering = 0;
+		int twisted_bc = 1;
+		print_authors(parallel_tempering, twisted_bc);
+		
 		printf("Usage: %s input_file\n\n", argv[0]);
 		
 		print_compilation_details();

@@ -12,7 +12,6 @@
 
 #include"../include/function_pointers.h"
 #include"../include/memalign.h"
-#include"../include/gparam.h"
 
 // get the spacetime dimension
 void getspacetimedim(char *infile, int *dim)
@@ -154,7 +153,7 @@ void computehash(char *infile, int dim, long volume, char *hash)
 int main (int argc, char **argv)
 	{
 	char infile[STD_STRING_LENGTH];
-	int dim, *sides, error;
+	int dim, *sides;
 
 	#ifdef HASH_MODE
 		long volumel;

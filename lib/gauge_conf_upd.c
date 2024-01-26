@@ -1688,8 +1688,8 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 		taexp(&aux);
 		times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
 		
-		unitarize(&(GC->lattice[r][dir]));
-		unitarize(&(helper1->lattice[r][dir]));
+		//unitarize(&(GC->lattice[r][dir]));
+		//unitarize(&(helper1->lattice[r][dir]));
 		}
 	}
 	// now helper1=W_0, helper2=Z_0 and GC=W_1
@@ -1719,9 +1719,9 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 		taexp(&aux);
 		times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
 		
-		unitarize(&(GC->lattice[r][dir]));
-		unitarize(&(helper1->lattice[r][dir]));
-		unitarize(&(helper3->lattice[r][dir]));
+		//unitarize(&(GC->lattice[r][dir]));
+		//unitarize(&(helper1->lattice[r][dir]));
+		//unitarize(&(helper3->lattice[r][dir]));
 		}
 	}
 	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0, helper3=W'_2, and GC=W_1

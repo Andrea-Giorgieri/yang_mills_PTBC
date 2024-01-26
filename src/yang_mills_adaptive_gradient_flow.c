@@ -131,6 +131,16 @@ void print_template_input(void)
 		{
 		print_template_volume_parameters(fp);
 		print_template_adaptive_gradflow_parameters(fp);
+		
+		fprintf(fp, "# Observables to measure\n");
+		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
+		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
+		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
+		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
+		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
+		fprintf(fp,"\n");
+		
 		fprintf(fp, "# Output files\n");
 		fprintf(fp, "conf_file  conf.dat\n");
 		fprintf(fp, "twist_file twist.dat\n");

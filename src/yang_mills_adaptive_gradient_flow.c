@@ -203,7 +203,8 @@ void print_template_input(void)
 		
 		fprintf(fp, "# Input files\n");
 		fprintf(fp, "conf_file             conf.dat\n");
-
+		fprintf(fp,"\n");
+		
 		fprintf(fp, "# Output files\n");
 		fprintf(fp, "data_file             dati.dat\n");
 		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");

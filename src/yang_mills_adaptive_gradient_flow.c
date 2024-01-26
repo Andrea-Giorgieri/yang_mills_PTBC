@@ -200,9 +200,11 @@ void print_template_input(void)
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
 		fprintf(fp,"\n");
+		
+		fprintf(fp, "# Input files\n");
+		fprintf(fp, "conf_file             conf.dat\n");
 
 		fprintf(fp, "# Output files\n");
-		fprintf(fp, "conf_file             conf.dat\n");
 		fprintf(fp, "data_file             dati.dat\n");
 		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
 		fprintf(fp, "topcharge_tprof_file  topo_tprof_cool.dat\n");

@@ -15,8 +15,10 @@ polyakov_meas         0  # 1=YES, 0=NO
 chi_prime_meas        0  # 1=YES, 0=NO
 topcharge_tprof_meas  0  # 1=YES, 0=NO
 
-# Output files
+# Input files
 conf_file             conf.dat
+
+# Output files
 data_file             dati.dat
 chiprime_data_file    chi_prime_cool.dat
 topcharge_tprof_file  topo_tprof_cool.dat

@@ -26,12 +26,12 @@ void real_main(char *in_file)
 
 	int meas_count, gradflowrepeat, accepted;
 	double gftime, gftime_step;
-	double 	*meanplaq, *clover_energy, *chi_prime, *charge, *sum_q_timeslices;
+	double *meanplaq, *clover_energy, *chi_prime, *charge, *sum_q_timeslices;
 
 	FILE *datafilep, *chiprimefilep, *topchar_tprof_filep;
 	time_t time1, time2;
 
-	// to disable nested parallelism
+// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
@@ -59,108 +59,105 @@ void real_main(char *in_file)
 	init_gauge_conf_from_gauge_conf(&help1, &GC, &param);
 	init_gauge_conf_from_gauge_conf(&help2, &GC, &param);
 	init_gauge_conf_from_gauge_conf(&help3, &GC, &param);
-	
+
 	// allocate meas arrays
-	gradflowrepeat = (int)floor((param.d_agf_length+MIN_VALUE)/param.d_agf_meas_each); // number of meas to perform
+	gradflowrepeat = (int)floor((param.d_agf_length + MIN_VALUE) / param.d_agf_meas_each); // number of meas to perform
 	if(param.d_plaquette_meas == 1)
-		if(posix_memalign((void **)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat*sizeof(double)) != 0)
+		if(posix_memalign((void **)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
 			{
 			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 	if(param.d_clover_energy_meas == 1)
-		if(posix_memalign((void **)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat*sizeof(double)) != 0)
+		if(posix_memalign((void **)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
 			{
 			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-	if (param.d_charge_meas == 1)
-		if(posix_memalign((void **)&charge, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat*sizeof(double)) != 0)
+	if(param.d_charge_meas == 1)
+		if(posix_memalign((void **)&charge, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
 			{
 			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-	if(param.d_topcharge_tprof_meas == 1 ) // notice the size, measures are handled differently
-		if(posix_memalign((void **)&sum_q_timeslices, (size_t)DOUBLE_ALIGN, (size_t)param.d_size[0]*sizeof(double)) != 0)
+	if(param.d_topcharge_tprof_meas == 1) // notice the size, measures are handled differently
+		if(posix_memalign((void **)&sum_q_timeslices, (size_t)DOUBLE_ALIGN, (size_t)param.d_size[0] * sizeof(double)) != 0)
 			{
 			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 	if(param.d_chi_prime_meas == 1)
-		if(posix_memalign((void **)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat*sizeof(double)) != 0)
+		if(posix_memalign((void **)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
 			{
 			fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-	
+
 	// meas no gradflow
 	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tprof_filep);
 
 	// gradflow starts
 	time(&time1);
-	gftime = 0.0;						// gradient flow time
-	gftime_step = param.d_agf_step; 	// initial integration time step
-	meas_count = 0; 					// meas counter
-	
+	gftime = 0.0;					// gradient flow time
+	gftime_step = param.d_agf_step; // initial integration time step
+	meas_count = 0;					// meas counter
+
 	while(meas_count < gradflowrepeat)
 		{
 		// integration step
 		gradflow_RKstep_adaptive(&GC, &GC_old, &help1, &help2, &help3, &geo, &param, &gftime, &gftime_step, &accepted);
-		
+
 		// step accepted, perform measures if it is time to do so
-		if (accepted == 1 && fabs(gftime - param.d_agf_meas_each*(meas_count+1)) - param.d_agf_time_bin < MIN_VALUE )
+		if(accepted == 1 && fabs(gftime - param.d_agf_meas_each * (meas_count + 1)) - param.d_agf_time_bin < MIN_VALUE)
 			{
-			if (param.d_plaquette_meas == 1 ) 
+			if(param.d_plaquette_meas == 1)
 				{
 				double plaqs, plaqt;
 				plaquette(&GC, &geo, &param, &plaqs, &plaqt);
-				#if(STDIM==4)
-				meanplaq[meas_count]=0.5*(plaqs+plaqt);
+				#if(STDIM == 4)
+				meanplaq[meas_count] = 0.5 * (plaqs + plaqt);
 				#else
-				meanplaq[meas_count]=plaqt;
+				meanplaq[meas_count] = plaqt;
 				#endif
 				}
-			if (param.d_clover_energy_meas == 1 ) clover_disc_energy(&GC, &geo, &param, &clover_energy[meas_count]);
-			if (param.d_charge_meas == 1 ) charge[meas_count]=topcharge(&GC, &geo, &param);
-			if (param.d_topcharge_tprof_meas == 1 ) topcharge_timeslices(&GC, &geo, &param, sum_q_timeslices, meas_count+1, topchar_tprof_filep);				
-			if (param.d_chi_prime_meas == 1) chi_prime[meas_count]=topo_chi_prime(&GC, &geo, &param);
+			if(param.d_clover_energy_meas == 1) clover_disc_energy(&GC, &geo, &param, &clover_energy[meas_count]);
+			if(param.d_charge_meas == 1) charge[meas_count] = topcharge(&GC, &geo, &param);
+			if(param.d_topcharge_tprof_meas == 1) topcharge_timeslices(&GC, &geo, &param, sum_q_timeslices, meas_count + 1, topchar_tprof_filep);
+			if(param.d_chi_prime_meas == 1) chi_prime[meas_count] = topo_chi_prime(&GC, &geo, &param);
 			meas_count = meas_count + 1;
 			}
-		
+
 		// adapt step to the time of next measure
-		if ((gftime + gftime_step - param.d_agf_meas_each*(meas_count+1)) > param.d_agf_time_bin )
-			{
-			gftime_step = param.d_agf_meas_each*(meas_count+1) - gftime;
-			}
+		if((gftime + gftime_step - param.d_agf_meas_each * (meas_count + 1)) > param.d_agf_time_bin) { gftime_step = param.d_agf_meas_each * (meas_count + 1) - gftime; }
 		}
 	time(&time2);
 	// gradflow ends
-	
+
 	// print meas gradflow, close files
-	for(int i=0; i<gradflowrepeat; i++)
+	for(int i = 0; i < gradflowrepeat; i++)
 		{
-		if (param.d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g ", meanplaq[i]);
-		if (param.d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy[i]);
-		if (param.d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge[i]);
-		if (param.d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %.12lg %.12lg\n", GC.update_index, (i+1)*param.d_agf_meas_each, chi_prime[i]);
+		if(param.d_plaquette_meas == 1) fprintf(datafilep, "%.12g ", meanplaq[i]);
+		if(param.d_clover_energy_meas == 1) fprintf(datafilep, "%.12g ", clover_energy[i]);
+		if(param.d_charge_meas == 1) fprintf(datafilep, "%.12g ", charge[i]);
+		if(param.d_chi_prime_meas == 1) fprintf(chiprimefilep, "%ld %.12lg %.12lg\n", GC.update_index, (i + 1) * param.d_agf_meas_each, chi_prime[i]);
 		}
 	fprintf(datafilep, "\n");
 	fclose(datafilep);
-	if (param.d_chi_prime_meas == 1 ) fclose(chiprimefilep);
-	if (param.d_topcharge_tprof_meas == 1 ) fclose(topchar_tprof_filep);
-		
+	if(param.d_chi_prime_meas == 1) fclose(chiprimefilep);
+	if(param.d_topcharge_tprof_meas == 1) fclose(topchar_tprof_filep);
+
 	// free memory
-	if (param.d_plaquette_meas == 1 ) free(meanplaq);
-	if (param.d_clover_energy_meas == 1 ) free(clover_energy);
-	if (param.d_charge_meas == 1 ) free(charge);
-	if (param.d_topcharge_tprof_meas == 1 ) free(sum_q_timeslices);
-	if (param.d_chi_prime_meas == 1 ) free(chi_prime);
+	if(param.d_plaquette_meas == 1) free(meanplaq);
+	if(param.d_clover_energy_meas == 1) free(clover_energy);
+	if(param.d_charge_meas == 1) free(charge);
+	if(param.d_topcharge_tprof_meas == 1) free(sum_q_timeslices);
+	if(param.d_chi_prime_meas == 1) free(chi_prime);
 	free_gauge_conf(&GC, &param);
 	free_gauge_conf(&GC_old, &param);
 	free_gauge_conf(&help1, &param);
 	free_gauge_conf(&help2, &param);
 	free_gauge_conf(&help3, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 
@@ -181,9 +178,9 @@ void print_template_input(void)
 		}
 	else
 		{
-		fprintf(fp,"size 12 4 4 12  # Nt Nx Ny Nz\n");
-		fprintf(fp,"\n");
-		
+		fprintf(fp, "size 12 4 4 12  # Nt Nx Ny Nz\n");
+		fprintf(fp, "\n");
+
 		fprintf(fp, "# For adaptive gradient flow evolution\n");
 		fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
 		fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
@@ -191,7 +188,7 @@ void print_template_input(void)
 		fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
 		fprintf(fp, "agf_time_bin  0.001    # error threshold on time of measures for adaptive gradient flow\n");
 		fprintf(fp, "\n");
-		
+
 		fprintf(fp, "# Observables to measure\n");
 		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
@@ -199,12 +196,12 @@ void print_template_input(void)
 		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 		fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
-		fprintf(fp,"\n");
+		fprintf(fp, "\n");
 		
 		fprintf(fp, "# Input files\n");
 		fprintf(fp, "conf_file             conf.dat\n");
-		fprintf(fp,"\n");
-		
+		fprintf(fp, "\n");
+
 		fprintf(fp, "# Output files\n");
 		fprintf(fp, "data_file             dati.dat\n");
 		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");

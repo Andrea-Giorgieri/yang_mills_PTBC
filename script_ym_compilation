@@ -4,7 +4,7 @@ NCOLORS=3
 STDIM=4
 NLEVELS=1
 
-NTHREADS=32
+NTHREADS=48
 
 compile_targets='yang_mills_adaptive_gradient_flow'
 

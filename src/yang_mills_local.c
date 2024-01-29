@@ -179,7 +179,7 @@ void print_template_input(void)
 		fprintf(fp, "conf_file             conf.dat\n");
 		fprintf(fp, "data_file             dati.dat\n");
 		fprintf(fp, "chiprime_data_file    chiprime_cool.dat\n");
-		fprintf(fp, "topcharge_tprof_file  topo_tcorr_cool.dat\n");
+		fprintf(fp, "topcharge_tprof_file  topo_tprof_cool.dat\n");
 		fprintf(fp, "log_file              log.dat\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "randseed 0    #(0=time)\n");

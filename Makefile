@@ -763,7 +763,7 @@ yang_mills_adaptive_gradient_flow_SOURCES = ./src/yang_mills_adaptive_gradient_f
                        $(u1)
 
 AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion -fopenmp
-CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tcorr_cool.dat*
+CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tprof_cool.dat*
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 

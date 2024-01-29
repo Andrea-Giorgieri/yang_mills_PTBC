@@ -111,8 +111,21 @@ void readinput(char *in_file, GParam *param);
 void init_derived_constants(GParam *param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tprof_f, GParam const *const param);
 void free_hierarc_params(GParam *param);
+
+// print simulation parameters aux
+void print_configuration_parameters(FILE *fp);
+void print_pt_parameters(FILE *fp, GParam const * const param);
+void print_multicanonic_parameters(FILE *fp, GParam const * const param);
+void print_simul_parameters(FILE *fp, GParam const * const param);
+void print_adaptive_gradflow_parameters(FILE *fp, GParam const * const param);
+void print_gradflow_parameters(FILE *fp, GParam const * const param);
+void print_cooling_parameters(FILE *fp, GParam const * const param);
+void print_multilevel_parameters(FILE *fp, GParam const * const param);
+void print_metro_parameters(FILE *fp, GParam const * const param, double acc);
+
 void print_parameters_local(GParam const *const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const *const param, time_t time_start, time_t time_end);
+void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_multicanonic(GParam const *const param, time_t time_start, time_t time_end);
 void print_parameters_polycorr_long(GParam *param, time_t time_start, time_t time_end);
 void print_parameters_polycorr(GParam *param, time_t time_start, time_t time_end);
@@ -123,5 +136,21 @@ void print_parameters_tracedef(GParam const *const param, time_t time_start, tim
 void print_parameters_tube_disc(GParam *param, time_t time_start, time_t time_end);
 void print_parameters_tube_conn(GParam *param, time_t time_start, time_t time_end);
 void print_parameters_tube_conn_long(GParam *param, time_t time_start, time_t time_end);
+
+// print template input aux
+void print_template_volume_parameters(FILE *fp);
+void print_template_simul_parameters(FILE *fp);
+void print_template_pt_parameters(FILE *fp);
+void print_template_adaptive_gradflow_parameters(FILE *fp);
+void print_template_gradflow_parameters(FILE *fp);
+void print_template_cooling_parameters(FILE *fp);
+void print_template_metro_parameters(FILE *fp);
+void print_template_multicanonic_parameters(FILE *fp);
+void print_template_multilevel_parameters(FILE *fp);
+void print_template_output_parameters(FILE *fp);
+
+// print program details
+void print_authors(int parallel_tempering);
+void print_compilation_details();
 
 #endif

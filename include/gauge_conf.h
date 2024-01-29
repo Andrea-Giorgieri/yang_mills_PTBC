@@ -117,6 +117,7 @@ void topcharge_cooling(Gauge_Conf const *const GC, Geometry const *const geo, GP
 void loc_topcharge_corr(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, int ncool, int dist, double *ris);
 void perform_measures_localobs(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, FILE *datafilep, FILE *chiprimefilep, FILE *);
 void perform_measures_localobs_cooling(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, FILE *datafilep, FILE *chiprimefilep, FILE *);
+void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param, FILE *datafilep, FILE *chiprimefilep, FILE *);
 void perform_measures_localobs_with_tracedef(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, FILE *datafilep);
 void optimize_multihit_polycorr(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, FILE *datafilep);
 void optimize_multilevel_polycorr(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, FILE *datafilep);

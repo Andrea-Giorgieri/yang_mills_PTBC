@@ -830,7 +830,7 @@ void loc_topcharge_corr(Gauge_Conf const *const GC, Geometry const *const geo, G
 		for(r = 0; r < param->d_volume; r++) { topch[r] = loc_topcharge(GC, geo, param, r); }
 		}
 
-	// compute correlators
+// compute correlators
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(i)
 	#endif
@@ -1002,6 +1002,127 @@ void perform_measures_localobs_cooling(Gauge_Conf *GC, Geometry const *const geo
 	polyakov(GC, geo, param, &polyre, &polyim);
 
 	fprintf(datafilep, "%.12g %.12g %.12g %.12g ", plaqs, plaqt, polyre, polyim);
+	fprintf(datafilep, "\n");
+	fflush(datafilep);
+	#endif
+	}
+
+void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tprof_filep)
+	{
+	#if((STDIM == 4 && NCOLOR > 1) || (STDIM == 2 && NCOLOR == 1))
+	int gradflowrepeat;
+
+	// meas no gradflow
+	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tprof_filep);
+
+	// meas gradflow
+	gradflowrepeat = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
+	if(gradflowrepeat > 0)
+		{
+		Gauge_Conf helperconf_old, helperconf, help1, help2, help3;
+		int meas_count, accepted;
+		double gftime, gftime_step;
+		double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime;
+
+		// initialize gauge configurations
+		init_gauge_conf_from_gauge_conf(&helperconf_old, GC, param);
+		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
+		init_gauge_conf_from_gauge_conf(&help1, GC, param);
+		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+		init_gauge_conf_from_gauge_conf(&help3, GC, param);
+
+		// allocate meas arrays
+		gradflowrepeat = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each); // number of meas to perform
+		if(param->d_plaquette_meas == 1)
+			if(posix_memalign((void **)&meanplaq, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
+				{
+				fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+		if(param->d_clover_energy_meas == 1)
+			if(posix_memalign((void **)&clover_energy, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
+				{
+				fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+		if(param->d_charge_meas == 1)
+			if(posix_memalign((void **)&charge, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
+				{
+				fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+		if(param->d_topcharge_tprof_meas == 1) // notice the size, measures are handled differently
+			if(posix_memalign((void **)&sum_q_timeslices, (size_t)DOUBLE_ALIGN, (size_t)param->d_size[0] * sizeof(double)) != 0)
+				{
+				fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+		if(param->d_chi_prime_meas == 1)
+			if(posix_memalign((void **)&chi_prime, (size_t)DOUBLE_ALIGN, (size_t)gradflowrepeat * sizeof(double)) != 0)
+				{
+				fprintf(stderr, "Problems allocating an array of doubles! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+
+		// gradflow starts
+		gftime = 0.0;
+		gftime_step = param->d_agf_step;
+		meas_count = 0;
+		while(meas_count < gradflowrepeat)
+			{
+			gradflow_RKstep_adaptive(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted);
+			// step accepted, perform measures
+			if(accepted == 1 && fabs(gftime - param->d_agf_meas_each * (meas_count + 1)) - param->d_agf_time_bin < MIN_VALUE)
+				{
+				if(param->d_plaquette_meas == 1)
+					{
+					double plaqs, plaqt;
+					plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+					#if(STDIM == 4)
+					meanplaq[meas_count] = 0.5 * (plaqs + plaqt);
+					#else
+					meanplaq[meas_count] = plaqt;
+					#endif
+					}
+				if(param->d_clover_energy_meas == 1) clover_disc_energy(&helperconf, geo, param, &clover_energy[meas_count]);
+				if(param->d_charge_meas == 1) charge[meas_count] = topcharge(&helperconf, geo, param);
+				if(param->d_topcharge_tprof_meas == 1) topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, meas_count + 1, topchar_tprof_filep);
+				if(param->d_chi_prime_meas == 1) chi_prime[meas_count] = topo_chi_prime(&helperconf, geo, param);
+				meas_count = meas_count + 1;
+				}
+			// adapt step to the time of next measure
+			if((gftime + gftime_step - param->d_agf_meas_each * (meas_count + 1)) > param->d_agf_time_bin) { gftime_step = param->d_agf_meas_each * (meas_count + 1) - gftime; }
+			}
+
+		// print meas gradflow
+		for(int i = 0; i < gradflowrepeat; i++)
+			{
+			if(param->d_plaquette_meas == 1) fprintf(datafilep, "%.12g ", meanplaq[i]);
+			if(param->d_clover_energy_meas == 1) fprintf(datafilep, "%.12g ", clover_energy[i]);
+			if(param->d_charge_meas == 1) fprintf(datafilep, "%.12g ", charge[i]);
+			if(param->d_chi_prime_meas == 1) fprintf(chiprimefilep, "%ld %.12lg %.12lg\n", GC->update_index, (i + 1) * param->d_agf_meas_each, chi_prime[i]);
+			}
+
+		// free memory
+		if(param->d_plaquette_meas == 1) free(meanplaq);
+		if(param->d_clover_energy_meas == 1) free(clover_energy);
+		if(param->d_charge_meas == 1) free(charge);
+		if(param->d_topcharge_tprof_meas == 1) free(sum_q_timeslices);
+		if(param->d_chi_prime_meas == 1) free(chi_prime);
+		free_gauge_conf(&helperconf_old, param);
+		free_gauge_conf(&helperconf, param);
+		free_gauge_conf(&help1, param);
+		free_gauge_conf(&help2, param);
+		free_gauge_conf(&help3, param);
+		}
+
+	fprintf(datafilep, "\n");
+	fflush(datafilep);
+	if(param->d_topcharge_tprof_meas == 1) fflush(topchar_tprof_filep);
+	if(param->d_chi_prime_meas == 1) fflush(chiprimefilep);
+
+	#else
+	perform_measures_localobs_notopo(GC, geo, param, datafilep);
 	fprintf(datafilep, "\n");
 	fflush(datafilep);
 	#endif

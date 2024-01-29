@@ -31,7 +31,7 @@ void real_main(char *in_file)
 	FILE *datafilep, *chiprimefilep, *topchar_tprof_filep;
 	time_t time1, time2;
 
-// to disable nested parallelism
+	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)

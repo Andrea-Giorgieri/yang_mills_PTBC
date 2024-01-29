@@ -1057,6 +1057,143 @@ void free_hierarc_params(GParam *param)
 		}
 	}
 
+// print simulation parameters aux
+
+void print_configuration_parameters(FILE *fp)
+	{
+	#ifdef OPENMP_MODE
+	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	#endif
+	
+	if(endian()==0) fprintf(fp, "Little endian machine\n\n");
+	else fprintf(fp, "Big endian machine\n\n");
+	}
+
+void print_pt_parameters(FILE *fp, GParam const * const param)
+	{
+	int i;
+	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
+	fprintf(fp, "defect: %d", param->d_L_defect[0]);
+	for(i=1; i<STDIM-1; i++) fprintf(fp, "x%d", param->d_L_defect[i]);
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
+	fprintf(fp,"boundary condition constants: ");
+	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp,"\n");
+	
+	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels>0)
+		{
+		fprintf(fp,"extention of rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_L_rect[i]);
+			}
+		fprintf(fp,"\n");
+		fprintf(fp,"number of sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++)
+			{
+			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
+			}
+		}
+	fprintf(fp,"\n\n");
+	}
+
+void print_multicanonic_parameters(FILE *fp, GParam const * const param)
+	{
+	fprintf(fp,"Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
+	fprintf(fp,"\n\n");
+	}
+
+void print_simul_parameters(FILE *fp, GParam const * const param)
+	{
+	int i;
+	fprintf(fp, "number of colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+	
+	fprintf(fp, "lattice: %d", param->d_size[0]);
+	for(i=1; i<STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	#ifdef THETA_MODE
+	fprintf(fp, "theta: %.10lf\n", param->d_theta);
+	#endif
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "sample:	%d\n", param->d_sample);
+	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
+	fprintf(fp, "measevery: %d\n", param->d_measevery);
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
+	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tprof_meas: %d\n", param->d_topcharge_tprof_meas);
+	fprintf(fp, "\n");
+
+	fprintf(fp, "start:                     %d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:       %d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every:   %d\n", param->d_saveconf_analysis_every);
+	fprintf(fp, "\n");
+	fprintf(fp, "randseed: %u\n", param->d_randseed);
+	fprintf(fp, "\n");
+	}
+
+void print_adaptive_gradflow_parameters(FILE *fp, GParam const * const param)
+	{
+	fprintf(fp, "agf_length     %lf\n", param->d_agf_length);
+	fprintf(fp, "agf_step:      %lf\n", param->d_agf_step);
+	fprintf(fp, "agf_meas_each  %lf\n", param->d_agf_meas_each);
+	fprintf(fp, "agf_delta      %e\n",  param->d_agf_delta);
+	fprintf(fp, "\n");
+	}
+
+void print_gradflow_parameters(FILE *fp, GParam const * const param)
+	{
+	fprintf(fp, "gfstep:        %lf\n", param->d_gfstep);
+	fprintf(fp, "num_gfsteps    %d\n",  param->d_ngfsteps);
+	fprintf(fp, "gf_meas_each   %d\n",    param->d_gf_meas_each);
+	fprintf(fp, "\n");
+	}
+
+void print_cooling_parameters(FILE *fp, GParam const * const param)
+	{
+	fprintf(fp, "coolsteps:     %d\n", param->d_coolsteps);
+	fprintf(fp, "coolrepeat:    %d\n", param->d_coolrepeat);
+	fprintf(fp, "\n");
+	}
+
+void print_multilevel_parameters(FILE *fp, GParam const * const param)
+	{
+	int i;
+	fprintf(fp, "multihit:	%d\n", param->d_multihit);
+	fprintf(fp, "levels for multileves: %d\n", NLEVELS);
+	fprintf(fp, "multilevel steps: ");
+	for(i=0; i<NLEVELS; i++)
+		{
+		fprintf(fp, "%d ", param->d_ml_step[i]);
+		}
+	fprintf(fp, "\n");
+	fprintf(fp, "updates for levels: ");
+	for(i=0; i<NLEVELS; i++)
+		{
+		fprintf(fp, "%d ", param->d_ml_upd[i]);
+		}
+	fprintf(fp, "\n\n");
+	}
+
+void print_metro_parameters(FILE *fp, GParam const * const param, double acc)
+	{
+	fprintf(fp, "epsilon_metro: %.10lf\n", param->d_epsilon_metro);
+	fprintf(fp, "metropolis acceptance: %.10lf\n", acc);
+	fprintf(fp, "\n");
+	}
+
 // print simulation parameters
 
 void print_parameters_local(GParam const *const param, time_t time_start, time_t time_end)
@@ -1275,6 +1412,30 @@ void print_parameters_local_pt(GParam const *const param, time_t time_start, tim
 		fprintf(fp, "Big endian machine\n\n");
 		}
 
+	fclose(fp);
+	}
+
+// print simulation parameters
+void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end)
+	{
+	FILE *fp;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+------------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_pt_agf |\n");
+	fprintf(fp, "+------------------------------------------------+\n\n");
+
+	print_configuration_parameters(fp);
+	print_pt_parameters(fp, param);
+	print_simul_parameters(fp, param);
+	print_adaptive_gradflow_parameters(fp, param);
+	print_cooling_parameters(fp, param);
+	
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+	
 	fclose(fp);
 	}
 
@@ -1498,45 +1659,37 @@ void print_parameters_gf(GParam *param, time_t time_start, time_t time_end)
 	}
 
 // print simulation parameters
-void print_parameters_agf(GParam *param, time_t time_start, time_t time_end)
+void print_parameters_agf(GParam * param, time_t time_start, time_t time_end)
 	{
 	FILE *fp;
 	int i;
 	double diff_sec;
 
-	fp = fopen(param->d_log_file, "w");
+	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_adaptive_gradient_flow |\n");
 	fprintf(fp, "+----------------------------------------------------------+\n\n");
-
-	#ifdef OPENMP_MODE
-	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
-	#endif
-
+	
+	print_configuration_parameters(fp);
+	
 	fprintf(fp, "number of colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-
+	
 	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(i = 1; i < STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
+	for(i=1; i<STDIM; i++)
+		{
+		fprintf(fp, "x%d", param->d_size[i]);
+		}
 	fprintf(fp, "\n\n");
-
-	fprintf(fp, "agf_length     %lf\n", param->d_agf_length);
-	fprintf(fp, "agf_step:      %lf\n", param->d_agf_step);
-	fprintf(fp, "agf_meas_each  %lf\n", param->d_agf_meas_each);
-	fprintf(fp, "agf_delta      %e\n", param->d_agf_delta);
-	fprintf(fp, "\n");
-
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
-
+	
+	print_adaptive_gradflow_parameters(fp, param);
+	
 	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
 	fprintf(fp, "\n");
-
-	if(endian() == 0) fprintf(fp, "Little endian machine\n\n");
-	else
-		fprintf(fp, "Big endian machine\n\n");
-
+	
 	fclose(fp);
 	}
 
@@ -1809,6 +1962,182 @@ void print_parameters_tube_conn_long(GParam *param, time_t time_start, time_t ti
 		}
 
 	fclose(fp);
+	}
+
+// print template input aux
+
+void print_template_volume_parameters(FILE *fp)
+	{
+	fprintf(fp,"size 12 4 4 12  # Nt Nx Ny Nz\n");
+	fprintf(fp,"\n");
+	}
+
+void print_template_simul_parameters(FILE *fp)
+	{
+	fprintf(fp,"# Simulations parameters\n");
+	fprintf(fp, "beta  6.4881\n");
+	fprintf(fp,"\n");
+	fprintf(fp, "sample     10\n");
+	fprintf(fp, "thermal    0\n");
+	fprintf(fp, "overrelax  5\n");
+	fprintf(fp, "measevery  1\n");
+	fprintf(fp,"\n");
+	
+	fprintf(fp, "start                    0  # 0=all links to identity  1=random  2=from saved configuration\n");
+	fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
+	fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "randseed 0    # (0=time)\n");
+	fprintf(fp, "\n");
+	
+	fprintf(fp, "# Observables to measure\n");
+	fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
+	fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
+	fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
+	fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
+	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+	fprintf(fp, "topcharge_tprof_meas  0  # 1=YES, 0=NO\n");
+	fprintf(fp,"\n");
+	}
+
+void print_template_pt_parameters(FILE *fp)
+	{
+	fprintf(fp,"# Parallel tempering parameters\n");
+	fprintf(fp,"defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
+	fprintf(fp,"defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
+	fprintf(fp,"N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+	fprintf(fp,"\n");
+	fprintf(fp,"# Hierarchical update parameters\n");
+	fprintf(fp,"# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
+	fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
+	fprintf(fp,"\n");
+	}
+
+void print_template_adaptive_gradflow_parameters(FILE *fp)
+	{
+	fprintf(fp, "# For adaptive gradient flow evolution\n");
+	fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
+	fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
+	fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
+	fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
+	fprintf(fp, "agf_time_bin  0.001    # error threshold on time of measures for adaptive gradient flow\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_gradflow_parameters(FILE *fp)
+	{
+	fprintf(fp, "# For gradient flow evolution\n");
+	fprintf(fp, "gfstep      0.01    # integration step for gradient flow\n");
+	fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
+	fprintf(fp, "gf_meas_each 5      # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_cooling_parameters(FILE *fp)
+	{
+	fprintf(fp, "# For cooling\n");
+	fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
+	fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_metro_parameters(FILE *fp)
+	{
+	fprintf(fp, "epsilon_metro    0.25  #distance from the identity of the random matrix for metropolis\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_multicanonic_parameters(FILE *fp)
+	{
+	fprintf(fp,"# Multicanonic parameters\n");
+	fprintf(fp,"grid_step             0.05\n");
+	fprintf(fp,"grid_max              3.0\n");
+	fprintf(fp,"topo_potential_file   topo_potential\n");
+	fprintf(fp, "multicanonic_acc_file   multicanonic_acc.dat\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_multilevel_parameters(FILE *fp)
+	{
+    fprintf(fp, "# For multilevel\n");
+    fprintf(fp, "multihit         10  # number of multihit step\n");
+    fprintf(fp, "ml_step           2  # timeslices for multilevel (from largest to smallest)\n");
+    fprintf(fp, "ml_upd           10  # number of updates for various levels\n");
+	fprintf(fp, "ml_file      ml.dat  # multilevel output file\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_output_parameters(FILE *fp)
+	{
+	fprintf(fp, "# Output files\n");
+	fprintf(fp, "conf_file             conf.dat\n");
+	fprintf(fp, "data_file             dati.dat\n");
+	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
+	fprintf(fp, "topcharge_tprof_file  topo_tprof_cool.dat\n");
+	fprintf(fp, "log_file              log.dat\n");
+	fprintf(fp, "swap_acc_file         swap_acc.dat\n");
+	fprintf(fp, "swap_track_file       swap_track.dat\n");
+	fprintf(fp, "\n");
+	}
+
+// print program details
+
+void print_authors(int parallel_tempering)
+	{
+	printf("\n");
+	if(parallel_tempering==1)
+		{
+		printf("SU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com)\n");
+		printf("within yang-mills package\n\n");
+		}
+	
+	printf("Details about yang-mills package:\n");
+	printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
+	}
+
+void print_compilation_details()
+	{
+	printf("Compilation details:\n");
+	printf("\tN_c (number of colors): %d\n", NCOLOR);
+	printf("\tST_dim (space-time dimensionality): %d\n", STDIM);
+	printf("\tNum_levels (number of levels): %d\n", NLEVELS);
+	printf("\n");
+	printf("\tINT_ALIGN: %s\n", QUOTEME(INT_ALIGN));
+	printf("\tDOUBLE_ALIGN: %s\n", QUOTEME(DOUBLE_ALIGN));
+	
+	#ifdef DEBUG
+	printf("\n\tDEBUG mode\n");
+	#endif
+	
+	#ifdef OPENMP_MODE
+	printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
+	#endif
+	
+	#ifdef THETA_MODE
+	printf("\n\tusing imaginary theta\n");
+	#endif
+	
+	#ifdef OPT_MULTIHIT
+	printf("\tcompiled for multihit optimization\n");
+	#endif
+	
+	#ifdef OPT_MULTILEVEL
+	printf("\tcompiled for multilevel optimization\n");
+	#endif
+	
+	printf("\n");
+	
+	#ifdef __INTEL_COMPILER
+	printf("\tcompiled with icc\n");
+	#elif defined(__clang__)
+	printf("\tcompiled with clang\n");
+	#elif defined( __GNUC__ )
+	printf("\tcompiled with gcc version: %d.%d.%d\n",
+		__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+	#endif
+	printf("\n");
 	}
 
 #endif

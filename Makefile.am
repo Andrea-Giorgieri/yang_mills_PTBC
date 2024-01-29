@@ -5,6 +5,9 @@ bin_PROGRAMS = conf_check \
                debug_sun \
                debug_u1 \
                yang_mills_local \
+               yang_mills_local_pt \
+               yang_mills_local_pt_agf \
+               yang_mills_local_pt_multicanonic \
                yang_mills_polycorr \
                yang_mills_polycorr_long \
                yang_mills_polycorradj \
@@ -13,8 +16,6 @@ bin_PROGRAMS = conf_check \
                yang_mills_tube_conn_long \
                yang_mills_tube_disc \
                yang_mills_tracedef \
-               yang_mills_local_pt \
-               yang_mills_local_pt_multicanonic \
                yang_mills_gradient_flow \
                yang_mills_adaptive_gradient_flow
 
@@ -148,7 +149,52 @@ yang_mills_local_SOURCES=./src/yang_mills_local.c \
                           $(su2) \
                           $(sun) \
                           $(tens_prod) \
-                          $(u1) 
+                          $(u1)
+
+yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_pt_multicanonic_SOURCES=./src/yang_mills_local_pt_multicanonic.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
                              $(align) \
@@ -268,37 +314,7 @@ yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(su2) \
                             $(sun) \
                             $(tens_prod) \
-                            $(u1) 
-
-yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
-yang_mills_local_pt_multicanonic_SOURCES=./src/yang_mills_local_pt_multicanonic.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
+                            $(u1)
 
 yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
                        $(align) \
@@ -332,4 +348,4 @@ yang_mills_adaptive_gradient_flow_SOURCES=./src/yang_mills_adaptive_gradient_flo
 
 AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
 
-CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tcorr_cool.dat*
+CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* ml.dat template_input.in swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tprof_cool.dat*

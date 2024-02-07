@@ -5,6 +5,7 @@ bin_PROGRAMS = conf_check \
                debug_sun \
                debug_u1 \
                yang_mills_local \
+			   yang_mills_local_agf \
                yang_mills_local_pt \
                yang_mills_local_pt_agf \
                yang_mills_local_pt_multicanonic \
@@ -137,6 +138,21 @@ debug_u1_SOURCES=./src/debug_u1.c \
                   $(u1)
 
 yang_mills_local_SOURCES=./src/yang_mills_local.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

@@ -157,7 +157,7 @@ void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf *GC, Ge
 		conf_translation(&(GC[0]), geo, param); // translation of periodic replica (GC[0])
 		if(param->d_N_hierarc_levels>0)
 			multicanonic_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle,
-																															swap_rectangle, acc_counters, grid); // hierarchic update
+					swap_rectangle, acc_counters, grid); // hierarchic update
 		}
 	
 	// increase update index of all replicas
@@ -804,6 +804,6 @@ int multicanonic_Metropolis_step_single_link(Gauge_Conf *GC, Geometry const * co
 	else GC->stored_topo_charge = Q_new; 			// if Metropolis is accepted store the new topological charge of the conf
 	
 	return acc;
-}
+	}
 
 #endif

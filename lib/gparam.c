@@ -1306,6 +1306,28 @@ void print_parameters_local(GParam const * const param, time_t time_start, time_
 	fclose(fp);
 	}
 
+void print_parameters_local_agf(GParam const * const param, time_t time_start, time_t time_end)
+	{
+	FILE *fp;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+---------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_local_agf |\n");
+	fprintf(fp, "+---------------------------------------------+\n\n");
+
+	print_configuration_parameters(fp);
+	print_simul_parameters(fp, param);
+	print_adaptive_gradflow_parameters(fp, param);
+	print_cooling_parameters(fp, param);
+	
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+	
+	fclose(fp);
+	}
+
 void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end)
 	{
 	FILE *fp;

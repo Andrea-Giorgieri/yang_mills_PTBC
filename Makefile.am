@@ -8,6 +8,7 @@ bin_PROGRAMS = conf_check \
             debug_agf_vs_gf \
             debug_agf_vs_delta \
             yang_mills_local \
+			yang_mills_local_agf \
             yang_mills_polycorr \
             yang_mills_polycorr_long \
             yang_mills_polycorradj \
@@ -171,7 +172,22 @@ yang_mills_local_SOURCES=./src/yang_mills_local.c \
                           $(su2) \
                           $(sun) \
                           $(tens_prod) \
-                          $(u1) 
+                          $(u1)
+
+yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
                              $(align) \

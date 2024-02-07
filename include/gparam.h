@@ -133,6 +133,7 @@ void print_metro_parameters(FILE *fp, GParam const * const param, double acc);
 
 // print simulation parameters
 void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local_agf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end);
 void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end);

@@ -170,7 +170,7 @@ void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf *GC, Ge
 // update all replica only on a given rectangle in the presence of a defect (MODIFICARE)
 void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam const * const param, double const * const grid, Acc_Utils *acc_counters)
 	{
-	long s;
+	long s, num_even, num_odd;
 	int j, dir;
 	int num_replica = param->d_N_replica_pt; // just an auxiliary variable
 	long *sum_acc, *count_metro;
@@ -187,12 +187,14 @@ void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo
 	// init aux variables to compute mean multicanonic acc
 	allocate_array_long(&sum_acc, num_replica, __FILE__, __LINE__);
 	allocate_array_long(&count_metro, num_replica, __FILE__, __LINE__);
-	
 	for(j=0; j<param->d_N_replica_pt; j++)
 		{
 		sum_acc[j]=0;
 		count_metro[j]=0;
 		}
+	
+	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
+	num_odd  = (param->d_volume - (param->d_volume % 2)) / 2;
 	
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
@@ -204,11 +206,11 @@ void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
 		#endif
-		for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
+		for(s=0; s<((param->d_N_replica_pt)*num_even); s++)
 			{
-			// s = i * volume/2 + r
-			long r = s % ( (param->d_volume)/2 ); // site index
-			int i = (int) ( (s-r) / ( (param->d_volume)/2 ) ); // replica index
+			// s = i * num_even + r
+			long r = s % num_even; 				// site index
+			int i = (int) ( (s-r) / num_even );	// replica index
 			int acc_metro;
 			acc_metro = multicanonic_heatbath_with_defect(&(GC[i]), geo, param, r, dir, grid);
 			sum_acc[i] += acc_metro;
@@ -218,12 +220,12 @@ void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
 		#endif 
-		for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
+		for(s=0; s<((param->d_N_replica_pt)*num_odd); s++)
 			{
-			// s = i * volume/2 + aux ; aux = r - volume/2
-			long aux = s % ( (param->d_volume)/2 );
-			long r = (param->d_volume/2) + aux; // site index
-			int i = (int) ( (s-aux) / ( (param->d_volume)/2 ) ); // replica index
+			// s = i * num_odd + aux ; aux = r - num_even
+			long aux = s % num_odd;
+			long r = num_even + aux;				// site index
+			int i = (int) ( (s-aux) / num_odd );	// replica index
 			int acc_metro;
 			acc_metro = multicanonic_heatbath_with_defect(&(GC[i]), geo, param, r, dir, grid);
 			sum_acc[i] += acc_metro;
@@ -243,11 +245,11 @@ void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
 			#endif 
-			for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
+			for(s=0; s<((param->d_N_replica_pt)*num_even); s++)
 				{
-				// s = i * volume/2 + r
-				long r = s % ( (param->d_volume)/2 ); // site index
-				int i = (int) ( (s-r) / ( (param->d_volume)/2 ) ); // replica index
+				// s = i * num_even + r
+				long r = s % num_even;				// site index
+				int i = (int) ( (s-r) / num_even );	// replica index
 				int acc_metro;
 				acc_metro = multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, r, dir, grid);
 				sum_acc[i] += acc_metro;
@@ -257,12 +259,12 @@ void multicanonic_update_with_defect(Gauge_Conf * GC, Geometry const * const geo
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
 			#endif 
-			for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
+			for(s=0; s<((param->d_N_replica_pt)*num_odd); s++)
 				{
-				// s = i * volume/2 + aux ; aux = r - volume/2
-				long aux = s % ( (param->d_volume)/2 );
-				long r = (param->d_volume/2) + aux; // site index
-				int i = (int) ( (s-aux) / ( (param->d_volume)/2 ) ); // replica index
+				// s = i * num_odd + aux ; aux = r - num_even
+				long aux = s % num_odd;
+				long r = num_even + aux;				// site index
+				int i = (int) ( (s-aux) / num_odd );	// replica index
 				int acc_metro;
 				acc_metro = multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, r, dir, grid);
 				sum_acc[i] += acc_metro;
@@ -331,7 +333,7 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * 
 	long is_even = ( most_update->d_vol_rect ) % 2;
 	
 	num_even = ( most_update->d_vol_rect + is_even ) / 2; // number of even sites
-	num_odd	= ( most_update->d_vol_rect - is_even ) / 2; // number of odd sites
+	num_odd	 = ( most_update->d_vol_rect - is_even ) / 2; // number of odd sites
 	
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)

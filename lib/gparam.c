@@ -902,7 +902,9 @@ void readinput(char *in_file, GParam *param)
 			exit(EXIT_FAILURE);
 			}
 		}
-
+		
+		// TO DO: remove this check if parallelization on even sites works
+		/*
 		#ifdef OPENMP_MODE
 		for(i=0; i<STDIM; i++)
 		{
@@ -915,6 +917,7 @@ void readinput(char *in_file, GParam *param)
 			}
 		}
 		#endif
+		*/
 
 		err=0;
 		for(i=0; i<STDIM; i++)

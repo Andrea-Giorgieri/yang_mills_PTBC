@@ -882,55 +882,50 @@ void readinput(char *in_file, GParam *param)
 
 		// VARIOUS CHECKS
 		if(param->d_ml_step[0]!=0)
-		{
-		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
 			{
-			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
+				{
+				fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+			for(i=1; i<NLEVELS; i++)
+				{
+				if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
+				{
+				fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+				}
+			if(param->d_ml_step[NLEVELS-1]==1)
+				{
+				fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
 			}
-		for(i=1; i<NLEVELS; i++)
-			{
-			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
-			{
-			fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-			}
-		if(param->d_ml_step[NLEVELS-1]==1)
-			{
-			fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		}
 		
-		// TO DO: remove this check if parallelization on even sites works
-		/*
+		// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
+		// This prevents even-odd parallelization of updates.
+		// TO DO: implement sweep on the largest sublattice with even sides
 		#ifdef OPENMP_MODE
 		for(i=0; i<STDIM; i++)
-		{
-		temp_i = param->d_size[i] % 2;
-		if(temp_i!=0)
 			{
-			fprintf(stderr, "Error: size[%d] is not even.\n", i);
-			fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			temp_i = param->d_size[i] % 2;
+			if(temp_i!=0)
+				{
+				fprintf(stderr, "Error: size[%d] is not even.\n", i);
+				fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
 			}
-		}
 		#endif
-		*/
 
 		err=0;
-		for(i=0; i<STDIM; i++)
-		{
-		if(param->d_size[i]==1)
-			{
-			err=1;
-			}
-		}
+		for(i=0; i<STDIM; i++) if(param->d_size[i]==1) err=1;
 		if(err==1)
-		{
-		fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
-		}
+			{
+			fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
 				
 		// various checks on parallel tempering parameters
 		if(param->d_L_defect[0]>param->d_size[0])
@@ -972,37 +967,37 @@ void readinput(char *in_file, GParam *param)
 
 void init_derived_constants(GParam *param)
 	{
-		int i;
+	int i;
 
-		// derived constants
-		param->d_volume=1;
-		for(i=0; i<STDIM; i++)
+	// derived constants
+	param->d_volume=1;
+	for(i=0; i<STDIM; i++)
 		{
-			(param->d_volume)*=(param->d_size[i]);
+		(param->d_volume)*=(param->d_size[i]);
 		}
 
-		param->d_space_vol=1;
-		// direction 0 is time
-		for(i=1; i<STDIM; i++)
+	param->d_space_vol=1;
+	// direction 0 is time
+	for(i=1; i<STDIM; i++)
 		{
-			(param->d_space_vol)*=(param->d_size[i]);
+		(param->d_space_vol)*=(param->d_size[i]);
 		}
 
-		param->d_inv_vol=1.0/((double) param->d_volume);
-		param->d_inv_space_vol=1.0/((double) param->d_space_vol);
+	param->d_inv_vol=1.0/((double) param->d_volume);
+	param->d_inv_space_vol=1.0/((double) param->d_space_vol);
 	
-		// volume of the defect
-		param->d_volume_defect=1;
-		for(i=0; i<STDIM-1;i++)
+	// volume of the defect
+	param->d_volume_defect=1;
+	for(i=0; i<STDIM-1;i++)
 		{
-			param->d_volume_defect *= param->d_L_defect[i];
+		param->d_volume_defect *= param->d_L_defect[i];
 		}
 	
-		// number of grid points (multicanonic only)
-		param->d_n_grid=(int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
+	// number of grid points (multicanonic only)
+	param->d_n_grid=(int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
 	
-		// number of planes (twisted boundary conditions only)
-		param->d_n_planes = STDIM*(STDIM-1);
+	// number of planes (twisted boundary conditions only)
+	param->d_n_planes = STDIM*(STDIM-1);
 	}
 
 // initialize data file

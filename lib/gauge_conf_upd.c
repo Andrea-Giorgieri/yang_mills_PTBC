@@ -1114,10 +1114,10 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 	{
 	for(int i=0; i<STDIM; i++)
 		{
-			if(param->d_size[i]==1)
+		if(param->d_size[i]==1)
 			{
-				fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
+			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
 			}
 		}
 
@@ -1163,7 +1163,6 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 		}
 
 	// overrelax
-	// TO DO: parallelization bugged with odd lattice volume
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE

@@ -5,6 +5,7 @@
 
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 #include<math.h>
 #include<complex.h>
 
@@ -420,10 +421,10 @@ void polyakov_adj(Gauge_Conf const * const GC,
 
 // compute the mean Polyakov loop and its powers (trace of) in the presence of trace deformation
 void polyakov_with_tracedef(Gauge_Conf const * const GC,
-									 Geometry const * const geo,
-									 GParam const * const param,
-									 double *repoly,
-									 double *impoly)
+							Geometry const * const geo,
+							GParam const * const param,
+							double *repoly,
+							double *impoly)
 	{
 	long rsp;
 	double **rep, **imp;
@@ -615,8 +616,9 @@ double topcharge(Gauge_Conf const * const GC,
 
 // sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
 double topcharge_prime(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param, int const dir)
+					Geometry const * const geo,
+					GParam const * const param,
+					int const dir)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -723,51 +725,45 @@ void topcharge_timeslices(Gauge_Conf const * const GC,
 }
 
 
-void topcharge_timeslices_cooling(Gauge_Conf const * const GC,
+void topcharge_timeslices_cooling(Gauge_Conf *const GC,
 						Geometry const * const geo,
-						GParam const * const param, FILE *topchar_tcorr_filep)
+						GParam const * const param,
+						Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
-	double *sum_q_timeslices;
-	
-	allocate_array_double(&sum_q_timeslices, param->d_size[0], __FILE__, __LINE__);
 	
 	if(param->d_coolsteps>0)	// if using cooling
 		{	
-		Gauge_Conf helperconf;
 		int iter;
 
 		// measure no cooling
-		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep); 
-		// conf that will be cooled
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param); // helperconf is a copy of the configuration
+		topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep); 
+
 		// measure with cooling
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
-			cooling(&helperconf, geo, param, param->d_coolsteps);
-			topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, (iter+1)*param->d_coolsteps, topchar_tcorr_filep);
+			cooling(GC, geo, param, param->d_coolsteps);
+			topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, (iter+1)*param->d_coolsteps, meas_aux->topchar_tcorr_filep);
 			}
-		free_gauge_conf(&helperconf, param);
-		fflush(topchar_tcorr_filep);
+		restore_gauge_conf(GC, param);
+		fflush(meas_aux->topchar_tcorr_filep);
 		}
 	else // no cooling
 		{
-		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
-		fflush(topchar_tcorr_filep);
+		topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
+		fflush(meas_aux->topchar_tcorr_filep);
 		}
-	free(sum_q_timeslices);
 	}
 
 
-void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
+void topcharge_timeslices_gradflow(Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
-									FILE *topchar_tcorr_filep)
+									Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -775,55 +771,40 @@ void topcharge_timeslices_gradflow(Gauge_Conf const * const GC,
 		exit(EXIT_FAILURE);
 		}
 	
-	double *sum_q_timeslices;
-	
-	allocate_array_double(&sum_q_timeslices, param->d_size[0], __FILE__, __LINE__);
-	
 	if(param->d_ngfsteps>0)	// if using gradient flow
-		{	
-		Gauge_Conf helperconf, help1, help2; 
+		{
 		int count;
 		
 		// measure no gradient flow
-		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
+		topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
 
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
 				{
-				topcharge_timeslices(&helperconf, geo, param, sum_q_timeslices, count, topchar_tcorr_filep);
+				topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, count, meas_aux->topchar_tcorr_filep);
 				}
 			}
-		
-		fflush(topchar_tcorr_filep);
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
+		restore_gauge_conf(GC, param);		
+		fflush(meas_aux->topchar_tcorr_filep);
 		}
 	else	// no gradient flow
 		{
-		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
-		fflush(topchar_tcorr_filep);
+		topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
+		fflush(meas_aux->topchar_tcorr_filep);
 		}
-	free(sum_q_timeslices);
 	}
 
 
 // compute topological observables (Q, chi_prime) after some cooling
 // in the cooling procedure the action at theta=0 is minimized
-void topo_obs_cooling(Gauge_Conf const * const GC,
+void topo_obs_cooling(Gauge_Conf * const GC,
 					Geometry const * const geo,
 					GParam const * const param,
-					double *charge,
-					double *chi_prime,
-					double *meanplaq)
+					Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -833,29 +814,24 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 
 	if(param->d_coolsteps>0)	// if using cooling
 		{	
-		Gauge_Conf helperconf; 
 		double plaqs, plaqt;
 		int iter;
-
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		// helperconf is a copy of the configuration
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
-			cooling(&helperconf, geo, param, param->d_coolsteps);
+			cooling(GC, geo, param, param->d_coolsteps);
 			
-			charge[iter] = topcharge(&helperconf, geo, param);
-			chi_prime[iter] = topo_chi_prime(&helperconf, geo, param);
+			meas_aux->charge[iter] = topcharge(GC, geo, param);
+			meas_aux->chi_prime[iter] = topo_chi_prime(GC, geo, param);
 			
-			plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+			plaquette(GC, geo, param, &plaqs, &plaqt);
 			#if(STDIM==4)
-			meanplaq[iter]=0.5*(plaqs+plaqt);
+			meas_aux->meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			meanplaq[iter]=plaqt;
+			meas_aux->meanplaq[iter]=plaqt;
 			#endif
 			}
-
-		free_gauge_conf(&helperconf, param);
+		restore_gauge_conf(GC, param);
 		}
 	else	// no cooling
 		{
@@ -868,24 +844,22 @@ void topo_obs_cooling(Gauge_Conf const * const GC,
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
-			charge[iter]=ris;
-			chi_prime[iter]=ris2;
+			meas_aux->charge[iter]=ris;
+			meas_aux->chi_prime[iter]=ris2;
 			#if(STDIM==4)
-			meanplaq[iter]=0.5*(plaqs+plaqt);
+			meas_aux->meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-			meanplaq[iter]=plaqt;
+			meas_aux->meanplaq[iter]=plaqt;
 			#endif
 			}
 		}
 	}
 	
 
-void topo_obs_gradflow(Gauge_Conf const * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											double *charge,
-											double *chi_prime,
-											double *meanplaq)
+void topo_obs_gradflow(Gauge_Conf * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -895,100 +869,82 @@ void topo_obs_gradflow(Gauge_Conf const * const GC,
 
 	if(param->d_ngfsteps>0)	// if using gradient flow
 		{	
-		Gauge_Conf helperconf, help1, help2; 
 		double plaqs, plaqt;
 		int count, meas_count;
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 		
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
 				{
 				meas_count = count/param->d_gf_meas_each-1;
-				charge[meas_count]=topcharge(&helperconf, geo, param);
-				chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
-				plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+				meas_aux->charge[meas_count]=topcharge(GC, geo, param);
+				meas_aux->chi_prime[meas_count]=topo_chi_prime(GC, geo, param);
+				plaquette(GC, geo, param, &plaqs, &plaqt);
 				#if(STDIM==4)
-					meanplaq[meas_count]=0.5*(plaqs+plaqt);
+					meas_aux->meanplaq[meas_count]=0.5*(plaqs+plaqt);
 				#else
-					meanplaq[meas_count]=plaqt;
+					meas_aux->meanplaq[meas_count]=plaqt;
 				#endif
 				}
 			}
-		
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
+		restore_gauge_conf(GC, param);
 		}
 	else	// no gradient flow
 		{
 		double plaqs, plaqt; 
 		
-		charge[0]=topcharge(GC, geo, param);
-		chi_prime[0]=topo_chi_prime(GC, geo, param);
+		meas_aux->charge[0]=topcharge(GC, geo, param);
+		meas_aux->chi_prime[0]=topo_chi_prime(GC, geo, param);
 		plaquette(GC, geo, param, &plaqs, &plaqt);
 		#if(STDIM==4)
-			meanplaq[0]=0.5*(plaqs+plaqt);
+			meas_aux->meanplaq[0]=0.5*(plaqs+plaqt);
 		#else
-			meanplaq[0]=plaqt;
+			meas_aux->meanplaq[0]=plaqt;
 		#endif
 		}
 	}
 
 	
-void topo_obs_clover_energy_gradflow(Gauge_Conf const * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											double *charge,
-											double *chi_prime,
-											double *clover_energy)
+void topo_obs_clover_energy_gradflow(Gauge_Conf * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-	{
+		{
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-	}
+		}
 
 	if(param->d_ngfsteps>0)	// if using gradient flow
-		{	
-		Gauge_Conf helperconf, help1, help2;
+		{
 		double tmp_energy;
 		int count, meas_count;
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 		
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
 				{
 				meas_count = count/param->d_gf_meas_each-1;
-				charge[meas_count]=topcharge(&helperconf, geo, param);
-				chi_prime[meas_count]=topo_chi_prime(&helperconf, geo, param);
-				clover_disc_energy(&helperconf, geo, param, &tmp_energy);
-				clover_energy[meas_count] = tmp_energy;
+				meas_aux->charge[meas_count]=topcharge(GC, geo, param);
+				meas_aux->chi_prime[meas_count]=topo_chi_prime(GC, geo, param);
+				clover_disc_energy(GC, geo, param, &tmp_energy);
+				meas_aux->clover_energy[meas_count] = tmp_energy;
 				}
 			}
-		
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
+		restore_gauge_conf(GC, param);
 		}
 	else	// no gradient flow
 		{
-		charge[0]=topcharge(GC, geo, param);
-		chi_prime[0]=topo_chi_prime(GC, geo, param);
-		clover_disc_energy(GC, geo, param, &(clover_energy[0]));
+		meas_aux->charge[0]=topcharge(GC, geo, param);
+		meas_aux->chi_prime[0]=topo_chi_prime(GC, geo, param);
+		clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[0]));
 		}
 	}
 
@@ -1034,11 +990,10 @@ double sum_abs_topcharge_dens(Gauge_Conf const * const GC, Geometry const * cons
 
 // compute the topological charge after some cooling
 // in the cooling procedure the action at theta=0 is minimized
-void topcharge_cooling(Gauge_Conf const * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								double *charge,
-								double *meanplaq)
+void topcharge_cooling(Gauge_Conf * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -1047,29 +1002,25 @@ void topcharge_cooling(Gauge_Conf const * const GC,
 		}
 	
 	if(param->d_coolsteps>0)	// if using cooling
-		{	
-		Gauge_Conf helperconf; 
+		{ 
 		double plaqs, plaqt;
 		int iter;
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		// helperconf is a copy of the configuration
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
-			cooling(&helperconf, geo, param, param->d_coolsteps);
+			cooling(GC, geo, param, param->d_coolsteps);
 			
-			charge[iter] = topcharge(&helperconf, geo, param);
+			meas_aux->charge[iter] = topcharge(GC, geo, param);
 			
-			plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+			plaquette(GC, geo, param, &plaqs, &plaqt);
 			#if(STDIM==4)
-				meanplaq[iter]=0.5*(plaqs+plaqt);
+				meas_aux->meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-				meanplaq[iter]=plaqt;
+				meas_aux->meanplaq[iter]=plaqt;
 			#endif
 			}
 
-		free_gauge_conf(&helperconf, param);
+		restore_gauge_conf(GC, param);
 		}
 	else	// no cooling
 		{
@@ -1081,22 +1032,21 @@ void topcharge_cooling(Gauge_Conf const * const GC,
 	
 		for(iter=0; iter<(param->d_coolrepeat); iter++)
 			{
-			charge[iter]=ris;
+			meas_aux->charge[iter]=ris;
 			#if(STDIM==4)
-				meanplaq[iter]=0.5*(plaqs+plaqt);
+				meas_aux->meanplaq[iter]=0.5*(plaqs+plaqt);
 			#else
-				meanplaq[iter]=plaqt;
+				meas_aux->meanplaq[iter]=plaqt;
 			#endif
 			}
 		} 
 	}
 
 
-void topcharge_gradflow(Gauge_Conf const * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								double *charge,
-								double *meanplaq)
+void topcharge_gradflow(Gauge_Conf * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -1105,58 +1055,48 @@ void topcharge_gradflow(Gauge_Conf const * const GC,
 		}
 
 	if(param->d_ngfsteps>0)	// if using gradient flow
-		{	
-		Gauge_Conf helperconf, help1, help2; 
+		{ 
 		double plaqs, plaqt;
 		int count, meas_count;
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
 				{
 				meas_count = count/param->d_gf_meas_each-1;
-				charge[meas_count]=topcharge(&helperconf, geo, param);
-				plaquette(&helperconf, geo, param, &plaqs, &plaqt);
+				meas_aux->charge[meas_count]=topcharge(GC, geo, param);
+				plaquette(GC, geo, param, &plaqs, &plaqt);
 				#if(STDIM==4)
-					meanplaq[meas_count]=0.5*(plaqs+plaqt);
+					meas_aux->meanplaq[meas_count]=0.5*(plaqs+plaqt);
 				#else
-					meanplaq[meas_count]=plaqt;
+					meas_aux->meanplaq[meas_count]=plaqt;
 				#endif
-
 				}
 			}
-
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
+		restore_gauge_conf(GC, param);
 		}
 	else	// no gradient flow
 		{
 		double plaqs, plaqt; 
 		
-		charge[0]=topcharge(GC, geo, param);
+		meas_aux->charge[0]=topcharge(GC, geo, param);
 		plaquette(GC, geo, param, &plaqs, &plaqt);
 		#if(STDIM==4)
-			meanplaq[0]=0.5*(plaqs+plaqt);
+			meas_aux->meanplaq[0]=0.5*(plaqs+plaqt);
 		#else
-			meanplaq[0]=plaqt;
+			meas_aux->meanplaq[0]=plaqt;
 		#endif
 		}
 	}
 
 	
-void topcharge_clover_energy_gradflow(Gauge_Conf const * const GC,
+void topcharge_clover_energy_gradflow(Gauge_Conf * const GC,
 								Geometry const * const geo,
 								GParam const * const param,
-								double *charge,
-								double *clover_energy)
+								Meas_Utils *meas_aux)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -1165,52 +1105,44 @@ void topcharge_clover_energy_gradflow(Gauge_Conf const * const GC,
 		}
 
 	if(param->d_ngfsteps>0)	// if using gradient flow
-		{	
-		Gauge_Conf helperconf, help1, help2;
+		{
 		double tmp_energy;
 		int count, meas_count;
-		
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			
 			if ( (count % param->d_gf_meas_each) == 0)
 				{
 				meas_count = count/param->d_gf_meas_each-1;
-				charge[meas_count]=topcharge(&helperconf, geo, param);
-				clover_disc_energy(&helperconf, geo, param, &tmp_energy);
-				clover_energy[meas_count] = tmp_energy;
+				meas_aux->charge[meas_count]=topcharge(GC, geo, param);
+				clover_disc_energy(GC, geo, param, &tmp_energy);
+				meas_aux->clover_energy[meas_count] = tmp_energy;
 				}
 			}
-
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
-	}
+		restore_gauge_conf(GC, param);
+		}
 	else	// no gradient flow
 		{
 		double tmp_energy;
 		
-		charge[0]=topcharge(GC, geo, param);
+		meas_aux->charge[0]=topcharge(GC, geo, param);
 		clover_disc_energy(GC, geo, param, &tmp_energy);
-		clover_energy[0] = tmp_energy;
+		meas_aux->clover_energy[0] = tmp_energy;
 		}
 	}
 
 
 // compute the correlator of the local topological charge
 // after "ncool" cooling steps up to spatial distance "dist"
-void loc_topcharge_corr(Gauge_Conf const * const GC,
-							Geometry const * const geo,
-							GParam const * const param,
-							int ncool,
-							int dist,
-							double *ris)
+void loc_topcharge_corr(Gauge_Conf * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						int ncool,
+						int dist,
+						double *ris)
 	{
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -1222,29 +1154,24 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 	long r;
 	int i;
 	
+	// TO DO: refactor with meas_aux
 	allocate_array_double(&topch, param->d_volume, __FILE__, __LINE__);
 	
 	// compute the local topological charge
 	if(ncool>0)
-		{
-		Gauge_Conf helperconf;
-		
-		// helperconf is a copy of GC
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		
-		// cool helperconf
-		cooling(&helperconf, geo, param, ncool);
+		{		
+		// cooling
+		cooling(GC, geo, param, ncool);
 		
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
 		for(r=0; r<param->d_volume; r++)
 			{
-			topch[r]=loc_topcharge(&helperconf, geo, param, r);
+			topch[r]=loc_topcharge(GC, geo, param, r);
 			}
 		
-		// free helperconf
-		free_gauge_conf(&helperconf, param);
+		restore_gauge_conf(GC, param);
 		}
 	else
 		{
@@ -1294,221 +1221,175 @@ void loc_topcharge_corr(Gauge_Conf const * const GC,
 	}
 
 
-void perform_measures_aux(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
-							int const meas_count, double * const meanplaq, double * const clover_energy,
-							double * const charge, double * const sum_q_timeslices,
-							double * const chi_prime, double * const (charge_prime[STDIM]), FILE * const topchar_tcorr_filep)
+void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
+							int const meas_count, Meas_Utils *meas_aux)
 	{
 	if (param->d_plaquette_meas == 1 ) 
 		{
 		double plaqs, plaqt;
 		plaquette(GC, geo, param, &plaqs, &plaqt);
 		#if(STDIM==4)
-			meanplaq[meas_count]=0.5*(plaqs+plaqt);
+		meas_aux->meanplaq[meas_count]=0.5*(plaqs+plaqt);
 		#else
-			meanplaq[meas_count]=plaqt;
+		meas_aux->meanplaq[meas_count]=plaqt;
 		#endif
 		}
-	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy[meas_count]);
-	if (param->d_charge_meas == 1 ) charge[meas_count]=topcharge(GC, geo, param);
-	if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices(GC, geo, param, sum_q_timeslices, meas_count+1, topchar_tcorr_filep);				
-	if (param->d_chi_prime_meas == 1) chi_prime[meas_count]=topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas == 1) for (int i=0; i<STDIM; i++) charge_prime[meas_count][i]=topcharge_prime(GC, geo, param, i);
+	if (param->d_clover_energy_meas == 1 )   clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
+	if (param->d_charge_meas == 1 )          meas_aux->charge[meas_count] = topcharge(GC, geo, param);
+	if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);				
+	if (param->d_chi_prime_meas == 1)        meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
+	if (param->d_charge_prime_meas == 1)     for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	}
 
 
-void perform_measures_localobs(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
-								FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
+								Meas_Utils *meas_aux)
 	{
 	int i;
 	double plaqs, plaqt, polyre, polyim, clover_energy, charge=0.0, chi_prime=0.0, charge_prime[STDIM]; // =0.0 to suppress gcc warning
-	double *sum_q_timeslices;
 	
 	// perform meas
-	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
-	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_charge_meas == 1 ) charge=topcharge(GC, geo, param);
-	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
-	if (param->d_chi_prime_meas == 1 ) chi_prime=topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) charge_prime[i]=topcharge_prime(GC, geo, param, i);
-	if (param->d_topcharge_tcorr_meas == 1 )
-		{
-		allocate_array_double(&sum_q_timeslices, param->d_size[0], __FILE__, __LINE__);
-		topcharge_timeslices(GC, geo, param, sum_q_timeslices, 0, topchar_tcorr_filep);
-		}
-	else {(void) topchar_tcorr_filep;}
-	
-	// refresh topological charge of periodic replica (only for multicanonic)
-	GC->stored_topo_charge = charge;
+	if (param->d_plaquette_meas == 1 )       plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_clover_energy_meas == 1 )   clover_disc_energy(GC, geo, param, &clover_energy);
+	if (param->d_charge_meas == 1 )          charge = topcharge(GC, geo, param);
+	if (param->d_polyakov_meas == 1 )        polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_chi_prime_meas == 1 )       chi_prime = topo_chi_prime(GC, geo, param);
+	if (param->d_charge_prime_meas == 1 )    for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
+	if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
 
 	// print meas (topcharge_tcorr_timeslices already printed by topcharge_timeslices())
-	fprintf(datafilep, "%ld ", GC->update_index);
-	if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
-	if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy);
-	if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge);
-	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
-	if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime);
-	if (param->d_charge_prime_meas == 1 ) for (i=0; i<STDIM; i++) fprintf(datafilep, "%.12g ", charge_prime[i]);
+	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
 
-	fflush(datafilep);
-	if (param->d_topcharge_tcorr_meas == 1 ) 
-		{
-		free(sum_q_timeslices);
-		fflush(topchar_tcorr_filep);
-		}
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	if (param->d_plaquette_meas == 1 )       fprintf(meas_aux->datafilep, "%.12g %.12g ", plaqs, plaqt);
+	if (param->d_clover_energy_meas == 1 )   fprintf(meas_aux->datafilep, "%.12g ", clover_energy);
+	if (param->d_charge_meas == 1 )          fprintf(meas_aux->datafilep, "%.12g ", charge);
+	if (param->d_polyakov_meas == 1 )        fprintf(meas_aux->datafilep, "%.12g %.12g ", polyre, polyim);
+	if (param->d_chi_prime_meas == 1 )       fprintf(meas_aux->chiprimefilep, "%ld 0 %.12lg\n", GC->update_index, chi_prime);
+	if (param->d_charge_prime_meas == 1 )    for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "%.12g ", charge_prime[i]);
+
+	fflush(meas_aux->datafilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas == 1 )       fflush(meas_aux->chiprimefilep);
 	}
 
 
-void perform_measures_localobs_notopo(Gauge_Conf *GC,
-										 Geometry const * const geo,
-										 GParam const * const param,
-										 FILE *datafilep)
+void perform_measures_localobs_notopo(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
+										Meas_Utils *meas_aux)
 	{
 	double plaqs, plaqt, clover_energy, polyre, polyim;
 	
-	if (param->d_plaquette_meas == 1 ) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_plaquette_meas == 1 )     plaquette(GC, geo, param, &plaqs, &plaqt);
 	if (param->d_clover_energy_meas == 1 ) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_polyakov_meas == 1 ) polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_polyakov_meas == 1 )      polyakov(GC, geo, param, &polyre, &polyim);
 	
-	if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
-	if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy);
-	if (param->d_polyakov_meas == 1 ) fprintf(datafilep, "%.12g %.12g ", polyre, polyim);
+	if (param->d_plaquette_meas == 1 )     fprintf(meas_aux->datafilep, "%.12g %.12g ", plaqs, plaqt);
+	if (param->d_clover_energy_meas == 1 ) fprintf(meas_aux->datafilep, "%.12g ", clover_energy);
+	if (param->d_polyakov_meas == 1 )      fprintf(meas_aux->datafilep, "%.12g %.12g ", polyre, polyim);
 	
-	fflush(datafilep);
+	fflush(meas_aux->datafilep);
 	}
 
 
-void perform_measures_localobs_cooling(Gauge_Conf *GC,
-										 Geometry const * const geo,
-										 GParam const * const param,
-										 FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+void perform_measures_localobs_cooling(Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const * const param,
+										Meas_Utils *meas_aux)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int i;
-	double *meanplaq, *charge, *chi_prime;
+
 	// meas no cooling
-	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tcorr_filep);
-	
-	// allocate memory
-	allocate_measures_arrays_cooling(param->d_coolrepeat, param, &meanplaq, &charge, &chi_prime);
+	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas cooling
-	if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_cooling(GC, geo, param, topchar_tcorr_filep);
-	else {(void) topchar_tcorr_filep;}
-	if (param->d_chi_prime_meas == 1 ) topo_obs_cooling(GC, geo, param, charge, chi_prime, meanplaq);
-	else topcharge_cooling(GC, geo, param, charge, meanplaq);
+	if (param->d_topcharge_tcorr_meas == 1 ) topcharge_timeslices_cooling(GC, geo, param, meas_aux);
+	if (param->d_chi_prime_meas == 1 )       topo_obs_cooling(GC, geo, param, meas_aux);
+	else                                     topcharge_cooling(GC, geo, param, meas_aux);
 	
 	// print meas cooling
 	for(i=0; i<param->d_coolrepeat; i++)
 		{
-		fprintf(datafilep, "%.12g %.12g ", charge[i], meanplaq[i]);
-		if (param->d_chi_prime_meas == 1 ) fprintf(chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_coolsteps, chi_prime[i]);
+		fprintf(meas_aux->datafilep, "%.12g %.12g ", meas_aux->charge[i], meas_aux->meanplaq[i]);
+		if (param->d_chi_prime_meas == 1 )
+			fprintf(meas_aux->chiprimefilep, "%ld %d %.12lg\n", GC->update_index, (i+1)*param->d_coolsteps, meas_aux->chi_prime[i]);
 		}
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
-	
-	// free memory
-	free(charge);
-	if (param->d_chi_prime_meas == 1 ) free(chi_prime);
-	else (void)chiprimefilep;
-	free(meanplaq);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
 	
 	#else
-	perform_measures_localobs_notopo(GC, geo, param, datafilep);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
-void perform_measures_localobs_with_gradflow(Gauge_Conf *GC,
+void perform_measures_localobs_with_gradflow(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+											Meas_Utils *meas_aux)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int gradflowrepeat;
 	
 	// meas no gradflow
-	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tcorr_filep);
+	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
 	gradflowrepeat = (int)(param->d_ngfsteps/param->d_gf_meas_each);
 	if (gradflowrepeat > 0)
 		{
-		Gauge_Conf helperconf, help1, help2;
-		double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime, **charge_prime;
 		int count, meas_count;
-		
-		// allocate memory
-		allocate_measures_arrays(gradflowrepeat, param, &meanplaq, &clover_energy, &charge, &sum_q_timeslices, &chi_prime, &charge_prime);
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
 
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param->d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&helperconf, &help1, &help2, geo, param, param->d_gfstep);
+			gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
 			if (count % param->d_gf_meas_each == 0)
 				{
 				meas_count = count/param->d_gf_meas_each-1;
-				perform_measures_aux(&helperconf, geo, param, meas_count, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime, topchar_tcorr_filep);
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				}
 			}
 		
-		// print meas gradflow
-		print_measures_arrays(gradflowrepeat, GC->update_index, param, meanplaq, clover_energy, charge, chi_prime, charge_prime, datafilep, chiprimefilep);
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
 		
-		// free memory
-		free_measures_arrays(gradflowrepeat, param, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime);
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
+		// print meas gradflow
+		print_measures_arrays(gradflowrepeat, GC->update_index, param, meas_aux);
 		}
 	
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
 	
 	#else
-	perform_measures_localobs_notopo(GC, geo, param, datafilep);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	perform_measures_localobs_notopo(GC, geo, param, meas_aux->datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
-void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC,
+void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep)
+											Meas_Utils *meas_aux)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int gradflowrepeat;
 	
 	// meas no gradflow
-	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tcorr_filep);
+	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
 	gradflowrepeat = (int)floor((param->d_agf_length+MIN_VALUE)/param->d_agf_meas_each);
 	if (gradflowrepeat > 0)
 		{
-		Gauge_Conf helperconf_old, helperconf, help1, help2, help3;
 		int meas_count, accepted;
 		double gftime, gftime_step;
-		double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime, **charge_prime;
-		
-		// allocate memory
-		allocate_measures_arrays(gradflowrepeat, param, &meanplaq, &clover_energy, &charge, &sum_q_timeslices, &chi_prime, &charge_prime);
-		init_gauge_conf_from_gauge_conf(&helperconf_old, GC, param);
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
-		init_gauge_conf_from_gauge_conf(&help3, GC, param);
 
 		// gradflow starts
 		gftime = 0.0;
@@ -1516,72 +1397,60 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf *GC,
 		meas_count = 0;
 		while(meas_count < gradflowrepeat)
 			{
-			gradflow_RKstep_adaptive(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted);
-			// step accepted, perform measures
+			gradflow_RKstep_adaptive(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux);
+
+			// if step accepted, perform measures
 			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
 				{
-				perform_measures_aux(&helperconf, geo, param, meas_count, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime, topchar_tcorr_filep);
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
-			// adapt step to the time of next measure
+
+			// adapt step to the time of next if this would be skipped
 			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
 				{
 				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
 				}
 			}
+
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
 		
 		// print meas gradflow
-		print_measures_arrays(gradflowrepeat, GC->update_index, param, meanplaq, clover_energy, charge, chi_prime,charge_prime, datafilep, chiprimefilep);
-		
-		// free memory
-		free_measures_arrays(gradflowrepeat, param, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime);
-		free_gauge_conf(&helperconf_old, param);
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
-		free_gauge_conf(&help3, param);
+		print_measures_arrays(gradflowrepeat, GC->update_index, param, meas_aux);
 		}
 	
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
 	
 	#else
-	perform_measures_localobs_notopo(GC, geo, param, datafilep);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
-void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
+void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep, FILE *step_filep)
+											Meas_Utils *meas_aux,
+											FILE *step_filep)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	int gradflowrepeat;
 	
 	// meas no gradflow
-	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tcorr_filep);
+	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
 	gradflowrepeat = (int)floor((param->d_agf_length+MIN_VALUE)/param->d_agf_meas_each);
 	if (gradflowrepeat > 0)
 		{
-		Gauge_Conf helperconf_old, helperconf, help1, help2, help3;
 		int meas_count, accepted;
 		double gftime, gftime_step, total_error;
-		double *meanplaq, *clover_energy, *charge, *sum_q_timeslices, *chi_prime, **charge_prime;
-		
-		// allocate memory
-		allocate_measures_arrays(gradflowrepeat, param, &meanplaq, &clover_energy, &charge, &sum_q_timeslices, &chi_prime, &charge_prime);
-		init_gauge_conf_from_gauge_conf(&helperconf_old, GC, param);
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
-		init_gauge_conf_from_gauge_conf(&help3, GC, param);
 
 		// gradflow starts
 		gftime = 0.0;
@@ -1591,12 +1460,12 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 		fprintf(step_filep, "%ld %.12g %.12g %.12g\n", GC->update_index, gftime, gftime_step, total_error);
 		while(meas_count < gradflowrepeat)
 			{
-			gradflow_RKstep_adaptive_debug(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted, &total_error);
+			gradflow_RKstep_adaptive_debug(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
 			fprintf(step_filep, "%ld %.12g %.12g %.12g\n", GC->update_index, gftime, gftime_step, total_error);
 			// step accepted, perform measures
 			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE)
 				{
-				perform_measures_aux(&helperconf, geo, param, meas_count, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime, topchar_tcorr_filep);
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
 		//	// adapt step to the time of next measure
@@ -1606,61 +1475,46 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf *GC,
 		//		}
 			}
 		//fprintf(step_filep, "\n");
-		
+		restore_gauge_conf(GC, param);
+
 		// print meas gradflow
-		print_measures_arrays(gradflowrepeat, GC->update_index, param, meanplaq, clover_energy, charge, chi_prime,charge_prime, datafilep, chiprimefilep);
-		
-		// free memory
-		free_measures_arrays(gradflowrepeat, param, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime);
-		free_gauge_conf(&helperconf_old, param);
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
-		free_gauge_conf(&help3, param);
+		print_measures_arrays(gradflowrepeat, GC->update_index, param, meas_aux);
 		}
 	
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	fflush(step_filep);
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
 	
 	#else
-	perform_measures_localobs_notopo(GC, geo, param, datafilep);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
-void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *GC,
+void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											FILE *datafilep, FILE *chiprimefilep, FILE *topchar_tcorr_filep, FILE *step_filep)
+											Meas_Utils *meas_aux,
+											FILE *step_filep)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	// meas no gradflow
-	perform_measures_localobs(GC, geo, param, datafilep, chiprimefilep, topchar_tcorr_filep);
+	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
 	if (param->d_agf_length > 0.0)
 		{
-		Gauge_Conf helperconf_old, helperconf, help1, help2, help3, conf_accepted, conf_accepted_old;
+		Gauge_Conf conf_accepted, conf_accepted_old;
 		int accepted;
-		double gftime, gftime_step, total_error, gftime_step_accepted;
-		double meanplaq, clover_energy, charge, *sum_q_timeslices, chi_prime, *charge_prime;
-		
+		double gftime, gftime_step, total_error, gftime_step_accepted;		
 		
 		// allocate memory
-		if (param->d_topcharge_tcorr_meas == 1 ) allocate_array_double(&sum_q_timeslices, param->d_size[0], __FILE__, __LINE__);
-		if (param->d_charge_prime_meas == 1 ) allocate_array_double(&charge_prime, STDIM, __FILE__, __LINE__);
-		init_gauge_conf_from_gauge_conf(&helperconf_old, GC, param);
-		init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-		init_gauge_conf_from_gauge_conf(&help1, GC, param);
-		init_gauge_conf_from_gauge_conf(&help2, GC, param);
-		init_gauge_conf_from_gauge_conf(&help3, GC, param);
-		init_gauge_conf_from_gauge_conf(&conf_accepted, &helperconf, param);
-		init_gauge_conf_from_gauge_conf(&conf_accepted_old, &helperconf, param);
+		init_gauge_conf_from_gauge_conf(&conf_accepted, GC, param);
+		init_gauge_conf_from_gauge_conf(&conf_accepted_old, GC, param);
 
 		// gradflow starts
 		gftime = 0.0;
@@ -1670,32 +1524,32 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *GC,
 		fflush(step_filep);
 		while(gftime < param->d_agf_length)
 			{
-			gradflow_RKstep_adaptive_debug2(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted, &total_error);
+			gradflow_RKstep_adaptive_debug2(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
 			fprintf(step_filep, "%ld %.12g %.12g %.12g\n", GC->update_index, gftime, gftime_step, total_error);
-			if (accepted == 1) //&& fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE) 	//step accepted, perform measures
+			if (accepted == 1) //&& fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE)
 				{
 				// save adaptive gradflow status
-				equal_gauge_conf(&conf_accepted, &helperconf, param);
-				equal_gauge_conf(&conf_accepted_old, &helperconf_old, param);
+				equal_gauge_conf(&conf_accepted, GC, param);
+				equal_gauge_conf(&conf_accepted_old, GC, param);
 				gftime_step_accepted = gftime_step;
 				
 				// keep reducing gftime_step without advancing
 				while (gftime_step > 1.01*param->d_agf_meas_each)
 					{
 					gftime_step = gftime_step-param->d_agf_meas_each;
-					equal_gauge_conf(&helperconf, &conf_accepted_old, param);
-					gradflow_RKstep_adaptive_debug(&helperconf, &helperconf_old, &help1, &help2, &help3, geo, param, &gftime, &gftime_step, &accepted, &total_error);
+					equal_gauge_conf(GC, &conf_accepted_old, param);
+					gradflow_RKstep_adaptive_debug(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
 					fprintf(step_filep, "%ld %.12g %.12g %.12g\n", GC->update_index, gftime, gftime_step, total_error);
 					}
 				
 				// restore adaptive gradflow status
 				gftime = gftime + gftime_step_accepted;
 				gftime_step = param->d_agf_step;
-				equal_gauge_conf(&helperconf, &conf_accepted, param);
+				equal_gauge_conf(GC, &conf_accepted, param);
 				
 				// meas gradflow
-				fprintf(datafilep, "%.12g ", gftime);
-				perform_measures_aux(&helperconf, geo, param, 0, &meanplaq, &clover_energy, &charge, sum_q_timeslices, &chi_prime, &charge_prime, topchar_tcorr_filep);
+				fprintf(meas_aux->datafilep, "%.12g ", gftime);
+				perform_measures_aux(GC, geo, param, 0, meas_aux);
 				}
 			else
 				{
@@ -1703,68 +1557,54 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *GC,
 				else gftime_step = gftime_step-param->d_agf_meas_each;
 				}
 			}
-		
+		restore_gauge_conf(GC, param);
 		// free memory
-		if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);
-		free_gauge_conf(&helperconf_old, param);
-		free_gauge_conf(&helperconf, param);
-		free_gauge_conf(&help1, param);
-		free_gauge_conf(&help2, param);
-		free_gauge_conf(&help3, param);
 		free_gauge_conf(&conf_accepted, param);
 		free_gauge_conf(&conf_accepted_old, param);
 		}
 	
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	fflush(step_filep);
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(topchar_tcorr_filep);
-	if (param->d_chi_prime_meas == 1 ) fflush(chiprimefilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
 	
 	#else
-	perform_measures_localobs_notopo(GC, geo, param, datafilep);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
 // perform local observables in the case of trace deformation, it computes all the order parameters
-void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
-															Geometry const * const geo,
-															GParam const * const param,
-															FILE *datafilep)
+void perform_measures_localobs_with_tracedef(Gauge_Conf * const GC,
+												Geometry const * const geo,
+												GParam const * const param,
+												Meas_Utils *meas_aux)
 	{
 	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
 	
 	int i;
-	double plaqs, plaqt, polyre[NCOLOR/2+1], polyim[NCOLOR/2+1]; // +1 just to avoid warning if NCOLOR=1
-	double *charge, *meanplaq, charge_nocooling;
+	double plaqs, plaqt, charge_nocooling, polyre[NCOLOR/2+1], polyim[NCOLOR/2+1]; // +1 just to avoid warning if NCOLOR=1
 	
-	// meass no cooling
+	// meas no cooling
 	plaquette(GC, geo, param, &plaqs, &plaqt);
 	polyakov_with_tracedef(GC, geo, param, polyre, polyim);
 	charge_nocooling=topcharge(GC, geo, param);
 
 	// print meas no cooling
-	fprintf(datafilep, "%.12g %.12g ", plaqs, plaqt);
-	for(i=0; i<(int)floor(NCOLOR/2); i++) fprintf(datafilep, "%.12g %.12g ", polyre[i], polyim[i]);
-	fprintf(datafilep, "%.12g ", charge_nocooling);
-	
-	// allocate memory
-	allocate_array_double(&charge, param->d_coolrepeat, __FILE__, __LINE__);
-	allocate_array_double(&meanplaq, param->d_coolrepeat, __FILE__, __LINE__);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", plaqs, plaqt);
+	for(i=0; i<(int)floor(NCOLOR/2); i++) fprintf(meas_aux->datafilep, "%.12g %.12g ", polyre[i], polyim[i]);
+	fprintf(meas_aux->datafilep, "%.12g ", charge_nocooling);
 	
 	// meas cooling
-	topcharge_cooling(GC, geo, param, charge, meanplaq);
-	for(i=0; i<param->d_coolrepeat; i++) fprintf(datafilep, "%.12g %.12g ", charge[i], meanplaq[i]);
+	topcharge_cooling(GC, geo, param, meas_aux);
+	for(i=0; i<param->d_coolrepeat; i++)
+		fprintf(meas_aux->datafilep, "%.12g %.12g ", meas_aux->charge[i], meas_aux->meanplaq[i]);
 	
-	// free memory
-	free(charge);
-	free(meanplaq);
-	
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	
 	#else
 	
@@ -1772,19 +1612,19 @@ void perform_measures_localobs_with_tracedef(Gauge_Conf const * const GC,
 	
 	plaquette(GC, geo, param, &plaqs, &plaqt);
 	polyakov(GC, geo, param, &polyre, &polyim);
-	fprintf(datafilep, "%.12g %.12g %.12g %.12g ", plaqs, plaqt, polyre, polyim);
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "%.12g %.12g %.12g %.12g ", plaqs, plaqt, polyre, polyim);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	
 	#endif
 	}
 
 
 // to optimize the number of hits to be used in multilevel
-void optimize_multihit_polycorr(Gauge_Conf *GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											FILE *datafilep)
+void optimize_multihit_polycorr(Gauge_Conf * const GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								FILE *datafilep)
 	{
 	const int max_hit=50;
 	const int dir=1;
@@ -1874,10 +1714,10 @@ void optimize_multihit_polycorr(Gauge_Conf *GC,
 
 
 // to optimize the multilevel
-void optimize_multilevel_polycorr(Gauge_Conf *GC,
-											 Geometry const * const geo,
-											 GParam const * const param,
-											 FILE *datafilep)
+void optimize_multilevel_polycorr(Gauge_Conf * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									FILE *datafilep)
 	{
 	int i;
 	long r;
@@ -1950,9 +1790,9 @@ void optimize_multilevel_polycorr(Gauge_Conf *GC,
 
 // perform the computation of the polyakov loop correlator with the multilevel algorithm
 void perform_measures_polycorr(Gauge_Conf *GC,
-										 Geometry const * const geo,
-										 GParam const * const param,
-										 FILE *datafilep)
+								Geometry const * const geo,
+								GParam const * const param,
+								Meas_Utils *meas_aux)
 	{
 	#ifndef OPT_MULTIHIT
 	#ifndef OPT_MULTILEVEL
@@ -1983,26 +1823,26 @@ void perform_measures_polycorr(Gauge_Conf *GC,
 			}
 		ris*=param->d_inv_space_vol;
 
-		fprintf(datafilep, "%.12g\n", ris);
-		fflush(datafilep);
+		fprintf(meas_aux->datafilep, "%.12g\n", ris);
+		fflush(meas_aux->datafilep);
 	#endif
 	#endif
 
 	#ifdef OPT_MULTIHIT
-		optimize_multihit_polycorr(GC, geo, param, datafilep);
+		optimize_multihit_polycorr(GC, geo, param, meas_aux->datafilep);
 	#endif
 
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorr(GC, geo, param, datafilep);
+		optimize_multilevel_polycorr(GC, geo, param, meas_aux->datafilep);
 	#endif
 	}
 
 
 // to optimize the number of hits to be used in multilevel for the adjoint representation
-void optimize_multihit_polycorradj(Gauge_Conf *GC,
-												Geometry const * const geo,
-												GParam const * const param,
-												FILE *datafilep)
+void optimize_multihit_polycorradj(Gauge_Conf * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									FILE *datafilep)
 	{
 	const int max_hit=50;
 	const int dir=1;
@@ -2100,10 +1940,10 @@ void optimize_multihit_polycorradj(Gauge_Conf *GC,
 
 
 // to optimize the multilevel (adjoint representation)
-void optimize_multilevel_polycorradj(Gauge_Conf *GC,
-												 Geometry const * const geo,
-												 GParam const * const param,
-												 FILE *datafilep)
+void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									FILE *datafilep)
 	{
 	int i;
 	long r;
@@ -2175,10 +2015,10 @@ void optimize_multilevel_polycorradj(Gauge_Conf *GC,
 
 
 // perform the computation of the polyakov loop correlator in the adjoint representation with the multilevel algorithm
-void perform_measures_polycorradj(Gauge_Conf *GC,
-											 Geometry const * const geo,
-											 GParam const * const param,
-											 FILE *datafilep)
+void perform_measures_polycorradj(Gauge_Conf * const GC,
+									Geometry const * const geo,
+									GParam const * const param,
+									Meas_Utils *meas_aux)
 	{
 	#ifndef OPT_MULTIHIT
 	#ifndef OPT_MULTILEVEL
@@ -2186,10 +2026,7 @@ void perform_measures_polycorradj(Gauge_Conf *GC,
 		long r;
 		int i;
 
-		multilevel_polycorradj(GC,
-									 geo,
-									 param,
-									 param->d_size[0]);
+		multilevel_polycorradj(GC, geo, param, param->d_size[0]);
 
 		for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
 			{
@@ -2209,25 +2046,25 @@ void perform_measures_polycorradj(Gauge_Conf *GC,
 			}
 		ris*=param->d_inv_space_vol;
 
-		fprintf(datafilep, "%.12g\n", ris);
-		fflush(datafilep);
+		fprintf(meas_aux->datafilep, "%.12g\n", ris);
+		fflush(meas_aux->datafilep);
 	#endif
 	#endif
 
 	#ifdef OPT_MULTIHIT
-		optimize_multihit_polycorradj(GC, geo, param, datafilep);
+		optimize_multihit_polycorradj(GC, geo, param, meas_aux->datafilep);
 	#endif
 
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorradj(GC, geo, param, datafilep);
+		optimize_multilevel_polycorradj(GC, geo, param, meas_aux->datafilep);
 	#endif
 	}
 
 
 // to optimize the multilevel
-void optimize_multilevel_polycorr_long(Gauge_Conf *GC,
-													GParam const * const param,
-													FILE *datafilep)
+void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
+										GParam const * const param,
+										FILE *datafilep)
 	{
 	int i;
 	long r;
@@ -2300,12 +2137,12 @@ void optimize_multilevel_polycorr_long(Gauge_Conf *GC,
 
 
 // print the value of the polyakov loop correlator that has been computed by multilevel
-void perform_measures_polycorr_long(Gauge_Conf *GC,
-												GParam const * const param,
-												FILE *datafilep)
+void perform_measures_polycorr_long(Gauge_Conf * const GC,
+									GParam const * const param,
+									Meas_Utils *meas_aux)
 	{
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorr_long(GC, param, datafilep);
+		optimize_multilevel_polycorr_long(GC, param, meas_aux->datafilep);
 	#else
 		double ris;
 		long r;
@@ -2329,27 +2166,24 @@ void perform_measures_polycorr_long(Gauge_Conf *GC,
 			}
 		ris*=param->d_inv_space_vol;
 
-		fprintf(datafilep, "%.12g\n", ris);
-		fflush(datafilep);
+		fprintf(meas_aux->datafilep, "%.12g\n", ris);
+		fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
 // perform the computation of the string width with the
 // disconnected correlator using the multilevel algorithm
-void perform_measures_tube_disc(Gauge_Conf *GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											FILE *datafilep)
+void perform_measures_tube_disc(Gauge_Conf * const GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								Meas_Utils *meas_aux)
 	{
 	double risr, risi;
 	long r;
 	int i;
 
-	multilevel_tube_disc(GC,
-								geo,
-								param,
-								param->d_size[0]);
+	multilevel_tube_disc(GC, geo, param, param->d_size[0]);
 
 	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
 		{
@@ -2372,7 +2206,7 @@ void perform_measures_tube_disc(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
@@ -2383,19 +2217,19 @@ void perform_measures_tube_disc(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	}
 
 
 // perform the computation of the string width with the
 // connected correlator using the multilevel algorithm
-void perform_measures_tube_conn(Gauge_Conf *GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											FILE *datafilep)
+void perform_measures_tube_conn(Gauge_Conf * const GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								Meas_Utils *meas_aux)
 	{
 	double risr, risi;
 	long r;
@@ -2425,7 +2259,7 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
@@ -2436,7 +2270,7 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
@@ -2447,18 +2281,18 @@ void perform_measures_tube_conn(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	}
 
 
 // print the value of the the string width with the
 // connected correlator that has been computed by multilevel
-void perform_measures_tube_conn_long(Gauge_Conf *GC,
-												 GParam const * const param,
-												 FILE *datafilep)
+void perform_measures_tube_conn_long(Gauge_Conf * const GC,
+									GParam const * const param,
+									Meas_Utils *meas_aux)
 	{
 	double risr, risi;
 	long r;
@@ -2486,7 +2320,7 @@ void perform_measures_tube_conn_long(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
@@ -2497,7 +2331,7 @@ void perform_measures_tube_conn_long(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
@@ -2508,10 +2342,10 @@ void perform_measures_tube_conn_long(Gauge_Conf *GC,
 		}
 	risr*=param->d_inv_space_vol;
 	risi*=param->d_inv_space_vol;
-	fprintf(datafilep, "%.12g %.12g ", risr, risi);
+	fprintf(meas_aux->datafilep, "%.12g %.12g ", risr, risi);
 
-	fprintf(datafilep, "\n");
-	fflush(datafilep);
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
 	}
 
 
@@ -2552,22 +2386,268 @@ void allocate_measures_arrays_cooling(int const num_meas, GParam const * const p
 		allocate_array_double(chi_prime, num_meas, __FILE__, __LINE__);
 	}
 
-	
-void print_measures_arrays(int const num_meas, long const update_index, GParam const * const param, double *meanplaq,
-							double *const clover_energy, double *const charge, double *const chi_prime, double **const charge_prime,
-							FILE *datafilep, FILE *chiprimefilep)
+// open data files
+void open_data_file(Meas_Utils *meas_aux, char const * const data, char const * const chiprime,
+						char const * const topchar_tcorr, GParam const * const param)
 	{
+	int i;
+
+	if(param->d_start==2)
+		{
+		// open std data file (plaquette, polyakov, topological charge)
+		meas_aux->datafilep=fopen(data, "r");
+		if(meas_aux->datafilep!=NULL) // file exists
+			{
+			fclose(meas_aux->datafilep);
+			meas_aux->datafilep=fopen(data, "a");
+			}
+		else
+			{
+ 			meas_aux->datafilep=fopen(data, "w");
+			print_header_datafile(meas_aux->datafilep, param);
+			}
+		
+		// open chi prime data file
+		if (param->d_chi_prime_meas == 1)
+			{
+			meas_aux->chiprimefilep=fopen(chiprime, "r");
+			if(meas_aux->chiprimefilep!=NULL) // file exists
+				{
+				fclose(meas_aux->chiprimefilep);
+				meas_aux->chiprimefilep=fopen(chiprime, "a");
+				}
+			else
+				{
+ 				meas_aux->chiprimefilep=fopen(chiprime, "w");
+				fprintf(meas_aux->chiprimefilep, "# %d ", STDIM);
+				for(i=0; i<STDIM; i++) fprintf(meas_aux->chiprimefilep, "%d ", param->d_size[i]);
+				fprintf(meas_aux->chiprimefilep, "\n");
+				}
+			}
+		
+		// open topocharge_tcorr data file
+		if (param->d_topcharge_tcorr_meas == 1)
+			{
+			meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "r");
+			if(meas_aux->topchar_tcorr_filep!=NULL) // file exists
+				{
+				fclose(meas_aux->topchar_tcorr_filep);
+				meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "a");
+				}
+			else
+				{
+ 				meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "w");
+				fprintf(meas_aux->topchar_tcorr_filep, "# %d ", STDIM);
+				for(i=0; i<STDIM; i++) fprintf(meas_aux->topchar_tcorr_filep, "%d ", param->d_size[i]);
+				fprintf(meas_aux->topchar_tcorr_filep, "\n");
+				}
+			}
+		}
+	else
+		{
+		// open std data file
+		meas_aux->datafilep=fopen(data, "w");
+		print_header_datafile(meas_aux->datafilep, param);
+		
+		// open chi prime data file
+		if (param->d_chi_prime_meas == 1)
+			{
+			meas_aux->chiprimefilep=fopen(chiprime, "w");
+			fprintf(meas_aux->chiprimefilep, "# %d ", STDIM);
+			for(i=0; i<STDIM; i++) fprintf(meas_aux->chiprimefilep, "%d ", param->d_size[i]);
+			fprintf(meas_aux->chiprimefilep, "\n");
+			}
+		
+		// open topocharge_tcorr data file
+		if (param->d_topcharge_tcorr_meas == 1)
+			{
+			meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "w");
+			fprintf(meas_aux->topchar_tcorr_filep, "# %d ", STDIM);
+			for(i=0; i<STDIM; i++) fprintf(meas_aux->topchar_tcorr_filep, "%d ", param->d_size[i]);
+			fprintf(meas_aux->topchar_tcorr_filep, "\n");
+			}
+		}
+	
+	fflush(meas_aux->datafilep);
+	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
+	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	}
+
+
+void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const replica_index)
+	{
+	int num_meas;
+	char data_filename[STD_STRING_LENGTH], chiprime_filename[STD_STRING_LENGTH], topchar_tcorr_filename[STD_STRING_LENGTH];
+	
+	// max number of measures neeeded using any smoothing method
+	num_meas = (int)floor((param->d_agf_length+MIN_VALUE)/param->d_agf_meas_each);
+	if (num_meas < (int)(param->d_ngfsteps/param->d_gf_meas_each)) num_meas = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+	if (num_meas < param->d_coolrepeat) num_meas = param->d_coolrepeat;
+	
+	if ( num_meas > 0 )
+		{
+		// allocate meas arrays
+		if (param->d_plaquette_meas == 1)
+			allocate_array_double(&(meas_aux->meanplaq), num_meas, __FILE__, __LINE__);
+		
+		if (param->d_clover_energy_meas == 1)
+			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);	
+		
+		if (param->d_charge_meas == 1)
+			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
+		
+		if (param->d_topcharge_tcorr_meas == 1 )
+			allocate_array_double(&(meas_aux->sum_q_timeslices), param->d_size[0], __FILE__, __LINE__);
+		
+		if (param->d_chi_prime_meas == 1)
+			allocate_array_double(&(meas_aux->chi_prime), num_meas, __FILE__, __LINE__);
+		
+		if (param->d_charge_prime_meas == 1)
+			{
+			allocate_array_double_pointer(&(meas_aux->charge_prime), num_meas, __FILE__, __LINE__);
+			for(int i=0; i<num_meas; i++)
+				allocate_array_double(&(meas_aux->charge_prime[i]), STDIM, __FILE__, __LINE__);
+			}
+		
+		// allocate auxiliary lattices
+		for (int i=0; i<4; i++)
+			{
+			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
+			// TO DO: is parallelization ok? is it useful?
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r=0; r<(param->d_volume); r++)
+				{
+				allocate_array_GAUGE_GROUP(&(meas_aux->lattice_aux[i][r]), STDIM, __FILE__, __LINE__);
+				}
+			}
+		
+		// open data files
+		strcpy(data_filename, param->d_data_file);
+		strcpy(chiprime_filename, param->d_chiprime_file);
+		strcpy(topchar_tcorr_filename, param->d_topcharge_tcorr_file);
+		
+		#ifdef REPLICA_MEAS_MODE
+		if (param->d_N_replica_pt > 1)
+			{
+			char aux[STD_STRING_LENGTH];
+			sprintf(aux, "_replica_%d", replica_index);
+			strcat(data_filename, aux);
+			strcat(chiprime_filename, aux);
+			strcat(topchar_tcorr_filename, aux);		
+			}
+		open_data_file(meas_aux, data_filename, chiprime_filename, topchar_tcorr_filename, param);
+		#else
+		if (replica_index == 0)
+			{
+			open_data_file(meas_aux, data_filename, chiprime_filename, topchar_tcorr_filename, param);
+			}
+		#endif
+		}
+	}
+
+void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const * const param)
+	{
+	allocate_array_Meas_Utils(meas_aux, param->d_N_replica_pt, __FILE__, __LINE__);
+	
+	// init meas utils and data files for physical replica
+	init_meas_utils(&((*meas_aux)[0]), param, 0);
+	
+	// init meas utils for other replicas if using multicanonical
+	#ifdef MULTICANONICAL_MODE
+	for (int i=1; i<param->d_N_replica_pt; i++)
+		init_meas_utils(&((*meas_aux)[i]), param, i);
+	#endif
+	}
+
+void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const replica_index)
+	{
+	int num_meas;
+	num_meas = (int)floor((param->d_agf_length+MIN_VALUE)/param->d_agf_meas_each);
+	if ( num_meas > 0 )
+		{
+		// free meas arrays
+		if (param->d_plaquette_meas == 1)
+			free(meas_aux.meanplaq);
+		
+		if (param->d_clover_energy_meas == 1)
+			free(meas_aux.clover_energy);	
+		
+		if (param->d_charge_meas == 1)
+			free(meas_aux.charge);
+		
+		if (param->d_topcharge_tcorr_meas == 1 )
+			free(meas_aux.sum_q_timeslices);
+		
+		if (param->d_chi_prime_meas == 1)
+			free(meas_aux.chi_prime);
+		
+		if (param->d_charge_prime_meas == 1)
+			{
+			for(int i=0; i<num_meas; i++)
+				free(meas_aux.charge_prime[i]);
+			free(meas_aux.charge_prime);
+			}
+		
+		// free auxiliary lattices
+		for (int i=0; i<4; i++)
+			{
+			// TO DO: is parallelization ok? is it useful?
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r=0; r<(param->d_volume); r++)
+				{
+				free(meas_aux.lattice_aux[i][r]);
+				}
+			free(meas_aux.lattice_aux[i]);
+			}
+		
+		// close data files
+		#ifdef REPLICA_MEAS_MODE
+		fclose(meas_aux.datafilep);
+		if (param->d_chi_prime_meas==1) fclose(meas_aux.chiprimefilep);
+		if (param->d_topcharge_tcorr_meas==1) fclose(meas_aux.topchar_tcorr_filep);
+		#else
+		if (replica_index == 0)
+			{
+			fclose(meas_aux.datafilep);
+			if (param->d_chi_prime_meas==1) fclose(meas_aux.chiprimefilep);
+			if (param->d_topcharge_tcorr_meas==1) fclose(meas_aux.topchar_tcorr_filep);
+			}
+		#endif
+		}
+	}
+
+void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const * const param)
+	{
+	// free meas utils for physical replica
+	free_meas_utils(meas_aux[0], param, 0);
+	
+	// free meas utils for other replicas if using multicanonical
+	#ifdef MULTICANONICAL_MODE
+	for (int i=1; i<param->d_N_replica_pt; i++)
+		free_meas_utils(meas_aux[i], param, i);
+	#endif
+	
+	free(meas_aux);
+	}
+	
+void print_measures_arrays(int const num_meas, long const update_index, GParam const * const param,
+							Meas_Utils *meas_aux)
+	{
+	double time_step;
+	if (param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
+	else time_step = param->d_ngfsteps;
+	
 	for(int i=0; i<num_meas; i++)
 		{
-		if (param->d_plaquette_meas == 1 ) fprintf(datafilep, "%.12g ", meanplaq[i]);
-		if (param->d_clover_energy_meas == 1 ) fprintf(datafilep, "%.12g ", clover_energy[i]);
-		if (param->d_charge_meas == 1 ) fprintf(datafilep, "%.12g ", charge[i]);
-		if (param->d_chi_prime_meas == 1 ) 
-			{
-			if (param->d_agf_meas_each > 0.0) fprintf(chiprimefilep, "%ld %.12lg %.12lg\n", update_index, (i+1)*param->d_agf_meas_each, chi_prime[i]);
-			else fprintf(chiprimefilep, "%ld %d %.12lg\n", update_index, (i+1)*param->d_ngfsteps, chi_prime[i]);
-			}
-		if (param->d_charge_prime_meas == 1 ) for (int j=0; j<STDIM; j++) fprintf(datafilep, "%.12g ", charge_prime[i][j]);
+		if (param->d_plaquette_meas == 1 ) 		fprintf(meas_aux->datafilep, "%.12g ", meas_aux->meanplaq[i]);
+		if (param->d_clover_energy_meas == 1 ) 	fprintf(meas_aux->datafilep, "%.12g ", meas_aux->clover_energy[i]);
+		if (param->d_charge_meas == 1 ) 		fprintf(meas_aux->datafilep, "%.12g ", meas_aux->charge[i]);
+		if (param->d_chi_prime_meas == 1 )		fprintf(meas_aux->chiprimefilep, "%ld %.12lg %.12lg\n", update_index, (i+1)*time_step, meas_aux->chi_prime[i]);
+		if (param->d_charge_prime_meas == 1 ) 	for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "%.12g ", meas_aux->charge_prime[i][j]);
 		}
 	}
 
@@ -2576,11 +2656,11 @@ void free_measures_arrays(int const num_meas, GParam const * const param, double
 							double *charge, double *sum_q_timeslices,
 							double *chi_prime, double **charge_prime)
 	{
-	if (param->d_plaquette_meas == 1 ) free(meanplaq);
-	if (param->d_clover_energy_meas == 1 ) free(clover_energy);
-	if (param->d_charge_meas == 1 ) free(charge);
+	if (param->d_plaquette_meas == 1 )       free(meanplaq);
+	if (param->d_clover_energy_meas == 1 )   free(clover_energy);
+	if (param->d_charge_meas == 1 )          free(charge);
 	if (param->d_topcharge_tcorr_meas == 1 ) free(sum_q_timeslices);
-	if (param->d_chi_prime_meas == 1 ) free(chi_prime);
+	if (param->d_chi_prime_meas == 1 )       free(chi_prime);
 	if (param->d_charge_prime_meas == 1 )
 		{
 		for(int i=0; i<num_meas; i++) free(charge_prime[i]);

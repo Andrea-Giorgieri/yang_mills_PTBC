@@ -1,34 +1,33 @@
 #ifndef YM_AGF_C
 #define YM_AGF_C
 
-#include "../include/macro.h"
+#include"../include/macro.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<time.h>
 
 #ifdef OPENMP_MODE
-#include <omp.h>
+#include<omp.h>
 #endif
 
-#include "../include/function_pointers.h"
-#include "../include/gauge_conf.h"
-#include "../include/geometry.h"
-#include "../include/gparam.h"
-#include "../include/random.h"
+#include"../include/function_pointers.h"
+#include"../include/gauge_conf.h"
+#include"../include/geometry.h"
+#include"../include/gparam.h"
+#include"../include/random.h"
 
 void real_main(char *in_file)
 	{
-	Gauge_Conf GC, GC_old, help1, help2, help3;
+	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Meas_Utils meas_aux;
 
 	int meas_count, gradflowrepeat, accepted;
 	double gftime, gftime_step;
-	double 	*meanplaq, *clover_energy, *chi_prime, *charge, **charge_prime, *sum_q_timeslices;
 
-	FILE *datafilep, *chiprimefilep, *topchar_tcorr_filep;
 	time_t time1, time2;
 
 	// to disable nested parallelism
@@ -46,26 +45,16 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 
-	// open data files
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-
-	// initialize gauge configurations
-	init_gauge_conf(&GC, &param);
-	init_gauge_conf_from_gauge_conf(&GC_old, &GC, &param);
-	init_gauge_conf_from_gauge_conf(&help1, &GC, &param);
-	init_gauge_conf_from_gauge_conf(&help2, &GC, &param);
-	init_gauge_conf_from_gauge_conf(&help3, &GC, &param);
 	
-	// allocate meas arrays
-	gradflowrepeat = (int)floor((param.d_agf_length+MIN_VALUE)/param.d_agf_meas_each); // number of meas to perform
-	allocate_measures_arrays(gradflowrepeat, &param, &meanplaq, &clover_energy, &charge, &sum_q_timeslices, &chi_prime, &charge_prime);
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
+	gradflowrepeat = (int)floor((param.d_agf_length+MIN_VALUE)/param.d_agf_meas_each);
 	
 	// meas no gradflow
-	perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+	perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 
 	// gradflow starts
 	time(&time1);
@@ -76,12 +65,12 @@ void real_main(char *in_file)
 	while(meas_count < gradflowrepeat)
 		{
 		// integration step
-		gradflow_RKstep_adaptive(&GC, &GC_old, &help1, &help2, &help3, &geo, &param, &gftime, &gftime_step, &accepted);
+		gradflow_RKstep_adaptive(&GC, &geo, &param, &gftime, &gftime_step, &accepted, &meas_aux);
 		
 		// step accepted, perform measures if it is time to do so
 		if (accepted == 1 && fabs(gftime - param.d_agf_meas_each*(meas_count+1)) - param.d_agf_time_bin < MIN_VALUE )
 			{
-			perform_measures_aux(&GC, &geo, &param, meas_count, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime, topchar_tcorr_filep);
+			perform_measures_aux(&GC, &geo, &param, meas_count, &meas_aux);
 			meas_count = meas_count + 1;
 			}
 		
@@ -95,19 +84,11 @@ void real_main(char *in_file)
 	// gradflow ends
 
 	// print meas gradflow, close files
-	print_measures_arrays(gradflowrepeat, GC.update_index, &param, meanplaq, clover_energy, charge, chi_prime,charge_prime, datafilep, chiprimefilep);
-	fprintf(datafilep, "\n");
-	fclose(datafilep);
-	if (param.d_chi_prime_meas == 1 ) fclose(chiprimefilep);
-	if (param.d_topcharge_tcorr_meas == 1 ) fclose(topchar_tcorr_filep);
+	print_measures_arrays(gradflowrepeat, GC.update_index, &param, &meas_aux);
+	fprintf(meas_aux.datafilep, "\n");
 
 	// free memory
-	free_measures_arrays(gradflowrepeat, &param, meanplaq, clover_energy, charge, sum_q_timeslices, chi_prime, charge_prime);
-	free_gauge_conf(&GC, &param);
-	free_gauge_conf(&GC_old, &param);
-	free_gauge_conf(&help1, &param);
-	free_gauge_conf(&help2, &param);
-	free_gauge_conf(&help3, &param);
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// free geometry
 	free_geometry(&geo, &param);

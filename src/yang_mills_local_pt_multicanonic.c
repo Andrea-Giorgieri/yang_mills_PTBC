@@ -26,13 +26,13 @@ void real_main(char *in_file)
 	Rectangle swap_rectangle;
 	Rectangle *most_update, *clover_rectangle;
 	Acc_Utils acc_counters;
+	Meas_Utils *meas_aux;
 	int L_R_swap=1;
-	double *grid;
-	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	int count;
-	FILE *datafilep, *chiprimefilep, *swaptrackfilep, *multicanonic_acc_filep, *topchar_tcorr_filep;
-	time_t time1, time2;
 	
+	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+	FILE *swaptrackfilep;
+	int count;
+	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -46,9 +46,6 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-	
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
 	
@@ -57,7 +54,7 @@ void real_main(char *in_file)
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configurations replica and volume defects
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	
 	// initialize rectangles for hierarchical update
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
@@ -65,20 +62,11 @@ void real_main(char *in_file)
 	// initialize rectangle for swap probability evaluation (L_R_swap = 1)
 	init_rect(&swap_rectangle, L_R_swap, &param);
 	
-	// init swap acceptance arrays
-	init_swap_acc_arrays(&acc_counters, &param);
+	// init swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
+	init_acc_utils(&acc_counters, &param);
 	
-	// init swap acceptance arrays
-	init_multicanonic_acc_arrays(&acc_counters, &param);
-	
-	// init multicanonic topo-potential array
-	read_topo_potential(&grid, &param);
-	
-	// open file to write multicanonic Metropolis acceptance
-	init_multicanonic_acc_file(&multicanonic_acc_filep, &param);
-	
-	// initialize topo_charge for all replicas
-	init_topo_charge(GC, &geo, &param);
+	// init meas utils
+	init_meas_utils_replica(&meas_aux, &param);
 	
 	// Monte Carlo begin
 	time(&time1);
@@ -86,14 +74,13 @@ void real_main(char *in_file)
 	for(count=0; count < param.d_sample; count++)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
-		multicanonic_parallel_tempering_with_hierarchical_update(GC, &geo, &param, most_update, clover_rectangle, &swap_rectangle, &acc_counters, grid, multicanonic_acc_filep);
+		parallel_tempering_with_hierarchical_update(GC, &geo, &param, most_update, clover_rectangle, &swap_rectangle, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
 		
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
-			perform_measures_localobs(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep); // N.B. Here, the stored running charge of GC[0] is refreshed
-			refresh_topo_charge_replica(GC, &geo, &param); // refresh topological charge also for the other replicas
+			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
 			}
 		
 		// save configurations for backup
@@ -118,6 +105,11 @@ void real_main(char *in_file)
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&(GC[0]), &param, name);
+				
+				strcpy(name, param.d_twist_file);
+				strcat(name, "_step_");
+				strcat(name, aux);
+				write_twist_on_file_with_name(&(GC[0]), &param, name);
 				}
 			}
 		}
@@ -125,19 +117,14 @@ void real_main(char *in_file)
 	time(&time2);
 	// Monte Carlo end
 	
-	// close data file
-	fclose(datafilep);
-	if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if (param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
+	// free meas utils
+	free_meas_utils_replica(meas_aux, &param);
 	
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 	
-	// close multicanonic acceptances file
-	fclose(multicanonic_acc_filep);
-	
 	// save configurations
-	if(param.d_saveconf_back_every!=0)
+	if (param.d_saveconf_back_every!=0)
 		{
 		write_replica_on_file(GC, &param);
 		}
@@ -160,17 +147,11 @@ void real_main(char *in_file)
 	// free rectangle for swap probability evaluation
 	free_rect(&swap_rectangle);
 	
-	// free swap acceptance arrays
-	end_swap_acc_arrays(&acc_counters, &param);
-	
-	// free multicanonic acceptance arrays
-	end_multicanonic_acc_arrays(&acc_counters);
+	// free swap acceptance and multicanonic Metropolis acceptance arrays, close multicanonic file
+	free_acc_utils(&acc_counters, &param);
 	
 	// free hierarchical update parameters
 	free_hierarc_params(&param);
-	
-	// free multicanonic topo-potential array
-	free(grid);
 }
 
 
@@ -189,8 +170,10 @@ void print_template_input(void)
 		{
 		print_template_volume_parameters(fp);
 		print_template_pt_parameters(fp);
+		print_template_twist_parameters(fp);
 		print_template_multicanonic_parameters(fp);
 		print_template_simul_parameters(fp);
+		print_template_adaptive_gradflow_parameters(fp);
 		print_template_output_parameters(fp);
 		fclose(fp);
 		}
@@ -204,7 +187,7 @@ int main (int argc, char **argv)
 	if(argc != 2)
 		{
 		int parallel_tempering = 1;
-		int twisted_bc = 0;
+		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 		
 		printf("Usage: %s input_file\n\n", argv[0]);

@@ -23,11 +23,11 @@ void real_main(char *in_file)
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Meas_Utils meas_aux;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
 	double acc, acc_local;
-	FILE *datafilep;
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -42,15 +42,15 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &datafilep, &datafilep, &param);
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configuration
-	init_gauge_conf(&GC, &param);
+	init_gauge_conf(&GC, &geo, &param);
+
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	// acceptance of the metropolis update
 	acc=0.0;
@@ -65,7 +65,7 @@ void real_main(char *in_file)
 		
 		if(count % param.d_measevery ==0 && count >= param.d_thermal)
 			{
-			perform_measures_localobs_with_tracedef(&GC, &geo, &param, datafilep);
+			perform_measures_localobs_with_tracedef(&GC, &geo, &param, &meas_aux);
 			}
 		
 		// save configuration for backup
@@ -98,8 +98,8 @@ void real_main(char *in_file)
 	
 	acc/=(double)param.d_sample;
 	
-	// close data file
-	fclose(datafilep);
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// save configuration
 	if(param.d_saveconf_back_every!=0)

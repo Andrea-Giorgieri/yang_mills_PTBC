@@ -23,9 +23,10 @@ void real_main(char *in_file)
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Acc_Utils acc_counters;
+	Meas_Utils meas_aux;
 	
 	int count;
-	FILE *datafilep, *chiprime_datafilep, *topcharge_tcorr_datafilep;
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -50,29 +51,29 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &chiprime_datafilep, &topcharge_tcorr_datafilep, &param);
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configuration
-	init_gauge_conf(&GC, &param);
+	init_gauge_conf(&GC, &geo, &param);
 	
 	// initialize ml_polycorr arrays
 	alloc_polycorr_stuff(&GC, &param);
+	
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	// montecarlo
 	time(&time1);
 	// count starts from 1 to avoid problems using %
 	for(count=1; count < param.d_sample + 1; count++)
 		{
-		update(&GC, &geo, &param);
+		update(&GC, &geo, &param, &acc_counters);
 
 		if(count % param.d_measevery ==0 && count >= param.d_thermal)
 			{
-			perform_measures_polycorr(&GC, &geo, &param, datafilep);
+			perform_measures_polycorr(&GC, &geo, &param, &meas_aux);
 			}
 		
 		// save configuration for backup
@@ -91,8 +92,8 @@ void real_main(char *in_file)
 	time(&time2);
 	// montecarlo end
 	
-	// close data file
-	fclose(datafilep);
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// save configuration
 	if(param.d_saveconf_back_every!=0)

@@ -101,6 +101,10 @@ void readinput(char *in_file, GParam *param)
 	param->d_coolsteps = 0;
 	param->d_coolrepeat = 0;
 	
+	param->d_topo_cooling = 0;
+	param->d_topo_coolsteps = 0;
+	param->d_topo_alpha = 0.0;
+	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
 		{
@@ -468,8 +472,12 @@ void readinput(char *in_file, GParam *param)
 					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					exit(EXIT_FAILURE);
 					}
-					if (temp_d > 0) param->d_agf_meas_each=temp_d;
-					else fprintf(stderr, "Error: agf_meas_each must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					if (temp_d >= 0) param->d_agf_meas_each=temp_d;
+					else 
+					{
+					fprintf(stderr, "Error: agf_meas_each must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
 					}
 					
 			else if(strncmp(str, "agf_step", 8)==0) // initial size of integration with adaptive step
@@ -857,7 +865,43 @@ void readinput(char *in_file, GParam *param)
 					}
 					param->d_grid_max=temp_d;
 					}
+			
+			else if(strncmp(str, "topo_cooling", 12)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_i == 0 || temp_i == 1) param->d_topo_cooling=temp_i;
+					else fprintf(stderr, "Error: topo_cooling must be 0 (agf) or 1 (cooling) in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
 					
+			else if(strncmp(str, "topo_coolsteps", 14)==0)
+					{
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_i >= 0) param->d_topo_coolsteps=temp_i;
+					else fprintf(stderr, "Error: topo_coolsteps must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+					
+			else if(strncmp(str, "topo_alpha", 10)==0)
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d >= 0) param->d_topo_alpha=temp_d;
+					else fprintf(stderr, "Error: topo_alpha must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+			
 			else
 				{
 				fprintf(stderr, "Error: unrecognized option %s in the file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
@@ -902,6 +946,23 @@ void readinput(char *in_file, GParam *param)
 				exit(EXIT_FAILURE);
 				}
 			}
+<<<<<<< HEAD
+		for(i=1; i<NLEVELS; i++)
+			{
+			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
+			{
+			fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+			}
+		if(param->d_ml_step[NLEVELS-1]==1)
+			{
+			fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		}
+=======
+>>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 		
 		// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
 		// This prevents even-odd parallelization of updates.
@@ -921,11 +982,15 @@ void readinput(char *in_file, GParam *param)
 
 		err=0;
 		for(i=0; i<STDIM; i++) if(param->d_size[i]==1) err=1;
+<<<<<<< HEAD
+		if(err==1) fprintf(stderr, "Error: all sizes has to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
+=======
 		if(err==1)
 			{
 			fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
+>>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 				
 		// various checks on parallel tempering parameters
 		if(param->d_L_defect[0]>param->d_size[0])
@@ -962,7 +1027,61 @@ void readinput(char *in_file, GParam *param)
 			}
 		
 		init_derived_constants(param);
+		#ifdef MULTICANONICAL_MODE
+		read_topo_potential(param);
+		#endif
 		}
+	}
+
+// read topo potential from file
+void read_topo_potential(GParam * const param)
+	{
+	int i, j, a, err;
+	double x, V;
+	FILE *fp;
+	
+	fp=fopen(param->d_topo_potential_file, "r");
+	if( fp==NULL )
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_topo_potential_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}	
+	
+	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
+	for (int a=0; a<param->d_N_replica_pt; a++)
+		{
+		allocate_array_double(&(param->d_grid[a]), param->d_n_grid, __FILE__, __LINE__);
+		}
+
+	// read x and V_a(x) from topo_potential file
+	for (i=0; i<param->d_n_grid; i++)
+		{
+		// read x
+		err=fscanf(fp, "%lf", &x);
+		if(err!=1)
+			{
+			printf("Error: can't read the first element of the %d-th row of the file (%s, %d)\n", i,__FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		j=(int)floor((x+param->d_grid_max+(param->d_grid_step/2.0))/param->d_grid_step);
+		if (i!= j)
+			{
+			printf("Error: found %d (%lf) when expecting %d (%s, %d)\n", j, x, i, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		// read V_a(x)
+		for(a=0; a<param->d_N_replica_pt; a++)
+			{
+			err=fscanf(fp, "%lf", &V);
+			if(err!=1)
+				{
+				printf("Error: can't read the %d-th element of the %d-th row of the file (%s, %d)\n", a+2, i,__FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+			param->d_grid[a][i]=V;
+			}
+		}
+	fclose(fp);
 	}
 
 void init_derived_constants(GParam *param)
@@ -1187,7 +1306,10 @@ void print_pt_parameters(FILE *fp, GParam const * const param)
 void print_multicanonic_parameters(FILE *fp, GParam const * const param)
 	{
 	fprintf(fp,"Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
-	fprintf(fp,"\n\n");
+	fprintf(fp,"topo_cooling:    %d\n", param->d_topo_cooling);
+	fprintf(fp,"topo_coolsteps:  %d\n", param->d_topo_coolsteps);
+	fprintf(fp,"topo_alpha:      %lf\n", param->d_topo_alpha);
+	fprintf(fp,"\n");
 	}
 
 void print_simul_parameters(FILE *fp, GParam const * const param)
@@ -1294,6 +1416,9 @@ void print_parameters_local(GParam const * const param, time_t time_start, time_
 	fprintf(fp, "+-----------------------------------------+\n\n");
 
 	print_configuration_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 
@@ -1315,6 +1440,9 @@ void print_parameters_local_agf(GParam const * const param, time_t time_start, t
 	fprintf(fp, "+---------------------------------------------+\n\n");
 
 	print_configuration_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
@@ -1361,6 +1489,9 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 
@@ -1383,6 +1514,9 @@ void print_parameters_local_pt_gf(GParam const * const param, time_t time_start,
 
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
@@ -1406,6 +1540,9 @@ void print_parameters_local_pt_agf(GParam const * const param, time_t time_start
 
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
@@ -1429,6 +1566,9 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_gradflow_parameters(fp, param);
@@ -1455,6 +1595,9 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
@@ -1487,7 +1630,10 @@ void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t ti
 	fprintf(fp, "\n");
 	fprintf(fp, "dist_poly:	%d\n", param->d_dist_poly);
 	fprintf(fp, "\n");
-	
+		
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	
 	diff_sec = difftime(time_end, time_start);
@@ -1509,6 +1655,9 @@ void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_en
 	
 	print_configuration_parameters(fp);
 	print_multilevel_parameters(fp, param);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	
 	diff_sec = difftime(time_end, time_start);
@@ -1637,6 +1786,9 @@ void print_parameters_tracedef(GParam const * const param, time_t time_start, ti
 		fprintf(fp, "%lf ", param->d_h[i]);
 		}
 	fprintf(fp, "\n\n");
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_metro_parameters(fp, param, acc);
 	print_cooling_parameters(fp, param);
@@ -1659,6 +1811,9 @@ void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_e
 	fprintf(fp, "+---------------------------------------------+\n\n");
 	
 	print_configuration_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
 	
@@ -1685,6 +1840,9 @@ void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_e
 	fprintf(fp, "+---------------------------------------------+\n\n");
 	
 	print_configuration_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
 	
@@ -1711,6 +1869,9 @@ void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t t
 	fprintf(fp, "+--------------------------------------------------+\n\n");
 	
 	print_configuration_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_multicanonic_parameters(fp, param);
+	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
 	
@@ -1738,7 +1899,10 @@ void print_template_volume_parameters(FILE *fp)
 void print_template_simul_parameters(FILE *fp)
 	{
 	fprintf(fp,"# Simulations parameters\n");
-	fprintf(fp, "beta  6.4881\n");
+	fprintf(fp, "beta   6.4881\n");
+	#ifdef THETA_MODE
+	fprintf(fp, "theta  0.5\n");
+	#endif
 	fprintf(fp,"\n");
 	fprintf(fp, "sample     10\n");
 	fprintf(fp, "thermal    0\n");
@@ -1821,10 +1985,13 @@ void print_template_metro_parameters(FILE *fp)
 void print_template_multicanonic_parameters(FILE *fp)
 	{
 	fprintf(fp,"# Multicanonic parameters\n");
-	fprintf(fp,"grid_step             0.05\n");
-	fprintf(fp,"grid_max              3.0\n");
-	fprintf(fp,"topo_potential_file   topo_potential\n");
-	fprintf(fp, "multicanonic_acc_file   multicanonic_acc.dat\n");
+	fprintf(fp,"grid_step                0.05                  # charge steps at which topo_potential is defined in topo_potential_file\n");
+	fprintf(fp,"grid_max                 3.0                   # abs value of charge at which topo_potential saturates in topo_potential_file\n");
+	fprintf(fp,"topo_cooling             0                     # cooling strat before evaluating the topo potential: 0 = none, 1 = cooling\n");
+	fprintf(fp,"topo_coolsteps           5                     # cooling steps before evaluating the topo potential (if topo_cooling = 1)\n");
+	fprintf(fp,"topo_alpha               1.0                   # used for alpha-rounding if >0, no alpha-rounding if =0\n");
+	fprintf(fp,"topo_potential_file      topo_potential        # file to read the topo_potential from\n");
+	fprintf(fp,"multicanonic_acc_file    multicanonic_acc.dat  # file to save acceptances of Metropolis tests with topo_potential\n");
 	fprintf(fp, "\n");
 	}
 
@@ -1889,6 +2056,10 @@ void print_compilation_details()
 	
 	#ifdef THETA_MODE
 	printf("\n\tusing imaginary theta\n");
+	#endif
+	
+	#ifdef MULTICANONICAL_MODE
+	printf("\n\tusing multicanonical algorithm\n");
 	#endif
 	
 	#ifdef OPT_MULTIHIT

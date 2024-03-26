@@ -31,5 +31,6 @@ void allocate_array_TensProdAdj(TensProdAdj **const array, long size, char const
 void allocate_array_TensProdAdj_pointer(TensProdAdj ***const array, long size, char const * const file, int line);
 void allocate_array_TensProdAdj_pointer_pointer(TensProdAdj ****const array, long size, char const * const file, int line);
 void allocate_array_Gauge_Conf(Gauge_Conf **const array, long size, char const * const file, int line);
+void allocate_array_Meas_Utils(Meas_Utils **const array, long size, char const * const file, int line);
 
 #endif

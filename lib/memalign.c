@@ -174,5 +174,13 @@ void allocate_array_Gauge_Conf(Gauge_Conf **const array, long size, char const *
 		}
 	}
 
+void allocate_array_Meas_Utils(Meas_Utils **const array, long size, char const * const file, int line)
+	{
+	if(posix_memalign((void**)array, (size_t)DOUBLE_ALIGN, (size_t)size*sizeof(Meas_Utils)) != 0)
+		{
+		fprintf(stderr, "Problems allocating an array of Meas_Utils! (%s, %d)\n", file, line);
+		exit(EXIT_FAILURE);
+		}
+	}
 #endif
 

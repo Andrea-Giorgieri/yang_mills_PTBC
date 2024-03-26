@@ -23,20 +23,19 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 	{
 	int aux_i, i, j, num_swaps, is_even, is_even_first;
 	long k, s, num_even, num_odd, num_swaps_1, num_swaps_2;
-	double *metro_swap_prob;
-	
+	// Just an alias to be used in reduction clause for OpenMP. icc gives error during
+	// optimization if reduction(+:acc_counters->metro_swap_prob[:num_swaps]) is used
+	double *aux_acc = acc_counters->metro_swap_prob;
+
 	// for each value of defect_dir, determine the three orthogonal directions to it
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
 	
 	// N_replica_pt - 1 is the total number of swaps
 	num_swaps = ((param->d_N_replica_pt)-1);
 	
-	// define auxiliary array to store metropolis swap probabilities
-	allocate_array_double(&metro_swap_prob, num_swaps, __FILE__, __LINE__);
-	
 	// set all probabilities to 0
 	for(k=0; k<num_swaps; k++)
-		metro_swap_prob[k]=0.0;
+		aux_acc[k]=0.0;
 
 	is_even = num_swaps % 2;                   // check if num_swaps is even or not
 	num_even = (long) ((num_swaps+is_even)/2); // number or swaps for even replica
@@ -62,11 +61,11 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 
 	// first group of swaps	
 	
-	// compute action differences
+	// compute action differences (multicanonical contribution in the next loop)
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:metro_swap_prob[:num_swaps]) private(s,aux_i,j)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_acc[:num_swaps]) private(s,aux_i,j)
 	#endif
-  for(s=0;s<((num_swaps_1)*(swap_rectangle->d_vol_rect));s++)
+	for(s=0;s<((num_swaps_1)*(swap_rectangle->d_vol_rect));s++)
 		{
 		long n = s%(swap_rectangle->d_vol_rect);
 		long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect
@@ -78,7 +77,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 			{
 			j = perp_dir[param->d_defect_dir][aux_i];
 			// contribution to action difference between replicas a and b of site r on plane (i,j)
-			metro_swap_prob[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
+			aux_acc[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
 			}		
 		}
 	
@@ -90,8 +89,13 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 		{
 		int a=2*((int)k)+is_even_first;
 		int b=a+1;
-		metro_swap_prob[a] = exp(-metro_swap_prob[a]); // metropolis swap probability = exp{ - (swapped action - unswapped action) }
-		metropolis_single_swap(GC, a, b, metro_swap_prob[a], acc_counters);
+		
+		// multicanonical contribution to the action difference
+		#ifdef MULTICANONICAL_MODE
+		acc_counters->metro_swap_prob[a] += delta_topo_potential_swap(GC, a, b, param);
+		#endif
+		acc_counters->metro_swap_prob[a] = exp(-acc_counters->metro_swap_prob[a]); // metropolis swap probability = exp{ - (swapped action - unswapped action) }
+		metropolis_single_swap(GC, a, b, acc_counters->metro_swap_prob[a], acc_counters); // metropolis step
 		}
 
 
@@ -101,7 +105,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 	
 	// compute action differences
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:metro_swap_prob[:num_swaps]) private(s,aux_i,j)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_acc[:num_swaps]) private(s,aux_i,j)
 	#endif
 	for(s=0;s<((num_swaps_2)*(swap_rectangle->d_vol_rect));s++)
 		{
@@ -114,7 +118,7 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 			{
 			j = perp_dir[param->d_defect_dir][aux_i];
 			// contribution to action difference between replicas a and b of site r on plane (i,j)
-			metro_swap_prob[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
+			aux_acc[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
 			}
 		}
 	
@@ -126,12 +130,14 @@ void swap(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param
 		{
 		int a=2*((int)k)+is_even_first;
 		int b=a+1;
-		metro_swap_prob[a] = exp(-metro_swap_prob[a]); // metropolis swap probability = exp{ - (swapped action - unswapped action) }
-		metropolis_single_swap(GC,a,b,metro_swap_prob[a],acc_counters); // metropolis step
+		
+		// multicanonical contribution to the action difference
+		#ifdef MULTICANONICAL_MODE
+		aux_acc[a] += delta_topo_potential_swap(GC, a, b, param);
+		#endif
+		aux_acc[a] = exp(-aux_acc[a]); // metropolis swap probability = exp{ - (swapped action - unswapped action) }
+		metropolis_single_swap(GC, a, b, aux_acc[a], acc_counters); // metropolis step
 		}
-	
-	// free aux array
-	free(metro_swap_prob);
 	}
 
 double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param,
@@ -206,15 +212,15 @@ void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double con
 
 	// Metropolis test: if p<1 => acc=1 with probability p, if p>=1 acc=1 (already assigned)
 	if(p<1)
-	{
+		{
 		double random_number=casuale();
 		if(random_number>p)
-		{
+			{
 			acc=0;
+			}
 		}
-	}
 	
-	// if Metropolis is accepted, swap replicas, including the twist factors
+	// if Metropolis is accepted, swap replicas, including the twist factors and the stored charges for multicanonic
 	if(acc==1)
 		{
 		// swap of configurations
@@ -227,7 +233,23 @@ void metropolis_single_swap(Gauge_Conf *GC, int const a, int const b, double con
 		GC[b].lattice=aux;
 		GC[b].Z=aux_Z;
 		acc_counters->num_accepted_swap[a]++; // increase counter of successfull swaps for replicas (a, a+1)
-
+		
+		// swap of auxiliary configurations
+		aux=GC[a].lattice_copy;
+		aux_Z=GC[a].Z_copy;
+		GC[a].lattice_copy=GC[b].lattice_copy;
+		GC[a].Z_copy=GC[b].Z_copy;
+		GC[b].lattice_copy=aux;
+		GC[b].Z_copy=aux_Z;
+		
+		// swap of stored charges
+		#ifdef MULTICANONICAL_MODE
+		double aux_charge;
+		aux_charge=GC[a].stored_topo_charge;
+		GC[a].stored_topo_charge=GC[b].stored_topo_charge;
+		GC[b].stored_topo_charge=aux_charge;
+		#endif
+		
 		// swap of labels
 		int aux_label;
 		aux_label=GC[a].conf_label;
@@ -243,65 +265,86 @@ void conf_translation(Gauge_Conf *GC, Geometry const * const geo, GParam const *
 	double aux;
 	int dir,i;
 	long s;
-	Gauge_Conf aux_conf;
   
 	// extract random direction
 	aux=STDIM*casuale();
 	for(i=0;i<STDIM;i++)
-	{
+		{
 		if ( (aux>=i) && (aux<(i+1)) ) dir=i;
-	}
-
-	// copy the conf in an auxiliary one (should be defined outside and passed to the function?), including the twist factors
-	init_gauge_conf_from_gauge_conf(&aux_conf, GC, param); // now aux_conf=GC
+		}
 
 	// translation in direction +dir, including the twist factors
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
 	for(s=0; s<(param->d_n_planes)*(param->d_volume); s++)
-	{
+		{
 		// s = j * volume + r
 		long r = s % (param->d_volume);
 		int j = (int) ( (s-r)/(param->d_volume) );
-		if(j<STDIM) equal(&(GC->lattice[r][j]), &(aux_conf.lattice[nnm(geo,r,dir)][j]) );
-		GC->Z[r][j] = aux_conf.Z[nnm(geo,r,dir)][j];
-	}
+		if(j<STDIM) 
+			{
+			equal(&(GC->lattice[r][j]), &(GC->lattice_copy[nnm(geo,r,dir)][j]) );
+			}
+		GC->Z[r][j] = GC->Z_copy[nnm(geo,r,dir)][j];
+		}
 
-	// free auxiliary conf, including the twist factors
-	free_gauge_conf(&aux_conf, param);
+	// update the auxiliary conf
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<(param->d_n_planes)*(param->d_volume); s++)
+		{
+		// s = j * volume + r
+		long r = s % (param->d_volume);
+		int j = (int) ( (s-r)/(param->d_volume) );
+		if(j<STDIM) 
+			{
+			equal(&(GC->lattice_copy[r][j]), &(GC->lattice[r][j]) );
+			}
+		GC->Z_copy[r][j] = GC->Z[r][j];
+		}
 	}
 	
-void init_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
+void init_acc_utils(Acc_Utils *acc_counters, GParam const * const param)
 	{
 	if(param->d_N_replica_pt==1)
 		{
 		acc_counters->num_accepted_swap=NULL;
 		acc_counters->num_swap=NULL;
+		acc_counters->metro_swap_prob=NULL;
 		}
 	else
 		{
 		allocate_array_long(&(acc_counters->num_accepted_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
 		allocate_array_long(&(acc_counters->num_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
+		allocate_array_double(&(acc_counters->metro_swap_prob), param->d_N_replica_pt-1, __FILE__, __LINE__);
 		for(int i=0; i<(param->d_N_replica_pt-1); i++) 
 			{
 			acc_counters->num_accepted_swap[i]=0;
 			acc_counters->num_swap[i]=0;
 			}
 		}
+	#ifdef MULTICANONICAL_MODE
+	init_multicanonic_acc_utils(acc_counters, param);
+	#endif
 	}
 
-void end_swap_acc_arrays(Acc_Utils *acc_counters, GParam const * const param)
+void free_acc_utils(Acc_Utils *acc_counters, GParam const * const param)
 	{
 	if(param->d_N_replica_pt>1)
 		{
 		free(acc_counters->num_accepted_swap);
 		free(acc_counters->num_swap);
+		free(acc_counters->metro_swap_prob);
 		}
 	else
 		{
 		(void) acc_counters; // to suppress compiler warning of unused variable
 		}
+	#ifdef MULTICANONICAL_MODE
+	free_multicanonic_acc_utils(acc_counters);
+	#endif
 	}
   
 void print_acceptances(Acc_Utils const * const acc_counters, GParam const * const param)

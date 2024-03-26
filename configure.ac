@@ -74,6 +74,11 @@ AC_ARG_ENABLE([use-theta],
               [use_theta=yes], 
               [use_theta=no])
 
+AC_ARG_ENABLE([use-multicanonical], 
+              [  --enable-use-multicanonical      to enable the use of the multicanonical algorithm], 
+              [use_multicanonical=yes], 
+              [use_multicanonical=no])
+
 
 
 ### FURTHER CHECKS
@@ -109,6 +114,10 @@ fi
 
 if test x${use_theta} = xyes; then
   AC_DEFINE(THETA_MODE,, [Enable the use of an imaginary theta term])
+fi
+
+if test x${use_multicanonical} = xyes; then
+  AC_DEFINE(MULTICANONICAL_MODE,, [Enable the use of the multicanonical algorithm])
 fi
 
 

@@ -14,11 +14,14 @@ compile_targets='conf_check debug_rng debug_su2 debug_su2_adj debug_sun debug_u1
 # 1=yes, 0=no
 ENABLE_THETA=0
 ENABLE_OPENMP=1
+ENABLE_MULTICAN=1
 
 flag_theta=''
 flag_openmp=''
+flag_multican=''
 if [ "${ENABLE_THETA}" -eq '1' ]; then flag_theta='--enable-use-theta'; fi
 if [ "${ENABLE_OPENMP}" -eq '1' ]; then flag_openmp='--enable-use-openmp'; fi
+if [ "${ENABLE_MULTICAN}" -eq '1' ]; then flag_multican='--enable-use-multicanonical'; fi
 
 chmod +x configure
 if [ -d lib/.deps ]; then make clean; fi
@@ -30,11 +33,11 @@ automake
 
 # optimized configuration for Marconi (optimized compilation with Intel compiler on Intel Skylake processors)
 #module load intel
-#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=skylake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
+#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=skylake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican}
 
 # optimized configuration for Leonardo (optimized compilation with Intel compiler on Intel Icelake processors)
 module load intel-oneapi-compilers
-./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta}
+./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican}
 
 # optimized compilation with gcc
 #./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=gcc CFLAGS='-O3' LIBS="-ldl -lz -lc"

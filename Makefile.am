@@ -8,7 +8,7 @@ bin_PROGRAMS = conf_check \
             debug_agf_vs_gf \
             debug_agf_vs_delta \
             yang_mills_local \
-			yang_mills_local_agf \
+            yang_mills_local_agf \
             yang_mills_polycorr \
             yang_mills_polycorr_long \
             yang_mills_polycorradj \
@@ -100,7 +100,7 @@ conf_check_SOURCES=./src/conf_check.c \
                    $(random) \
                    $(su2) \
                    $(sun) \
-                   $(u1) 
+                   $(u1)
 
 debug_rng_SOURCES=./src/debug_rng.c \
                   $(align) \

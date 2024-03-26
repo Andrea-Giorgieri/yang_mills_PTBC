@@ -20,15 +20,15 @@
 
 void real_main(char *in_file)
 	{
-	Gauge_Conf GC, help1, help2;
+	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Meas_Utils meas_aux;
 	
 	long count;
 	const long max_count=10000;
 	double gftime, energy_clover, energy_clover_old, tch, ris;
-	
-	FILE *datafilep;
+
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -46,17 +46,15 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	datafilep=fopen(param.d_data_file, "a");
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configurations
-	init_gauge_conf(&GC, &param);
-	init_gauge_conf_from_gauge_conf(&help1, &GC, &param);
-	init_gauge_conf_from_gauge_conf(&help2, &GC, &param);
+	init_gauge_conf(&GC, &geo, &param);
+	
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	time(&time1);
 	gftime=0.0;
@@ -64,20 +62,20 @@ void real_main(char *in_file)
 	energy_clover_old=0.0;
 	while(count<max_count)
 		{
-		gradflow_RKstep(&GC, &help1, &help2, &geo, &param, param.d_gfstep);
+		gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
 		gftime+=param.d_gfstep;
 		
 		clover_disc_energy(&GC, &geo, &param, &energy_clover);
 		tch=topcharge(&GC, &geo, &param);
 		
-	 	fprintf(datafilep, "%.13lf	%.13lf	%.13lf	%.13lf\n", gftime, energy_clover, energy_clover*gftime*gftime, tch);
+	 	fprintf(meas_aux.datafilep, "%.13lf	%.13lf	%.13lf	%.13lf\n", gftime, energy_clover, energy_clover*gftime*gftime, tch);
 		if(energy_clover*gftime*gftime>0.3)
 			{
 			ris = gftime - param.d_gfstep + (0.3-energy_clover_old*gftime*gftime)*param.d_gfstep/(energy_clover*gftime*gftime-energy_clover_old*gftime*gftime);
-			fprintf(datafilep, "%.13lf\n\n", ris);
+			fprintf(meas_aux.datafilep, "%.13lf\n\n", ris);
 			count=(max_count+10);
 			}
-		fflush(datafilep);
+		fflush(meas_aux.datafilep);
 		
 		count++;
 		energy_clover_old=energy_clover;
@@ -90,16 +88,14 @@ void real_main(char *in_file)
 		exit(EXIT_FAILURE);
 		}
 	
-	// close data file
-	fclose(datafilep);
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// print simulation details
 	print_parameters_t0(&param, time1, time2);
 	
 	// free gauge configurations
 	free_gauge_conf(&GC, &param);
-	free_gauge_conf(&help1, &param);
-	free_gauge_conf(&help2, &param);
 	
 	// free geometry
 	free_geometry(&geo, &param);

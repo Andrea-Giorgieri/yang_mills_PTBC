@@ -23,9 +23,10 @@ void real_main(char *in_file)
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Acc_Utils acc_counters;
+	Meas_Utils meas_aux;
 	
 	int count;
-	FILE *datafilep;
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -50,18 +51,18 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &datafilep, &datafilep, &param);
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configuration
-	init_gauge_conf(&GC, &param);
+	init_gauge_conf(&GC, &geo, &param);
 	
 	// initialize ml_polycorr arrays
 	alloc_polycorr_stuff(&GC, &param);
+	
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	// montecarlo starts
 	time(&time1);
@@ -69,7 +70,7 @@ void real_main(char *in_file)
 		{
 		for(count=0; count<param.d_measevery; count++)
 			{
-			update(&GC, &geo, &param);
+			update(&GC, &geo, &param, &acc_counters);
 			}
 		
 		// save configuration
@@ -91,7 +92,7 @@ void real_main(char *in_file)
 			{
 			for(count=0; count<param.d_measevery; count++)
 				{
-				update(&GC, &geo, &param);
+				update(&GC, &geo, &param, &acc_counters);
 				}
 			
 			// save configuration
@@ -109,7 +110,7 @@ void real_main(char *in_file)
 			if(iteration==param.d_ml_level0_repeat)
 				{
 				// print the measure
-				perform_measures_polycorr_long(&GC, &param, datafilep);
+				perform_measures_polycorr_long(&GC, &param, &meas_aux);
 				
 				iteration=-1; // next time the conf will be updated, no multilevel
 				}
@@ -121,8 +122,8 @@ void real_main(char *in_file)
 	time(&time2);
 	// montecarlo end
 	
-	// close data file
-	fclose(datafilep);
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// save configuration
 	if(param.d_saveconf_back_every!=0)

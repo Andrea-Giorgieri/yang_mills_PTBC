@@ -44,10 +44,10 @@ int main(void)
 	initrand(param.d_randseed);
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
 	init_rect(&swap_rectangle, L_R_swap, &param);
-	init_swap_acc_arrays(&acc_counters, &param);
+	init_acc_utils(&acc_counters, &param);
 		
 	printf("\n*******************************\n");
 	printf("PROGRAM FOR THE DEBUG OF TWIST\n");
@@ -73,7 +73,7 @@ int main(void)
 	printf("VERIFY THAT TWISTED COLD START GIVES ZERO ENERGY ...\n\n");
 	
 	param.d_start = 3;
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	for(r=0; r<(param.d_volume); r++)
 	{
 		energy = 0;
@@ -122,7 +122,7 @@ int main(void)
 	printf("VERIFY THAT plaquettep GETS CONJUGATED SWAPPING THE DIRS OF A PLAQUETTE AT ORIGIN...\n\n");
 	
 	param.d_start = 1;
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	for(i=0; i<STDIM; i++)
 	{
 		for(j=i+1; j<STDIM; j++)
@@ -269,7 +269,7 @@ int main(void)
 	
 	err = 0;
 	param.d_start = 1;
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	for(i=0; r<STDIM; i++)
 		for(j=0; j<STDIM; j++)
 			for(r=0; r<param.d_volume; r++)
@@ -301,7 +301,7 @@ int main(void)
 	free_geometry(&geo, &param);
 	free_rect_hierarc(most_update, clover_rectangle, &param);
 	free_rect(&swap_rectangle);
-	end_swap_acc_arrays(&acc_counters, &param);
+	free_acc_utils(&acc_counters, &param);
 	free_hierarc_params(&param);
 
 	printf("\nTEST ENDED\n\n");

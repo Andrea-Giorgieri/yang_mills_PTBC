@@ -26,12 +26,13 @@ void real_main(char *in_file)
 	Rectangle swap_rectangle;
 	Rectangle *most_update, *clover_rectangle;
 	Acc_Utils acc_counters;
+	Meas_Utils meas_aux0, meas_aux1, meas_aux2, meas_aux3;
 	int L_R_swap=1;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	char name0[STD_STRING_LENGTH], name1[STD_STRING_LENGTH], name2[STD_STRING_LENGTH], name3[STD_STRING_LENGTH];
 	int count;
-	FILE *datafilep0, *datafilep1, *datafilep2, *datafilep3, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep;
+	FILE *swaptrackfilep;
 	FILE *step_filep0, *step_filep1, *step_filep2, *step_filep3;
 	time_t time_mc_start, time_mc_end, time1, time2, time3, time4, time5, time_agf0, time_agf1, time_agf2, time_agf3;
 	double delta0, delta1, delta2, delta3;
@@ -65,13 +66,13 @@ void real_main(char *in_file)
 	strcat(name3, "_delta3");
 	
 	strcpy(param.d_data_file, name0);
-	init_data_file(&datafilep0, &chiprimefilep, &topchar_tcorr_filep, &param);
+	init_meas_utils(&meas_aux0, &param, 0);
 	strcpy(param.d_data_file, name1);
-	init_data_file(&datafilep1, &chiprimefilep, &topchar_tcorr_filep, &param);
+	init_meas_utils(&meas_aux1, &param, 0);
 	strcpy(param.d_data_file, name2);
-	init_data_file(&datafilep2, &chiprimefilep, &topchar_tcorr_filep, &param);
+	init_meas_utils(&meas_aux2, &param, 0);
 	strcpy(param.d_data_file, name3);
-	init_data_file(&datafilep3, &chiprimefilep, &topchar_tcorr_filep, &param);
+	init_meas_utils(&meas_aux3, &param, 0);
 	strcpy(param.d_data_file, aux);
 	
 	step_filep0 = fopen("step_file0.dat", "a");
@@ -91,7 +92,7 @@ void real_main(char *in_file)
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configurations replica and volume defects
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	
 	// initialize rectangles for hierarchical update
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
@@ -100,7 +101,7 @@ void real_main(char *in_file)
 	init_rect(&swap_rectangle, L_R_swap, &param);
 	
 	// init acceptances array
-	init_swap_acc_arrays(&acc_counters, &param);
+	init_acc_utils(&acc_counters, &param);
 	
 	// Monte Carlo begin
 	time(&time_mc_start);
@@ -119,16 +120,16 @@ void real_main(char *in_file)
 			{
 			param.d_agf_delta = delta0;
 			time(&time1);
-			perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep0, chiprimefilep, topchar_tcorr_filep, step_filep0);
+			perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux0, step_filep0);
 			//param.d_agf_delta = delta1;
 			time(&time2);
-			perform_measures_localobs_with_adaptive_gradflow_debug2(&(GC[0]), &geo, &param, datafilep1, chiprimefilep, topchar_tcorr_filep, step_filep1);
+			perform_measures_localobs_with_adaptive_gradflow_debug2(&(GC[0]), &geo, &param, &meas_aux1, step_filep1);
 			//param.d_agf_delta = delta2;
 			time(&time3);
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep2, chiprimefilep, topchar_tcorr_filep, step_filep2);
+			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux2, step_filep2);
 			//param.d_agf_delta = delta3;
 			time(&time4);
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep3, chiprimefilep, topchar_tcorr_filep, step_filep3);
+			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux3, step_filep3);
 			time(&time5);
 			time_agf0 += time2 - time1;
 			time_agf1 += time3 - time2;
@@ -170,18 +171,12 @@ void real_main(char *in_file)
 	time(&time_mc_end);
 	// Monte Carlo end
 	
-	// close data file
-	fclose(datafilep0);
-	fclose(datafilep1);
-	fclose(datafilep2);
-	fclose(datafilep3);
-	if(param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if(param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
-	fclose(step_filep0);
-	fclose(step_filep1);
-	fclose(step_filep2);
-	fclose(step_filep3);
-	
+	// free meas utils
+	free_meas_utils(meas_aux0, &param, 0);
+	free_meas_utils(meas_aux1, &param, 0);
+	free_meas_utils(meas_aux2, &param, 0);
+	free_meas_utils(meas_aux3, &param, 0);
+
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 	
@@ -210,7 +205,7 @@ void real_main(char *in_file)
 	free_rect(&swap_rectangle);
 	
 	// free acceptances array
-	end_swap_acc_arrays(&acc_counters, &param);
+	free_acc_utils(&acc_counters, &param);
 	
 	// free hierarchical update parameters
 	free_hierarc_params(&param);

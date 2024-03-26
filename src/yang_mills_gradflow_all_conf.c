@@ -23,11 +23,11 @@ void real_main(char *in_file)
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Meas_Utils meas_aux;
 	
 	int stop;
 	long step;
-	
-	FILE *datafilep, *chiprimefilep, *topchar_tcorr_filep;
+
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -51,12 +51,12 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
+	
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	time(&time1);
 	if (param.d_saveconf_analysis_every == 0) stop = 1;
@@ -71,16 +71,14 @@ void real_main(char *in_file)
 		init_gauge_conf_step(&GC, &param, step, &stop);
 		if (stop == 0)
 			{
-			perform_measures_localobs_with_gradflow(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			perform_measures_localobs_with_gradflow(&GC, &geo, &param, &meas_aux);
 			step += param.d_saveconf_analysis_every;
 			}
 		}
 	time(&time2);
 	
 	// close data file
-	fclose(datafilep);
-	if(param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if(param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// print simulation details
 	print_parameters_gf(&param, time1, time2);

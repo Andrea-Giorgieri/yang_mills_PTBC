@@ -26,11 +26,12 @@ void real_main(char *in_file)
 	Rectangle swap_rectangle;
 	Rectangle *most_update, *clover_rectangle;
 	Acc_Utils acc_counters;
+	Meas_Utils *meas_aux;
 	int L_R_swap=1;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+	FILE *swaptrackfilep;
 	int count;
-	FILE *datafilep, *chiprimefilep, *swaptrackfilep, *topchar_tcorr_filep;
 	time_t time1, time2;
 	
 	
@@ -46,9 +47,6 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-	
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
 	
@@ -57,7 +55,7 @@ void real_main(char *in_file)
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configurations replica and volume defects
-	init_gauge_conf_replica(&GC, &param);
+	init_gauge_conf_replica(&GC, &geo, &param);
 	
 	// initialize rectangles for hierarchical update
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
@@ -66,7 +64,10 @@ void real_main(char *in_file)
 	init_rect(&swap_rectangle, L_R_swap, &param);
 	
 	// init acceptances array
-	init_swap_acc_arrays(&acc_counters, &param);
+	init_acc_utils(&acc_counters, &param);
+	
+	// init meas utils
+	init_meas_utils_replica(&meas_aux, &param);
 	
 	// Monte Carlo begin
 	time(&time1);
@@ -80,7 +81,7 @@ void real_main(char *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
-			perform_measures_localobs(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
 			}
 
 		// save configurations for backup
@@ -112,10 +113,8 @@ void real_main(char *in_file)
 	time(&time2);
 	// Monte Carlo end
 	
-	// close data file
-	fclose(datafilep);
-	if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if (param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
+	// free meas utils
+	free_meas_utils_replica(meas_aux, &param);
 	
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
@@ -145,7 +144,7 @@ void real_main(char *in_file)
 	free_rect(&swap_rectangle);
 	
 	// free acceptances array
-	end_swap_acc_arrays(&acc_counters, &param);
+	free_acc_utils(&acc_counters, &param);
 	
 	// free hierarchical update parameters
 	free_hierarc_params(&param);

@@ -106,15 +106,21 @@ typedef struct GParam {
 	
 	// for multicanonic
 	char d_topo_potential_file[STD_STRING_LENGTH];
-	char d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
+	char d_multicanonic_acc_file[STD_STRING_LENGTH];	// print multicanonic Metropolis acceptance
 	double d_grid_step;
 	double d_grid_max;
+	double **d_grid;			// d_grid [a][x] = V_a(x) is the topo potential for replica a
+	int d_topo_cooling;			// cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
+	int d_topo_coolsteps;		// cooling steps of the charge before evaluating V_a
+	double d_topo_agf_time;     // adaptive gradflow time before evaluating V_a. TO DO: unused, debug only, remove?
+	double d_topo_alpha;		// alpha parameter for alpha-rounding of cooled charge
 
 	} GParam;
 
 
 void readinput(char *in_file, GParam *param);
 void remove_white_line_and_comments(FILE *input);
+void read_topo_potential(GParam *param);
 void init_derived_constants(GParam *param);
 void print_header_datafile(FILE *dataf, GParam const * const param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tcorr_f, GParam const * const param);

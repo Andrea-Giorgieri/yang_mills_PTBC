@@ -16,5 +16,5 @@ for i in $( seq -${grid_max} ${grid_step} ${grid_max} ); do
 	#							|______________________________________________________
 	#                                                                    |
 	#                                                                    v
-	awk -v i=${i} -v t=${im_theta} 'BEGIN{ printf "%.5lf %.18lf\n", i, -t*i  }' >> ${out_file_name}
+	awk -v i=${i} -v t=${im_theta} 'BEGIN{ printf "%.5lf %.18lf\n", i, -t*sqrt(i*i) }' >> ${out_file_name}
 done

@@ -20,14 +20,14 @@
 
 void real_main(char *in_file)
 	{
-	Gauge_Conf GC, help1, help2;
+	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Meas_Utils meas_aux;
 	
 	int count;
 	double gftime, chi_prime, tch;
 	
-	FILE *datafilep;
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -45,49 +45,45 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	datafilep=fopen(param.d_data_file, "a");
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
 	// initialize gauge configurations
-	init_gauge_conf(&GC, &param);
-	init_gauge_conf_from_gauge_conf(&help1, &GC, &param);
-	init_gauge_conf_from_gauge_conf(&help2, &GC, &param);
-	
+	init_gauge_conf(&GC, &geo, &param);
+
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
+
 	time(&time1);
 	gftime=0.0;
 		// count starts from 1 to avoid problems with %
 		for(count=1; count < (param.d_ngfsteps+1); count++)
 			{
-			gradflow_RKstep(&GC, &help1, &help2, &geo, &param, param.d_gfstep);
+			gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
 			gftime+=param.d_gfstep;
 			
 			if ( (count % param.d_gf_meas_each) == 0)
 				{
 				tch=topcharge(&GC, &geo, &param);
 				chi_prime=topo_chi_prime(&GC, &geo, &param);
-				fprintf(datafilep, "%ld	%.16lf	%.16lf	%16lf\n", GC.update_index, gftime, tch, chi_prime);
-				fflush(datafilep);
+				fprintf(meas_aux.datafilep, "%ld	%.16lf	%.16lf	%16lf\n", GC.update_index, gftime, tch, chi_prime);
+				fflush(meas_aux.datafilep);
 				}
 			}
 	time(&time2);
-	
-	// close data file
-	fclose(datafilep);
 	
 	// print simulation details
 	print_parameters_gf(&param, time1, time2);
 	
 	// free gauge configurations
 	free_gauge_conf(&GC, &param);
-	free_gauge_conf(&help1, &param);
-	free_gauge_conf(&help2, &param);
 	
 	// free geometry
 	free_geometry(&geo, &param);
+	
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	}
 
 

@@ -9,9 +9,8 @@
 #include<time.h>
 
 #ifdef OPENMP_MODE
-  #include<omp.h>
+#include<omp.h>
 #endif
-
 
 #include"../include/function_pointers.h"
 #include"../include/gauge_conf.h"
@@ -24,10 +23,11 @@ void real_main(char *in_file)
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
+	Acc_Utils acc_counters;
+	Meas_Utils meas_aux;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
-	FILE *datafilep, *chiprimefilep, *topchar_tcorr_filep;
 	time_t time1, time2;
 	
 	// to disable nested parallelism
@@ -42,9 +42,6 @@ void real_main(char *in_file)
 	// initialize random generator
 	initrand(param.d_randseed);
 	
-	// open data_file
-	init_data_file(&datafilep, &chiprimefilep, &topchar_tcorr_filep, &param);
-	
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
@@ -57,7 +54,10 @@ void real_main(char *in_file)
 		}
 	
 	// initialize gauge configuration
-	init_gauge_conf(&GC, &param);
+	init_gauge_conf(&GC, &geo, &param);
+	
+	// init meas utils
+	init_meas_utils(&meas_aux, &param, 0);
 	
 	// --- TO BE REMOVED ---
 /*	double* ratio;
@@ -85,19 +85,19 @@ void real_main(char *in_file)
 	time(&time1);
 	if (param.d_sample == 0) // no update is done, only measures are performed on read configuration
 		{
-		perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 		}
 	else
 		{
 		for(count=0; count < param.d_sample; count++)
 			{
 			// update conf
-			update(&GC, &geo, &param);
+			update(&GC, &geo, &param, &acc_counters);
 			
 			// measure local observables
 			if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 				{
-				perform_measures_localobs(&GC, &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep);
+				perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 				}
 			
 			// save configuration for backup
@@ -130,10 +130,8 @@ void real_main(char *in_file)
 	time(&time2);
 	// Monte Carlo ends
 	
-	// close data file
-	fclose(datafilep);
-	if (param.d_chi_prime_meas==1) fclose(chiprimefilep);
-	if (param.d_topcharge_tcorr_meas==1) fclose(topchar_tcorr_filep);
+	// free meas utils
+	free_meas_utils(meas_aux, &param, 0);
 	
 	// save configuration
 	if(param.d_saveconf_back_every!=0)

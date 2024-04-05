@@ -926,27 +926,12 @@ void readinput(char *in_file, GParam *param)
 
 		// VARIOUS CHECKS
 		if(param->d_ml_step[0]!=0)
+		{
+		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
 			{
-			if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
-				{
-				fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			for(i=1; i<NLEVELS; i++)
-				{
-				if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
-				{
-				fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-				}
-			if(param->d_ml_step[NLEVELS-1]==1)
-				{
-				fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
 			}
-<<<<<<< HEAD
 		for(i=1; i<NLEVELS; i++)
 			{
 			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
@@ -961,8 +946,6 @@ void readinput(char *in_file, GParam *param)
 			exit(EXIT_FAILURE);
 			}
 		}
-=======
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 		
 		// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
 		// This prevents even-odd parallelization of updates.
@@ -982,15 +965,7 @@ void readinput(char *in_file, GParam *param)
 
 		err=0;
 		for(i=0; i<STDIM; i++) if(param->d_size[i]==1) err=1;
-<<<<<<< HEAD
 		if(err==1) fprintf(stderr, "Error: all sizes has to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
-=======
-		if(err==1)
-			{
-			fprintf(stderr, "Error: all sizes has to be larger than 1: the totally reduced case is not implemented! (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 				
 		// various checks on parallel tempering parameters
 		if(param->d_L_defect[0]>param->d_size[0])

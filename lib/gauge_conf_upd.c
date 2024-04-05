@@ -1033,7 +1033,6 @@ void update(Gauge_Conf * GC,
 			exit(EXIT_FAILURE);
 			}
 		}
-<<<<<<< HEAD
 	
 	long s, num_even;
 	int j, dir;
@@ -1042,12 +1041,6 @@ void update(Gauge_Conf * GC,
 	(void) acc_counters; // to avoid compiler warning of unused variable
 	#endif
 	
-=======
-
-	long r, num_even;
-	int j, dir;
-	
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	/* Check if there's at least one even dimension of the lattice, i.e. check if d_volume is even.
 	If there's at least one even dimension: d_volume/2 even sites and d_volume/2 odd sites.
 	Otherwise: (d_volume+1)/2 even sites and (d_volume-1)/2 odd sites. */
@@ -1062,7 +1055,6 @@ void update(Gauge_Conf * GC,
 		#endif
 
 		#ifdef OPENMP_MODE
-<<<<<<< HEAD
 		#pragma omp parallel for num_threads(NTHREADS) private(s)
 		#endif 
 		for(s=0; s<num_even; s++)
@@ -1076,21 +1068,6 @@ void update(Gauge_Conf * GC,
 		for(s=num_even; s<(param->d_volume); s++)
 			{
 			heatbath(GC, geo, param, s, dir);
-=======
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif 
-		for(r=0; r<num_even; r++)
-			{
-			heatbath(GC, geo, param, r, dir);
-			}
-
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif 
-		for(r=num_even; r<(param->d_volume); r++)
-			{
-			heatbath(GC, geo, param, r, dir);
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 			} 
 		}
 
@@ -1104,7 +1081,6 @@ void update(Gauge_Conf * GC,
 		for(j=0; j<param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
-<<<<<<< HEAD
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
 			#endif 
 			for(s=0; s<num_even; s++)
@@ -1121,36 +1097,6 @@ void update(Gauge_Conf * GC,
 				}
 			}
 		}
-=======
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif 
-			for(r=0; r<num_even; r++)
-				{
-				overrelaxation(GC, geo, param, r, dir);
-				}
-
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif 
-			for(r=num_even; r<(param->d_volume); r++)
-				{
-				overrelaxation(GC, geo, param, r, dir);
-				}
-			}
-		}
-	
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r, dir)
-	#endif 
-	for(r=0; r<(param->d_volume); r++)
-		{
-		for(dir=0; dir<STDIM; dir++)
-			{
-			unitarize(&(GC->lattice[r][dir]));
-			} 
-		}
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 
 	// Metropolis test if using multicanonical and final unitarization
 	int acc=1;
@@ -1192,7 +1138,6 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 			exit(EXIT_FAILURE);
 			}
 		}
-<<<<<<< HEAD
 	
 	long s, num_even, num_odd;
 	int j, dir;
@@ -1201,12 +1146,6 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 	(void) acc_counters; // to avoid compiler warning of unused variable
 	#endif
 	
-=======
-
-	long s, num_even, num_odd;
-	int j, dir;
-	
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	/* Check if there's at least one even dimension of the lattice, i.e. check if d_volume is even.
 	If there's at least one even dimension: d_volume/2 even sites and d_volume/2 odd sites.
 	Otherwise: (d_volume+1)/2 even sites and (d_volume-1)/2 odd sites. */
@@ -1256,13 +1195,8 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-<<<<<<< HEAD
 			#endif 
 			for(s=0; s<(param->d_N_replica_pt)*num_even; s++)
-=======
-			#endif
-			for(s=0; s<((param->d_N_replica_pt)*num_even); s++)
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 				{
 				// s = i * num_even + r
 				long r = s % num_even; // site index
@@ -1272,13 +1206,8 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-<<<<<<< HEAD
 			#endif 
 			for(s=0; s<(param->d_N_replica_pt)*num_odd; s++)
-=======
-			#endif
-			for(s=0; s<((param->d_N_replica_pt)*num_odd); s++)
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 				{
 				// s = i * num_odd + aux ; aux = r - num_even
 				long aux = s % num_odd;
@@ -1289,7 +1218,6 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 			}
 		}
 	
-<<<<<<< HEAD
 	// Metropolis test if using multicanonical and final unitarization
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
@@ -1319,21 +1247,6 @@ void update_with_defect(Gauge_Conf * GC, Geometry const * const geo, GParam cons
 				equal(&(GC[j].lattice_copy[r][i]), &(GC[j].lattice[r][i]));
 				}
 			}
-=======
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
-	#endif 
-	for(s=0; s<(param->d_N_replica_pt)*(param->d_volume); s++)
-		{
-		// s = i * volume + r
-		long r = s % param->d_volume;
-		int i = (int) ( (s-r) / (param->d_volume) );
-		for(dir=0; dir<STDIM; dir++)
-			{
-			unitarize(&(GC[i].lattice[r][dir]));
-			} 
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 		}
 	}
 
@@ -1352,11 +1265,7 @@ void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GP
 	#endif
 	
 	#ifndef THETA_MODE
-<<<<<<< HEAD
 	(void) clover_rectangle;	// to avoid compiler warning of unused variable
-=======
-	(void) clover_rectangle; // to avoid compiler warning of unused variable
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	#endif	
 		
 	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
@@ -1396,7 +1305,7 @@ void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GP
 			long r = most_update->rect_sites[n];	// site index on lattice
 			int i = (int) ( (s-aux) / num_odd );	// replica index
 			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
-			}
+			} 
 		}
 
 	// overrelax
@@ -1439,7 +1348,6 @@ void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GP
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
 		{
-<<<<<<< HEAD
 		acc = 1;
 
 		// multicanonic Metropolis tests and acceptance counters update
@@ -1471,16 +1379,6 @@ void update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * const geo, GP
 				equal(&(GC[j].lattice_copy[r][i]), &(GC[j].lattice[r][i]));
 				}
 			}
-=======
-		for(dir=0; dir<STDIM; dir++)
-			{
-			// s = i * volume_rect + n
-			long n = s % (most_update->d_vol_rect);					// site index on rectangle
-			long r = most_update->rect_sites[n];					// site index on lattice
-			int i = (int) ( (s-n) / (most_update->d_vol_rect) );	// replica index
-			unitarize(&(GC[i].lattice[r][dir]));
-			} 
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 		}
 	}
 
@@ -1497,19 +1395,11 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf *GC, Geometry const * 
 		{
 		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++) 
 			{
-<<<<<<< HEAD
 			update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
 			conf_translation(&(GC[0]), geo, param);
 			}
 		}
-=======
-			update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]) );
-			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
-			conf_translation(&(GC[0]), geo, param);
-			}
-		} // end if
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	else
 		{
 		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
@@ -1559,6 +1449,7 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf *GC, Geometry const 
 	#endif
 	}
 
+
 // perform a complete update with trace deformation
 // TO DO: check if ok with multicanonical
 void update_with_trace_def(Gauge_Conf * GC,
@@ -1572,13 +1463,8 @@ void update_with_trace_def(Gauge_Conf * GC,
 	
 	allocate_array_int(&a, param->d_space_vol, __FILE__, __LINE__);
 	for(r=0; r<param->d_space_vol; r++) a[r]=0;
-<<<<<<< HEAD
 	
 	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
-=======
-
-	num_even    = (param->d_volume + (param->d_volume % 2)) / 2;
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	num_sp_even = (param->d_space_vol + (param->d_space_vol % 2)) / 2;
 
 	// heatbath on spatial links
@@ -1644,7 +1530,6 @@ void update_with_trace_def(Gauge_Conf * GC,
 
 	// overrelax spatial links
 	for(dir=1; dir<STDIM; dir++)
-<<<<<<< HEAD
 		{
 		#ifdef THETA_MODE
 		compute_clovers(GC, geo, param, dir);
@@ -1680,13 +1565,10 @@ void update_with_trace_def(Gauge_Conf * GC,
 	// update the copy of the lattice if the multicanonic Metropolis test was accepted.
 	// If rejected, lattice already restored by multicanonic_metropolis_step_all_links()
 	if (acc == 1)
-=======
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 		{
-		#ifdef THETA_MODE
-		compute_clovers(GC, geo, param, dir);
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-<<<<<<< HEAD
 		for(r=0; r<STDIM*(param->d_volume); r++)
 			{
 			// r = i * volume + s
@@ -1697,42 +1579,8 @@ void update_with_trace_def(Gauge_Conf * GC,
 			}
 		}
 	
-=======
-
-		for(j=0; j<param->d_overrelax; j++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<num_even; r++)
-				{
-				overrelaxation(GC, geo, param, r, dir);
-				}
-
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=num_even; r<(param->d_volume); r++)
-				{
-				overrelaxation(GC, geo, param, r, dir);
-				}
-			}
-		}
-
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r, dir)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		for(dir=0; dir<STDIM; dir++)
-			{
-			unitarize(&(GC->lattice[r][dir]));
-			}
-		}
-
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	free(a);
+
 	GC->update_index++;
 	}
 
@@ -1809,7 +1657,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 		#endif
 		for(r=0; r<param->d_volume; r++)
 			{
-<<<<<<< HEAD
 			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
 			}
 		}
@@ -1817,13 +1664,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 	// just to call calcstaples_wilson on aux lattice 0
 	helper.lattice = meas_aux->lattice_aux[0]; 
 	helper.Z = GC->Z;
-=======
-			equal(&(helper1->lattice[r][dir]), &(GC->lattice[r][dir]));
-			equal(&(helper2->lattice[r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
-
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 
 	// now GC = lattice0 = W_0, lattice1 = uninitialized
 	for(dir=0; dir<STDIM; dir++)
@@ -1835,7 +1675,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			{
 			GAUGE_GROUP staple, aux, link;
 
-<<<<<<< HEAD
 			calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple   = staple(W_0)
 			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link     = link(W_0)
 			times(&aux, &link, &staple);                              // aux      = force(W_0)
@@ -1845,19 +1684,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			times(&(GC->lattice[r][dir]), &aux, &link);               // GC       = exp(1/4*Z_0)*W_0 = W_1
 			}
 		}
-=======
-			calcstaples_wilson(helper1, geo, param, r, dir, &staple);
-			equal(&link, &(helper1->lattice[r][dir]));
-			times(&aux, &link, &staple);				// aux=link*staple
-			times_equal_real(&aux, -dt/4.0);
-			equal(&(helper2->lattice[r][dir]), &aux);	// helper2=aux
-			taexp(&aux);
-			times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
-			}
-		}
-
-	// now helper1=W_0, helper2=(1/4)Z_0 and GC=W_1
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 
 	// now GC = W_1, lattice0 = W_0, lattice1 = 1/4*Z_0
 	for(dir=0; dir<STDIM; dir++)
@@ -1869,7 +1695,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			{
 			GAUGE_GROUP staple, aux, link;
 
-<<<<<<< HEAD
 			calcstaples_wilson(GC, geo, param, r, dir, &staple);                          // staple   = staple(W_1)
 			equal(&link, &(GC->lattice[r][dir]));                                         // link     = link(W_1)
 			times(&aux, &link, &staple);                                                  // aux      = force(W_1)
@@ -1880,20 +1705,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                      // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
 			}
 		}
-=======
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);
-			equal(&link, &(GC->lattice[r][dir]));
-			times(&aux, &link, &staple);				// aux=link*staple
-			times_equal_real(&aux, -dt*8.0/9.0);
-			minus_equal_times_real(&aux, &(helper2->lattice[r][dir]), 17.0/9.0); // 1/4 was in Z_0
-			equal(&(helper2->lattice[r][dir]), &aux);
-			taexp(&aux);
-			times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
-			}
-		}
-
-	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0 and GC=W_1
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 
 	// now GC = W_1, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
 	for(dir=0; dir<STDIM; dir++)
@@ -1905,7 +1716,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			{
 			GAUGE_GROUP staple, aux, link;
 
-<<<<<<< HEAD
 			calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple = staple(W_2)
 			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link   = link(W_2)
 			times(&aux, &link, &staple);                              // aux    = force(W_2)
@@ -1917,29 +1727,6 @@ void gradflow_RKstep(Gauge_Conf *GC,
 			}
 		}
 	// now GC = W_3, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
-=======
-			calcstaples_wilson(helper1, geo, param, r, dir, &staple);
-			equal(&link, &(helper1->lattice[r][dir]));
-			times(&aux, &link, &staple);					// aux=link*staple
-			times_equal_real(&aux, -dt*3.0/4.0);
-			minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
-			taexp(&aux);
-			times(&(GC->lattice[r][dir]), &aux, &link);	// GC=aux*link
-			}
-		}
-
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		for(int i=0; i<STDIM; i++)
-			{
-			unitarize(&(GC->lattice[r][i]));
-			}
-		}
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	}
 	
 // perform a single step of the Runge Kutta integrator for the Wilson flow
@@ -1965,7 +1752,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 		#endif
 		for(r=0; r<param->d_volume; r++)
 			{
-<<<<<<< HEAD
 			equal(&(meas_aux->lattice_aux[3][r][dir]), &(GC->lattice[r][dir]));
 			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
 			}
@@ -1975,13 +1761,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 	helper.Z = GC->Z;
 
 	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
-=======
-			equal(&(GC_old->lattice[r][dir]), &(GC->lattice[r][dir]));
-			equal(&(helper1->lattice[r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
-
-	// now helper1 = GC_old = GC = W_0
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef OPENMP_MODE
@@ -1989,32 +1768,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 		#endif
 		for(r=0; r<param->d_volume; r++)
 			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(helper1, geo, param, r, dir, &staple);
-			equal(&link, &(helper1->lattice[r][dir]));
-			times(&aux, &link, &staple);				// aux=link*staple
-			times_equal_real(&aux, -(*dt));
-			equal(&(helper2->lattice[r][dir]), &aux);	// helper2=aux
-			times_equal_real(&aux, 1.0/4.0);
-			taexp(&aux);
-			times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
-			
-			//unitarize(&(GC->lattice[r][dir]));
-			//unitarize(&(helper1->lattice[r][dir]));
-			}
-		}
-
-	// now helper1=W_0, helper2=Z_0 and GC=W_1
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-<<<<<<< HEAD
 			GAUGE_GROUP staple, aux, link;
 
 			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple   = staple(W_0)
@@ -2029,34 +1782,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 		}
 
 	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
-=======
-			GAUGE_GROUP staple, aux, aux2, link;
-
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);
-			equal(&link, &(GC->lattice[r][dir]));
-			times(&aux, &link, &staple);				// aux=link*staple
-			times_equal_real(&aux, -(*dt));
-			equal(&aux2, &aux);
-			
-			times_equal_real(&aux2, 2.0);
-			minus_equal(&aux2, &(helper2->lattice[r][dir]));
-			taexp(&aux2);
-			times(&(helper3->lattice[r][dir]), &aux2, &(helper1->lattice[r][dir])); // helper3=aux2*helper1
-			
-			times_equal_real(&aux, 8.0/9.0);
-			minus_equal_times_real(&aux, &(helper2->lattice[r][dir]), 17.0/36.0);
-			equal(&(helper2->lattice[r][dir]), &aux);
-			taexp(&aux);
-			times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
-			
-			//unitarize(&(GC->lattice[r][dir]));
-			//unitarize(&(helper1->lattice[r][dir]));
-			//unitarize(&(helper3->lattice[r][dir]));
-			}
-		}
-
-	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0, helper3=W'_2, and GC=W_1
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef OPENMP_MODE
@@ -2064,7 +1789,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 		#endif
 		for(r=0; r<param->d_volume; r++)
 			{
-<<<<<<< HEAD
 			GAUGE_GROUP staple, aux, aux2, link;
 
 			calcstaples_wilson(GC, geo, param, r, dir, &staple);     // staple = staple(W_1)
@@ -2110,27 +1834,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 	// now GC = W_3, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
 	// error calculation: dist(W_3, W'_2)
 	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
-=======
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(helper1, geo, param, r, dir, &staple);
-			equal(&link, &(helper1->lattice[r][dir]));
-			times(&aux, &link, &staple);					// aux=link*staple
-			times_equal_real(&aux, -(*dt)*3.0/4.0);
-			minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
-			taexp(&aux);
-			times(&(GC->lattice[r][dir]), &aux, &link);	// GC=aux*link
-			unitarize(&(GC->lattice[r][dir]));
-			}
-		}
-	// now helper3 = W'_2 and GC = W_3
-	
-	// error calculation
-	allocate_array_double(&local_max_dist, NTHREADS, __FILE__, __LINE__);
-	
-	for (j=0; j<NTHREADS; j++) local_max_dist[j] = 0.0;
-	
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r)
 	#endif
@@ -2176,11 +1879,7 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 			}
 		}
 
-<<<<<<< HEAD
 	// calculation of new integration step
-=======
-	// new integration step
->>>>>>> 1c335548e6e9a86e82f95640ee0bfde1b8007531
 	*dt = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
 	}
 

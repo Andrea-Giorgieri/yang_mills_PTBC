@@ -17,6 +17,7 @@ void allocate_array_int(int **const array, long size, char const * const file, i
 void allocate_array_long(long **const array, long size, char const * const file, int const line);
 void allocate_array_long_pointer(long ***const array, long size, char const * const file, int const line);
 void allocate_array_Rectangle(Rectangle **const array, long size, char const * const file, int line);
+void allocate_array_Rectangle_pointer(Rectangle ***const array, long size, char const * const file, int line);
 void allocate_array_double(double **const array, long size, char const * const file, int const line);
 void allocate_array_double_pointer(double ***const array, long size, char const * const file, int const line);
 void allocate_array_double_complex(double complex **const array, long size, char const * const file, int const line);

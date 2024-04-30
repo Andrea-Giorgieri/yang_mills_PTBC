@@ -75,7 +75,7 @@ void real_main(char *in_file)
 		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", "CHECK_charge_cool.dat", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 	}
-	for (int iter=0; iter<param.d_coolrepeat; iter++) fprintf(ratio_fp, "%d  %.12lg\n", (iter+1)*param.d_coolsteps, ratio[iter]);
+	for (int iter=0; iter<param.d_coolrepeat; iter++) fprintf(ratio_fp, "%d  % 18.12e\n", (iter+1)*param.d_coolsteps, ratio[iter]);
 	free(ratio);
 	fclose(ratio_fp);
 */

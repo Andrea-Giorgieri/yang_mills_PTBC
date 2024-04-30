@@ -48,6 +48,15 @@ void allocate_array_Rectangle(Rectangle **const array, long size, char const * c
 		}
 	}
 
+void allocate_array_Rectangle_pointer(Rectangle ***const array, long size, char const * const file, int line)
+	{
+	if(posix_memalign((void**)array, (size_t)INT_ALIGN, (size_t)size*sizeof(Rectangle*)) != 0)
+		{
+		fprintf(stderr, "Problems allocating an array of ptrs to Rectangle! (%s, %d)\n", file, line);
+		exit(EXIT_FAILURE);
+		}
+	}
+
 void allocate_array_double(double **const array, long size, char const * const file, int line)
 	{
 	if(posix_memalign((void **)array, (size_t)DOUBLE_ALIGN, (size_t)size*sizeof(double)) != 0)

@@ -18,6 +18,17 @@ typedef struct Rectangle {
 	long d_vol_rect;
 } Rectangle;
 
+// auxiliary rectangles for hierarchical updates and swaps
+typedef struct Rect_Utils {
+	Rectangle *update_rect;		// update_rect[hierarc_levels]
+	Rectangle swap_rect;
+
+	Rectangle *clover_rect;		// clover_rect[hierarc_levels]
+
+	Rectangle **cooling_rect;	// cooling_rect[hierarc_levels][coolsteps]
+	Rectangle *topcharge_rect;	// topcharge_rect[hierarc_levels]
+	}	Rect_Utils;
+
 
 // these are the functions to be used in shwitching between different indices
 long (*cart_to_si)(int const * const cartcoord, GParam const * const param); // cartesian coordinates -> single index
@@ -95,6 +106,9 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const * const param
 void free_rect(Rectangle *most_update);
 void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam const * const param);
 void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam const * const param);
+void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param);
+void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param);
+
 
 // needed to compute chi'
 double square_distance(long const i, long const j, GParam const * const param);

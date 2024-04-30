@@ -807,6 +807,115 @@ void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam co
 		}
 	}
 
+void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
+	{
+	int border; // border = n -> up to n-th neighbors added to the rectangle
+	
+	// swap_rect: border = 1 (under swap action changes only for plaquettes around the defect)
+	border=1;
+	init_rect(&(rect_aux->swap_rect), border, param);
+
+	if(param->d_N_hierarc_levels==0)
+		{
+		rect_aux->update_rect = NULL;
+		#ifdef THETA_MODE
+		rect_aux->clover_rect = NULL;
+		#endif
+		#ifdef MULTICANONICAL_MODE
+		rect_aux->cooling_rect = NULL;
+		rect_aux->topcharge_rect = NULL;
+		#endif
+		}
+	else
+		{
+		// update_rect: border = d_L_rect
+		allocate_array_Rectangle(&(rect_aux->update_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
+		for(int i=0; i<param->d_N_hierarc_levels; i++)
+			{
+			border = param->d_L_rect[i];
+			init_rect(&(rect_aux->update_rect[i]), border, param);
+			}
+			
+		
+		#ifdef THETA_MODE
+		// clover_rect: border = d_L_rect + 2 
+		allocate_array_Rectangle(&(rect_aux->clover_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
+		for(int i=0; i<param->d_N_hierarc_levels; i++)
+			{
+			border = param->d_L_rect[i] + 2;
+			init_rect(&(rect_aux->clover_rect[i]), border, param);
+			}
+		#endif
+		
+		#ifdef MULTICANONICAL_MODE
+		// topcharge_rect: border = d_L_rect + 4*coolsteps + 2
+		allocate_array_Rectangle(&(rect_aux->topcharge_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
+		for(int i=0; i<param->d_N_hierarc_levels; i++)
+			{
+			if (param->d_topo_cooling == 0) border = param->d_L_rect[i] + 2;
+			if (param->d_topo_cooling == 1) border = param->d_L_rect[i] + 2 + 4*param->d_topo_coolsteps;
+			init_rect(&(rect_aux->topcharge_rect[i]), border, param);
+			}
+		
+		// cooling_rect: border = topcharge_rect + 4*(coolsteps - coolstep)
+		if (param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0)
+			{
+			allocate_array_Rectangle_pointer(&(rect_aux->cooling_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
+			for(int i=0; i<param->d_N_hierarc_levels; i++)
+				{
+				allocate_array_Rectangle(&(rect_aux->cooling_rect[i]), param->d_topo_coolsteps, __FILE__, __LINE__);
+				for (int j=0; j<param->d_topo_coolsteps; j++)
+					{
+					border = param->d_L_rect[i] + 2 + 8*param->d_topo_coolsteps - 4*(j+1);
+					init_rect(&(rect_aux->cooling_rect[i][j]), border, param);
+					}
+				}
+			}
+		else
+			{
+			rect_aux->cooling_rect = NULL;
+			}
+		#endif
+		}
+	}
+
+void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
+	{
+	free_rect(&(rect_aux->swap_rect));
+
+	if(param->d_N_hierarc_levels > 0)
+		{
+		int i;
+
+		for(i=0; i<param->d_N_hierarc_levels; i++)
+			free_rect(&(rect_aux->update_rect[i]));
+		free(rect_aux->update_rect);
+		
+		#ifdef THETA_MODE
+		for(i=0; i<param->d_N_hierarc_levels; i++)
+			free_rect(&(rect_aux->clover_rect[i]));
+		free(rect_aux->clover_rect);
+		#endif
+		
+		#ifdef MULTICANONICAL_MODE
+		if (param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0)
+			{
+			for(i=0; i<param->d_N_hierarc_levels; i++)
+				{
+				for (int j=0; j<param->d_topo_coolsteps; j++)
+					free_rect(&(rect_aux->cooling_rect[i][j]));
+				free(rect_aux->cooling_rect[i]);
+				}
+			free(rect_aux->cooling_rect);
+			}
+
+		for(i=0; i<param->d_N_hierarc_levels; i++)
+			free_rect(&(rect_aux->topcharge_rect[i]));
+		free(rect_aux->topcharge_rect);
+		#endif
+		}
+	}
+
 // compute the square distance between sites i and j on a periodic lattice (toroidal geometry)
 double square_distance(long const i, long const j, GParam const * const param)
 {

@@ -25,8 +25,8 @@ void real_main(char *in_file)
 	GParam param;
 	Meas_Utils meas_aux;
 
-	int meas_count, gradflowrepeat, accepted;
-	double gftime, gftime_step;
+	int meas_count, stop;
+	long step;
 
 	time_t time1, time2;
 
@@ -41,6 +41,12 @@ void real_main(char *in_file)
 
 	// this code has to start from saved conf.
 	param.d_start = 2;
+	
+	// not to overwrite files of runs with online gradient flow 
+	strcat(param.d_data_file, "_agf");
+	strcat(param.d_chiprime_file, "_agf");
+	strcat(param.d_topcharge_tcorr_file, "_agf");
+	strcat(param.d_log_file, "_agf");
 
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -51,43 +57,28 @@ void real_main(char *in_file)
 	
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
-	gradflowrepeat = (int)floor((param.d_agf_length+MIN_VALUE)/param.d_agf_meas_each);
 	
-	// meas no gradflow
-	perform_measures_localobs(&GC, &geo, &param, &meas_aux);
-
-	// gradflow starts
 	time(&time1);
-	gftime = 0.0;						// gradient flow time
-	gftime_step = param.d_agf_step; 	// initial integration time step
-	meas_count = 0; 					// meas counter
-	
-	while(meas_count < gradflowrepeat)
+	if (param.d_saveconf_analysis_every == 0) stop = 1;
+	else
 		{
-		// integration step
-		gradflow_RKstep_adaptive(&GC, &geo, &param, &gftime, &gftime_step, &accepted, &meas_aux);
-		
-		// step accepted, perform measures if it is time to do so
-		if (accepted == 1 && fabs(gftime - param.d_agf_meas_each*(meas_count+1)) - param.d_agf_time_bin < MIN_VALUE )
-			{
-			perform_measures_aux(&GC, &geo, &param, meas_count, &meas_aux);
-			meas_count = meas_count + 1;
-			}
-		
-		// adapt step to the time of next measure
-		if ((gftime + gftime_step - param.d_agf_meas_each*(meas_count+1)) > param.d_agf_time_bin )
-			{
-			gftime_step = param.d_agf_meas_each*(meas_count+1) - gftime;
-			}
+		stop = 0;
+		step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
+		init_gauge_conf_step(&GC, &param, step, &stop);
+		}
+
+	while(stop == 0)
+		{
+		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
+		step += param.d_saveconf_analysis_every;
+		read_gauge_conf_step(&GC, &param, step, &stop);
 		}
 	time(&time2);
-	// gradflow ends
-
-	// print meas gradflow, close files
-	print_measures_arrays(gradflowrepeat, GC.update_index, &param, &meas_aux);
-	fprintf(meas_aux.datafilep, "\n");
-
-	// free memory
+	
+	// free gauge conf
+	free_gauge_conf(&GC, &param);
+	
+	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
 	
 	// free geometry
@@ -111,29 +102,14 @@ void print_template_input(void)
 	else
 		{
 		print_template_volume_parameters(fp);
+		print_template_pt_parameters(fp);
+		print_template_twist_parameters(fp);
+		#ifdef MULTICANONICAL_MODE
+		print_template_multicanonic_parameters(fp);
+		#endif
+		print_template_simul_parameters(fp);
 		print_template_adaptive_gradflow_parameters(fp);
-		
-		fprintf(fp, "# Observables to measure\n");
-		fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
-		fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
-		fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
-		fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
-		fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
-		fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
-		fprintf(fp,"\n");
-		
-		fprintf(fp, "# Input files\n");
-		fprintf(fp, "conf_file  conf.dat\n");
-		fprintf(fp, "twist_file twist.dat\n");
-		fprintf(fp,"\n");
-		
-		fprintf(fp, "# Output files\n");
-		fprintf(fp, "data_file  dati.dat\n");
-		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
-		fprintf(fp, "topcharge_tcorr_file  topo_tcorr_cool.dat\n");
-		fprintf(fp, "log_file   log.dat\n");
-		fprintf(fp, "\n");
-		fprintf(fp, "randseed 0 #(0=time)\n");
+		print_template_output_parameters(fp);
 		fclose(fp);
 		}
 	}

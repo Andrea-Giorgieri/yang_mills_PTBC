@@ -23,11 +23,9 @@ void real_main(char *in_file)
 	Gauge_Conf *GC;
 	Geometry geo;
 	GParam param;
-	Rectangle swap_rectangle;
-	Rectangle *most_update, *clover_rectangle;
+	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
-	int L_R_swap=1;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
@@ -56,11 +54,8 @@ void real_main(char *in_file)
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 	
-	// initialize rectangles for hierarchical update
-	init_rect_hierarc(&most_update, &clover_rectangle, &param);
-	
-	// initialize rectangle for swap probability evaluation (L_R_swap = 1)
-	init_rect(&swap_rectangle, L_R_swap, &param);
+	// initialize rectangles for hierarchical update and swap
+	init_rect_utils(&rect_aux, &param);
 	
 	// init acceptances array
 	init_acc_utils(&acc_counters, &param);
@@ -74,7 +69,7 @@ void real_main(char *in_file)
 	for(count=0; count < param.d_sample; count++)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
-		parallel_tempering_with_hierarchical_update(GC, &geo, &param, most_update, clover_rectangle, &swap_rectangle, &acc_counters);
+		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
 
 		// perform measures only on homogeneous configuration
@@ -141,11 +136,8 @@ void real_main(char *in_file)
 	// free geometry
 	free_geometry(&geo, &param);
 	
-	// free rectangles for hierarchical update
-	free_rect_hierarc(most_update, clover_rectangle, &param);
-	
-	// free rectangle for swap probability evaluation
-	free_rect(&swap_rectangle);
+	// free rectangles for hierarchical update and swap
+	free_rect_utils(&rect_aux, &param);
 	
 	// free acceptances array
 	free_acc_utils(&acc_counters, &param);

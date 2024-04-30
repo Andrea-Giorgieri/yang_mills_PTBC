@@ -20,7 +20,6 @@ bin_PROGRAMS = conf_check \
             yang_mills_local_pt \
             yang_mills_local_pt_gf \
             yang_mills_local_pt_agf \
-            yang_mills_local_pt_multicanonic \
             yang_mills_gradient_flow \
             yang_mills_adaptive_gradient_flow \
             yang_mills_gradflow_all_conf
@@ -340,21 +339,6 @@ yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
                           $(u1)
                   
 yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
-yang_mills_local_pt_multicanonic_SOURCES=./src/yang_mills_local_pt_multicanonic.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

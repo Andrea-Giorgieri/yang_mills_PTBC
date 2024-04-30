@@ -30,10 +30,41 @@ void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const par
 		int i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(GC1->lattice[r][i]), &(GC2->lattice[r][i]));
 		equal(&(GC1->lattice_copy[r][i]), &(GC2->lattice_copy[r][i]));
+		#ifdef MULTICANONICAL_MODE
+		GC1->stored_topcharge = GC1->stored_topcharge;
+		equal(&(GC1->lattice_cold[r][i]), &(GC2->lattice_cold[r][i]));
+		equal(&(GC1->lattice_copy_cold[r][i]), &(GC2->lattice_copy_cold[r][i]));
+		#endif
 		}
 	}
 
-void restore_gauge_conf(Gauge_Conf *GC, GParam const * const param)
+void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
+	{	
+	#ifdef MULTICANONICAL_MODE
+	GAUGE_GROUP **aux;
+	aux = GC->lattice_cold;
+	GC->lattice_cold = GC->lattice_copy_cold;
+	GC->lattice_copy_cold = aux;
+	#endif
+
+	long s;
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		// s = i * volume + r
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+		unitarize(&(GC->lattice[r][i]));
+		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
+		#ifdef MULTICANONICAL_MODE
+		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
+		#endif
+		}
+	}
+
+void restore_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 	{
 	long s;
 	#ifdef OPENMP_MODE
@@ -44,25 +75,100 @@ void restore_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
+		#ifdef MULTICANONICAL_MODE
+		equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
+		#endif
+		}
+	}
+
+void accept_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level, Rect_Utils const * const rect_aux)
+	{
+	long s;
+	Rectangle *rect;
+
+	rect = &(rect_aux->update_rect[hierarc_level]);
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(rect->d_vol_rect); s++)
+		{
+		long n = s % (rect->d_vol_rect);
+		long r = rect->rect_sites[n];
+		int i = (int) ( (s - n) / (rect->d_vol_rect) );
+		unitarize(&(GC->lattice[r][i]));
+		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
+		}
+
+	#ifdef MULTICANONICAL_MODE
+	GAUGE_GROUP **aux;
+	aux = GC->lattice_cold;
+	GC->lattice_cold = GC->lattice_copy_cold;
+	GC->lattice_copy_cold = aux;
+	
+	rect = &(rect_aux->topcharge_rect[hierarc_level]);
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(rect->d_vol_rect); s++)
+		{
+		long n = s % (rect->d_vol_rect);
+		long r = rect->rect_sites[n];
+		int i = (int) ( (s - n) / (rect->d_vol_rect) );
+		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
+		}
+	#endif
+	}
+
+void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level, Rect_Utils const * const rect_aux)
+	{
+	long s;
+	Rectangle *rect;
+
+	#ifdef MULTICANONICAL_MODE	
+	rect = &(rect_aux->topcharge_rect[hierarc_level]);
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(rect->d_vol_rect); s++)
+		{
+		long n = s % (rect->d_vol_rect);
+		long r = rect->rect_sites[n];
+		int i = (int) ( (s - n) / (rect->d_vol_rect) );
+		equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
+		}
+	#endif
+
+	rect = &(rect_aux->update_rect[hierarc_level]);
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(rect->d_vol_rect); s++)
+		{
+		long n = s % (rect->d_vol_rect);
+		long r = rect->rect_sites[n];
+		int i = (int) ( (s - n) / (rect->d_vol_rect) );
+		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
 		}
 	}
 
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
-	long r, j;
+	long s, r, j;
 	
 	// allocate the local lattice and auxiliary lattice
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
 	#ifdef MULTICANONICAL_MODE
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cooling), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
 	#endif
 	for(r=0; r<(param->d_volume); r++) 
 		{
 		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
 		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
 		#ifdef MULTICANONICAL_MODE
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cooling[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
 		#endif
 		}
 	
@@ -87,7 +193,6 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				plus_equal(&aux2, &aux1);
 				unitarize(&aux2);
 				equal_dag(&(GC->lattice[r][j]), &aux2);
-				equal_dag(&(GC->lattice_copy[r][j]), &aux2);
 				}
 			}
 		}
@@ -103,7 +208,6 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				{
 				rand_matrix(&aux1);
 				equal(&(GC->lattice[r][j]), &aux1);
-				equal(&(GC->lattice_copy[r][j]), &aux1);
 				}
 			}
 		}
@@ -158,35 +262,43 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 		for(r=0; r<(param->d_volume); r++)
 			{
 			si_to_cart(cartcoord, r, param);
-			for(i=0; i<STDIM; i++)	// set all alinks to one
+			for(i=0; i<STDIM; i++)	// set all links to one
 				{
 				one(&(GC->lattice[r][i])); 		
-				one(&(GC->lattice_copy[r][i]));
 				}
 			if (twisted_bc == 1)	//overwrite links on the twisted plane
 				{
 				if (cartcoord[mu] == 0) 
 					{
 					equal(&(GC->lattice[r][mu]), &Pmatrix);
-					equal(&(GC->lattice_copy[r][mu]), &Pmatrix);
 					}
 				if (cartcoord[nu] == 0) 
 					{
 					equal(&(GC->lattice[r][nu]), &Qmatrix);
-					equal(&(GC->lattice_copy[r][nu]), &Qmatrix);
 					}
 				}
 			}
+		}
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
 		}
 	}
 
 void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param)
 	{
-	(void)geo; // to avoid compiler warning of unused variable
+	(void) geo; // to avoid compiler warning of unused variable
+
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
 	#ifdef MULTICANONICAL_MODE
-	init_topo_charge(GC, geo, param);
+	init_multicanonic_gauge_conf(GC, geo, param);
 	#endif
 	}
 
@@ -223,11 +335,80 @@ void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 	else *stop = 1;
 	}
 
+void read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step, int *stop)
+	{
+	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
+	FILE *file;
+	long r;
+	int x_mu, x_nu, cartcoord[STDIM];
+	
+	//gauge conf filename at step
+	strcpy(name, param->d_conf_file);
+	strcat(name, "_step_");
+	sprintf(aux, "%ld", step);
+	strcat(name, aux);
+	
+	//check if conf file exists and read conf if it does
+	if ((file = fopen(name, "r")))
+		{
+		fclose(file);
+		read_gauge_conf_from_file_with_name(GC, param, name);
+		}
+	else *stop = 1;
+	
+	//twist filename at step
+	strcpy(name, param->d_twist_file);
+	strcat(name, "_step_");
+	strcat(name, aux);
+	
+	//check if twist file exists and initialize cond if it does
+	if ((file = fopen(name, "r")))
+		{
+		fclose(file);
+		
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#endif 
+		for(r=0; r<param->d_volume; r++)
+			for(int j=0; j<param->d_n_planes; j++) 
+				{
+				GC->Z[r][j]=1.0+0.0*I;
+				GC->Z_copy[r][j]=1.0+0.0*I;
+				}
+
+		x_mu = 0;
+		x_nu = 0;
+
+		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, name);
+
+		// assign Z on positions x_mu, x_nu
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#endif 
+		for(r=0; r<param->d_volume; r++)
+			{
+			si_to_cart(cartcoord, r, param);
+			for(int i=0; i<STDIM; i++)
+				for(int j=i+1; j<STDIM; j++)
+					if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
+						{
+						GC->Z[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);	//for clockwise plaquette
+						GC->Z[r][dirs_to_si(j,i)] = conj(GC->Z[r][dirs_to_si(i,j)]);								//for anticlockwise plaquette
+						
+						GC->Z_copy[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);
+						GC->Z_copy[r][dirs_to_si(j,i)] = conj(GC->Z_copy[r][dirs_to_si(i,j)]);
+						}
+			}
+		}
+	else *stop = 1;
+	}
+
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam const * const param)
 	{
 	int i;
-	(void)geo; // to avoid compiler warning of unused variable
+	(void) geo; 		// to avoid compiler warning of unused variable
+
 	// allocate the vector to store replicas
 	allocate_array_Gauge_Conf(GC, param->d_N_replica_pt, __FILE__, __LINE__);
 	
@@ -250,11 +431,12 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam
 		
 		init_bound_cond(&((*GC)[i]), param, i);
 		
-		((*GC)[i]).conf_label=i;		
+		((*GC)[i]).conf_label=i;
+
+		#ifdef MULTICANONICAL_MODE
+		init_multicanonic_gauge_conf(&((*GC)[i]), geo, param);
+		#endif
 		}
-	#ifdef MULTICANONICAL_MODE
-	init_topo_charge(*GC, geo, param);
-	#endif
 	}
 
 // initialization of the defect for the replica with label i
@@ -327,8 +509,7 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 			GC->Z[r][j]=1.0+0.0*I;
 			GC->Z_copy[r][j]=1.0+0.0*I;
 			}
-				
-	
+
 	x_mu = 0;
 	x_nu = 0;
 	
@@ -515,7 +696,8 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 		free(GC->lattice[r]);
 		free(GC->lattice_copy[r]);
 		#ifdef MULTICANONICAL_MODE
-		free(GC->lattice_cooling[r]);
+		free(GC->lattice_cold[r]);
+		free(GC->lattice_copy_cold[r]);
 		#endif
 		free(GC->Z[r]);
 		free(GC->Z_copy[r]);
@@ -523,12 +705,11 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	free(GC->lattice);
 	free(GC->lattice_copy);
 	#ifdef MULTICANONICAL_MODE
-	free(GC->lattice_cooling);
+	free(GC->lattice_cold);
+	free(GC->lattice_copy_cold);
 	#endif
 	free(GC->Z);
 	free(GC->Z_copy);
-
-
 	#ifdef THETA_MODE
 	end_clover_array(GC, param);
 	#endif
@@ -628,7 +809,7 @@ void write_conf_on_file_with_name(Gauge_Conf const * const GC,
 		}
 	}
 
-// TO DO: also save stored_topo_charge
+// TO DO: also save stored_topcharge
 void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 									GParam const * const param,
 									char const * const namefile)
@@ -779,7 +960,8 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
 	#ifdef MULTICANONICAL_MODE
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cooling), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
 	#endif
 	
 
@@ -797,7 +979,8 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
 		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
 		#ifdef MULTICANONICAL_MODE
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cooling[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
 		#endif
 		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
 		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes, __FILE__, __LINE__);
@@ -1465,6 +1648,5 @@ void end_clover_array(Gauge_Conf *GC,
 	}
 	free(GC->clover_array);
 	}
-
 
 #endif

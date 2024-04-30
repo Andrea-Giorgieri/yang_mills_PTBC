@@ -88,22 +88,22 @@ void readinput(char *in_file, GParam *param)
 	param->d_N_replica_pt=1;
 	
 	// to avoid possible mistakes with uninitialized stuff 
-	param->d_ngfsteps = 0;
+	param->d_ngfsteps     = 0;
 	param->d_gf_meas_each = 1;
-	param->d_gfstep = 0.01;
+	param->d_gfstep       = 1;
 	
-	param->d_agf_length = 0.0;
-	param->d_agf_meas_each = 1.0;
-	param->d_agf_step = 0.01;
-	param->d_agf_delta = 0.001;
-	param->d_agf_time_bin = 0;
+	param->d_agf_length    = 0;
+	param->d_agf_meas_each = 1;
+	param->d_agf_step      = 1;
+	param->d_agf_delta     = 0.1;
+	param->d_agf_time_bin  = 0.1;
 	
-	param->d_coolsteps = 0;
+	param->d_coolsteps  = 0;
 	param->d_coolrepeat = 0;
 	
-	param->d_topo_cooling = 0;
+	param->d_topo_cooling   = 0;
 	param->d_topo_coolsteps = 0;
-	param->d_topo_alpha = 0.0;
+	param->d_topo_alpha     = 0;
 	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
@@ -111,13 +111,13 @@ void readinput(char *in_file, GParam *param)
 		param->d_k_twist[i] = 0;
 		}
 		
-	// default = compute only plaquette and topological charge
-	param->d_plaquette_meas = 1;
-	param->d_clover_energy_meas = 0;
-	param->d_charge_meas = 1;
-	param->d_chi_prime_meas = 0;
-	param->d_charge_prime_meas = 0;
-	param->d_polyakov_meas = 0;
+	// default = compute only plaquette
+	param->d_plaquette_meas       = 1;
+	param->d_clover_energy_meas   = 0;
+	param->d_charge_meas          = 0;
+	param->d_chi_prime_meas       = 0;
+	param->d_charge_prime_meas    = 0;
+	param->d_polyakov_meas        = 0;
 	param->d_topcharge_tcorr_meas = 0;
 
 	input=fopen(in_file, "r"); // open the input file
@@ -995,12 +995,30 @@ void readinput(char *in_file, GParam *param)
 			fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-		if(param->d_agf_meas_each <= MIN_VALUE)
+		if(param->d_agf_meas_each > 0 && param->d_agf_meas_each <= MIN_VALUE)
 			{
-			fprintf(stderr, "Error: agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
+			fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		
+		// check on topological observables
+		if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+			{
+			err  = param->d_charge_meas;
+			err += param->d_charge_prime_meas;
+			err += param->d_chi_prime_meas;
+			err += param->d_topcharge_tcorr_meas;
+			if (err != 0)
+				{
+				fprintf(stderr, "Error: can't measure topological observables with space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+			#ifdef MULTICANONICAL_MODE
+			fprintf(stderr, "Error: can't use multicanonical mode with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			#endif
+			}
+
 		init_derived_constants(param);
 		#ifdef MULTICANONICAL_MODE
 		read_topo_potential(param);
@@ -1062,6 +1080,7 @@ void read_topo_potential(GParam * const param)
 void init_derived_constants(GParam *param)
 	{
 	int i;
+	double tmp1=0, tmp2=0;
 
 	// derived constants
 	param->d_volume=1;
@@ -1077,8 +1096,8 @@ void init_derived_constants(GParam *param)
 		(param->d_space_vol)*=(param->d_size[i]);
 		}
 
-	param->d_inv_vol=1.0/((double) param->d_volume);
-	param->d_inv_space_vol=1.0/((double) param->d_space_vol);
+	param->d_inv_vol = 1.0/((double) param->d_volume);
+	param->d_inv_space_vol = 1.0/((double) param->d_space_vol);
 	
 	// volume of the defect
 	param->d_volume_defect=1;
@@ -1088,10 +1107,21 @@ void init_derived_constants(GParam *param)
 		}
 	
 	// number of grid points (multicanonic only)
-	param->d_n_grid=(int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
+	param->d_n_grid = (int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
 	
 	// number of planes (twisted boundary conditions only)
 	param->d_n_planes = STDIM*(STDIM-1);
+	
+	// number of measures during gradient-flow evolution
+	if (param->d_gf_meas_each > 0) 
+		param->d_gf_num_meas = (int)(param->d_ngfsteps / param->d_gf_meas_each);
+	else
+		param->d_gf_num_meas = 0;
+
+	if (param->d_agf_meas_each > 0) 
+		param->d_agf_num_meas = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
+	else
+		param->d_agf_num_meas = 0;
 	}
 
 // initialize data file
@@ -1217,6 +1247,10 @@ void print_header_datafile(FILE *dataf, GParam const * const param)
 		if (param->d_charge_meas==1) fprintf(dataf, "charge ");
 		if (param->d_charge_prime_meas==1) fprintf(dataf, "charge_prime[%d] ", STDIM);
 		fprintf(dataf, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
+		
+		#ifdef MULTICANONICAL_MODE
+		fprintf(dataf, " mc_topcharge");
+		#endif
 		}
 	fprintf(dataf, "\n");
 	}

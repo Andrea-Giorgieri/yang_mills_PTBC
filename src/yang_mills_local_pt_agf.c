@@ -23,11 +23,9 @@ void real_main(char *in_file)
 	Gauge_Conf *GC;
 	Geometry geo;
 	GParam param;
-	Rectangle swap_rectangle;
-	Rectangle *most_update, *clover_rectangle;
+	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
-	int L_R_swap=1;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
@@ -53,14 +51,8 @@ void real_main(char *in_file)
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
-	// initialize gauge configurations replica and volume defects
-	init_gauge_conf_replica(&GC, &geo, &param);
-	
-	// initialize rectangles for hierarchical update
-	init_rect_hierarc(&most_update, &clover_rectangle, &param);
-	
-	// initialize rectangle for swap probability evaluation (L_R_swap = 1)
-	init_rect(&swap_rectangle, L_R_swap, &param);
+	// initialize rectangles for hierarchical update and swap
+	init_rect_utils(&rect_aux, &param);
 	
 	// init swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
 	init_acc_utils(&acc_counters, &param);
@@ -68,21 +60,29 @@ void real_main(char *in_file)
 	// init auxiliary arrays and lattices for measurements, open data files
 	init_meas_utils_replica(&meas_aux, &param);
 	
+	// initialize gauge configurations replica and volume defects
+	init_gauge_conf_replica(&GC, &geo, &param);
+	
 	// Monte Carlo begin
 	time(&time1);
 	
 	for(count=0; count < param.d_sample; count++)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
-		parallel_tempering_with_hierarchical_update(GC, &geo, &param, most_update, clover_rectangle, &swap_rectangle, &acc_counters);
+		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
 
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
+			
+			#ifdef REPLICA_MEAS_MODE
+			for (int i=1; i<param.d_N_replica_pt; i++)
+				perform_measures_localobs_with_adaptive_gradflow(&(GC[i]), &geo, &param, &(meas_aux[i]));
+			#endif
 			}
-		
+
 		// save configurations for backup
 		if(param.d_saveconf_back_every!=0)
 			{
@@ -121,35 +121,29 @@ void real_main(char *in_file)
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 	
 	// save configurations
-	if (param.d_saveconf_back_every!=0)
-		{
-		write_replica_on_file(GC, &param);
-		}
+	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
 
 	// print simulation details
 	print_parameters_local_pt_agf(&param, time1, time2);
-	
+	setbuf(stdout, NULL);
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
-	
+
 	// free gauge configurations
 	free_replica(GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
-	
-	// free rectangles for hierarchical update
-	free_rect_hierarc(most_update, clover_rectangle, &param);
-	
-	// free rectangle for swap probability evaluation
-	free_rect(&swap_rectangle);
-	
+
+	// free rectangles for hierarchical update and swap
+	free_rect_utils(&rect_aux, &param);
+
 	// free swap acceptance and multicanonic Metropolis acceptance arrays, close multicanonic file
 	free_acc_utils(&acc_counters, &param);
-	
+
 	// free auxiliary arrays and lattices for measurements, close data files
 	free_meas_utils_replica(meas_aux, &param);
-	
+
 	// free hierarchical update parameters
 	free_hierarc_params(&param);
 	}

@@ -50,11 +50,10 @@ typedef struct Gauge_Conf {
 	TensProd **ml_polyplaqconn;	// [NLEVELS] [only slice 0] [space_vol]
 	GAUGE_GROUP *loc_plaqconn;	// [only slice 0][space_vol] auxilliary vector to be used in the multilevel
 	
-	// for multicanonical update: store running charge, copy of lattice to be cooled
-	#ifdef MULTICANONICAL_MODE
-	double stored_topo_charge;
-	GAUGE_GROUP **lattice_cooling;		// copy of lattice
-	#endif
+	// for multicanonical update: store running charge, copy of lattice to be cooled, rectangles for topcharge
+	double stored_topcharge;
+	GAUGE_GROUP **lattice_cold;			// aux lattice to be cooled
+	GAUGE_GROUP **lattice_copy_cold;	// aux lattice to be cooled
 } Gauge_Conf;
 	
 // to compute swap and multicanonic acceptances during parallel tempering evolution
@@ -96,8 +95,19 @@ void equal_gauge_conf(						Gauge_Conf *GC1,
 											Gauge_Conf *GC2,
 											GParam const * const param);
 
-void restore_gauge_conf(					Gauge_Conf *GC,
+void accept_gauge_conf(						Gauge_Conf * const GC,
 											GParam const * const param);
+
+void restore_gauge_conf(					Gauge_Conf * const GC,
+											GParam const * const param);
+
+void accept_gauge_conf_rectangle(			Gauge_Conf * const GC,
+											int const hierarc_level,
+											Rect_Utils const * const rect_aux);
+
+void restore_gauge_conf_rectangle(			Gauge_Conf * const GC,
+											int const hierarc_level,
+											Rect_Utils const * const rect_aux);
 
 void init_gauge_conf_from_file_with_name(	Gauge_Conf *GC,
 											GParam const * const param,
@@ -108,6 +118,11 @@ void init_gauge_conf(						Gauge_Conf *GC,
 											GParam const * const param);
 											
 void init_gauge_conf_step(					Gauge_Conf *GC,
+											GParam const * const param,
+											long step,
+											int *stop);
+
+void read_gauge_conf_step(					Gauge_Conf *GC,
 											GParam const * const param,
 											long step,
 											int *stop);
@@ -299,11 +314,22 @@ double loc_topcharge(		Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param,
 							long r);
+
+double delta_loc_topcharge(		Gauge_Conf const * const GC1,
+								Gauge_Conf const * const GC2,
+								Geometry const * const geo,
+								GParam const * const param,
+								long r);
 					 
 double topcharge(			Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param);
-				 
+
+double topcharge_rectangle(	Gauge_Conf const * const GC,
+							Geometry const * const geo,
+							GParam const * const param,
+							Rectangle const * const topcharge_rect);
+
 double topcharge_prime(		Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param, int const dir);
@@ -512,50 +538,50 @@ void multihit(								Gauge_Conf const * const GC,
 											int num_hit,
 											GAUGE_GROUP *G);
 				
-void compute_local_poly(					Gauge_Conf *GC,
+void compute_local_poly(					Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param);
 						
-void update_for_multilevel(					Gauge_Conf * GC,
+void update_for_multilevel(					Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int level);
 							
-void multilevel_polycorr(					Gauge_Conf *GC,
+void multilevel_polycorr(					Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt);
 							
-void multilevel_polycorradj(				Gauge_Conf * GC,
+void multilevel_polycorradj(				Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt);
 							
-void multilevel_polycorr_long(				Gauge_Conf * GC,
+void multilevel_polycorr_long(				Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt,
 											int iteration);
 								
-void compute_local_poly_and_plaq(			Gauge_Conf *GC,
+void compute_local_poly_and_plaq(			Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param);
 								 
-void multilevel_tube_disc(					Gauge_Conf *GC,
+void multilevel_tube_disc(					Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt);
 							
-void compute_local_poly_plaq_and_plaqconn(	Gauge_Conf *GC,
+void compute_local_poly_plaq_and_plaqconn(	Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param);
 											
-void multilevel_tube_conn(					Gauge_Conf * GC,
+void multilevel_tube_conn(					Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt);
 							
-void multilevel_tube_conn_long(				Gauge_Conf * GC,
+void multilevel_tube_conn_long(				Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
 											int dt,
@@ -614,82 +640,87 @@ void calcstaples_with_topo_with_defect(	Gauge_Conf const * const GC,
 										GAUGE_GROUP *M);
 
 
-void heatbath(						Gauge_Conf *GC,
+void heatbath(						Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
-void overrelaxation(				Gauge_Conf *GC,
+void overrelaxation(				Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
-int metropolis(						Gauge_Conf *GC,
+int metropolis(						Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
-int metropolis_with_tracedef(		Gauge_Conf *GC,
+int metropolis_with_tracedef(		Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
-void heatbath_with_defect(			Gauge_Conf *GC,
+void heatbath_with_defect(			Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
-void overrelaxation_with_defect(	Gauge_Conf *GC,
+void overrelaxation_with_defect(	Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									long r,
 									int i);
 
 
-void update(						Gauge_Conf *GC,
+void update(						Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									Acc_Utils *acc_counters);
 
-void update_with_defect(			Gauge_Conf * GC,
+void update_with_defect(			Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									Acc_Utils *acc_counters);
 
-void update_rectangle_with_defect(	Gauge_Conf *GC,
+void update_rectangle_with_defect(	Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
-									Rectangle const * const most_update,
-									Rectangle const * const clover_rectangle,
+									int const hierarc_level,
+									Rect_Utils const * const rect_aux,
 									Acc_Utils *acc_counters);
 
-void update_with_trace_def(			Gauge_Conf *GC,
+void update_with_trace_def(			Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
 									double *acc_dt);
 
 
-void hierarchical_update_rectangle_with_defect(		Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
-													int const hierarc_level, Rectangle const * const most_update,
-													Rectangle const * const clover_rectangle,
-													Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
+void hierarchical_update_rectangle_with_defect(		Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
+													int const hierarc_level,
+													Rect_Utils const * const rect_aux,
+													Acc_Utils *acc_counters);
 
-void parallel_tempering_with_hierarchical_update(	Gauge_Conf *GC, Geometry const * const geo, GParam const * const param,
-													Rectangle const * const most_update, Rectangle const * const clover_rectangle,
-													Rectangle const * const swap_rectangle, Acc_Utils *acc_counters);
+void parallel_tempering_with_hierarchical_update(	Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
+													Rect_Utils const * const rect_aux,
+													Acc_Utils *acc_counters);
 
 
-void cooling(							Gauge_Conf *GC,
+void cooling(							Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const * const param,
-										int n);
+										int const n);
 
-void gradflow_RKstep(					Gauge_Conf *GC,
+void hierarchical_cooling(				Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const * const param,
+										Rectangle const * const cooling_rect);
+
+void gradflow_RKstep(					Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const *const param,
 										double dt,
@@ -712,7 +743,7 @@ void gradflow_RKstep_adaptive_debug(	Gauge_Conf * const GC,
 										double *total_error,
 										Meas_Utils *meas_aux);
 
-void gradflow_RKstep_adaptive_debug2(	Gauge_Conf *GC,
+void gradflow_RKstep_adaptive_debug2(	Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const *const param,
 										double *t,
@@ -721,14 +752,14 @@ void gradflow_RKstep_adaptive_debug2(	Gauge_Conf *GC,
 										double *total_error,
 										Meas_Utils *meas_aux);
 
-void ape_smearing(						Gauge_Conf *GC,
+void ape_smearing(						Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const *const param,
 										double alpha,
 										int n);
 									
 // in gauge_conf_paral_temp.c
-void swap(					Gauge_Conf *GC,
+void swap(					Gauge_Conf * const GC,
 							Geometry const * const geo,
 							GParam const * const param,
 							Rectangle const * const swap_rectangle,
@@ -743,13 +774,13 @@ double delta_action_swap(	Gauge_Conf const * const GC,
 							int const a,
 							int const b);
 
-void metropolis_single_swap(Gauge_Conf *GC,
+void metropolis_single_swap(Gauge_Conf * const GC,
 							int const a,
 							int const b,
 							double const p,
 							Acc_Utils *acc_counters);
 
-void conf_translation(		Gauge_Conf *GC,
+void conf_translation(		Gauge_Conf * const GC,
 							Geometry const * const geo,
 							GParam const * const param);	
 
@@ -770,9 +801,9 @@ void print_conf_labels(		FILE *fp,
 							GParam const * const param);
 
 // in gauge_conf_multicanonic.c
-void init_topo_charge(				Gauge_Conf * const ,
-									Geometry const * const,
-									GParam const * const);
+void init_multicanonic_gauge_conf(	Gauge_Conf * const GC, 
+									Geometry const * const geo, 
+									GParam const * const param);
 
 void init_multicanonic_acc_utils(	Acc_Utils *,
 									GParam const * const);
@@ -785,16 +816,18 @@ void print_multicanonic_acceptance(	Gauge_Conf const * const,
 
 
 double compute_topo_potential(			int const,
-										double const,
+										double,
 										GParam const * const);
 
-double multicanonic_cold_topcharge(		Gauge_Conf * const,
+double multicanonic_topcharge_cooling(	Gauge_Conf * const,
 										Geometry const * const,
 										GParam const * const);
 
-double topcharge_cooling_multicanonic(	Gauge_Conf * const,
-										Geometry const * const,
-										GParam const * const);
+double multicanonic_topcharge_cooling_rectangle(	Gauge_Conf * const,
+													Geometry const * const,
+													GParam const * const,
+													int const,
+													Rect_Utils const * const);
 
 double topcharge_agf_multicanonic(		Gauge_Conf * const,
 										Geometry const * const,
@@ -813,15 +846,21 @@ double delta_topo_potential_swap(	Gauge_Conf const * const,
 									GParam const * const);
 
 
-int multicanonic_metropolis_step_single_link(	Gauge_Conf *,
+int multicanonic_metropolis_step_single_link(	Gauge_Conf * const,
 												Geometry const * const,
 												GParam const * const,
 												long, int,
 												GAUGE_GROUP);
 
-int multicanonic_metropolis_step_all_links(		Gauge_Conf *,
+int multicanonic_metropolis_step_all_links(		Gauge_Conf * const,
 												Geometry const * const,
 												GParam const * const);
+
+int multicanonic_metropolis_step_rectangle(		Gauge_Conf * const,
+												Geometry const * const,
+												GParam const * const,
+												int const,
+												Rect_Utils const * const);
 
 // old implementation of multicanonic
 

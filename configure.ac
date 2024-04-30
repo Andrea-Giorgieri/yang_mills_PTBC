@@ -79,7 +79,10 @@ AC_ARG_ENABLE([use-multicanonical],
               [use_multicanonical=yes], 
               [use_multicanonical=no])
 
-
+AC_ARG_ENABLE([meas-replica], 
+              [  --enable-meas-replica      to enable the measurement of observables on parallel tempering replicas], 
+              [meas_replica=yes], 
+              [meas_replica=no])
 
 ### FURTHER CHECKS
 if test x${use_openmp} = xyes; then
@@ -118,6 +121,10 @@ fi
 
 if test x${use_multicanonical} = xyes; then
   AC_DEFINE(MULTICANONICAL_MODE,, [Enable the use of the multicanonical algorithm])
+fi
+
+if test x${meas_replica} = xyes; then
+  AC_DEFINE(REPLICA_MEAS_MODE,, [Enable measurement of observables on parallel tempering replicas])
 fi
 
 

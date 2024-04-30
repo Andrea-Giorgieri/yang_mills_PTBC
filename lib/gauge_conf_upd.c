@@ -1508,9 +1508,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC, Gauge_Conf *GC_old, Gauge_Conf *he
 			times_equal_real(&aux, 1.0 / 4.0);
 			taexp(&aux);
 			times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
-
-			unitarize(&(GC->lattice[r][dir]));
-			unitarize(&(helper1->lattice[r][dir]));
 			}
 		}
 	// now helper1=W_0, helper2=Z_0 and GC=W_1
@@ -1539,10 +1536,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC, Gauge_Conf *GC_old, Gauge_Conf *he
 			equal(&(helper2->lattice[r][dir]), &aux);
 			taexp(&aux);
 			times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
-
-			unitarize(&(GC->lattice[r][dir]));
-			unitarize(&(helper1->lattice[r][dir]));
-			unitarize(&(helper3->lattice[r][dir]));
 			}
 		}
 	// now helper1=W_2, helper2=(8/9)Z_1-(17/36)Z_0, helper3=W'_2, and GC=W_1
@@ -1562,12 +1555,11 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC, Gauge_Conf *GC_old, Gauge_Conf *he
 			minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
 			taexp(&aux);
 			times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
-			unitarize(&(GC->lattice[r][dir]));
 			}
 		}
 	// now helper3 = W'_2 and GC = W_3
 
-	// error calculation
+	// error calculation and final unitarization
 	//allocate_array_double(&local_max_dist, NTHREADS, __FILE__, __LINE__); // function not implemented on this branch
 	if(posix_memalign((void **)&local_max_dist, (size_t)DOUBLE_ALIGN, (size_t)NTHREADS * sizeof(double)) != 0)
 		{
@@ -1590,8 +1582,11 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC, Gauge_Conf *GC_old, Gauge_Conf *he
 		#endif
 		for(i = 0; i < STDIM; i++)
 			{
+			// Note: unitarize() after dist calculation, otherwise the integration
+			//       error can be greatly over-estimated for some configurations
 			minus_equal(&(helper3->lattice[r][i]), &(GC->lattice[r][i]));
 			dist = norm(&(helper3->lattice[r][i])) / ((double)NCOLOR * (double)NCOLOR);
+			unitarize(&(GC->lattice[r][dir]));
 			if(dist > local_max_dist[thread_num]) local_max_dist[thread_num] = dist;
 			}
 		}

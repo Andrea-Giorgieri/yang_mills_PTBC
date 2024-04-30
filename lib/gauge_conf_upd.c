@@ -1662,7 +1662,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 	long r;
 	int dir, j;
 	double max_dist, *local_max_dist;
-	//double clover1, clover2;
 	
 	// initialize
 	for(dir=0; dir<STDIM; dir++)
@@ -1695,9 +1694,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 			times_equal_real(&aux, 1.0/4.0);
 			taexp(&aux);
 			times(&(GC->lattice[r][dir]), &aux, &link); // GC=aux*link
-			
-			//unitarize(&(GC->lattice[r][dir]));
-			//unitarize(&(helper1->lattice[r][dir]));
 			}
 		}
 
@@ -1727,10 +1723,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 			equal(&(helper2->lattice[r][dir]), &aux);
 			taexp(&aux);
 			times(&(helper1->lattice[r][dir]), &aux, &link); // helper1=aux*link
-			
-			//unitarize(&(GC->lattice[r][dir]));
-			//unitarize(&(helper1->lattice[r][dir]));
-			//unitarize(&(helper3->lattice[r][dir]));
 			}
 		}
 
@@ -1751,16 +1743,13 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 			minus_equal(&aux, &(helper2->lattice[r][dir])); // aux=(3/4)Z_2-(8/9)Z_1+(17/36)Z_0
 			taexp(&aux);
 			times(&(GC->lattice[r][dir]), &aux, &link);	// GC=aux*link
-			unitarize(&(GC->lattice[r][dir]));
 			}
 		}
 	// now helper3 = W'_2 and GC = W_3
 	
-	// error calculation
+	// error calculation and final unitarization
 	allocate_array_double(&local_max_dist, NTHREADS, __FILE__, __LINE__);
-	
 	for (j=0; j<NTHREADS; j++) local_max_dist[j] = 0.0;
-	
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r)
 	#endif
@@ -1774,8 +1763,11 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 		#endif
 		for(i=0; i<STDIM; i++)
 			{
+			// Note: unitarize() after dist calculation, otherwise the integration
+			//       error can be greatly over-estimated for some configurations
 			minus_equal(&(helper3->lattice[r][i]), &(GC->lattice[r][i]));
 			dist = norm(&(helper3->lattice[r][i]))/((double)NCOLOR*(double)NCOLOR);
+			unitarize(&(GC->lattice[r][i]));
 			if (dist > local_max_dist[thread_num]) local_max_dist[thread_num] = dist;
 			}
 		}
@@ -1784,11 +1776,6 @@ void gradflow_RKstep_adaptive(Gauge_Conf *GC,
 		{
 		if (local_max_dist[j] > max_dist) max_dist = local_max_dist[j];
 		}
-	
-	// error calculation debug
-	//clover_disc_energy(GC, geo, param, &clover1);
-	//clover_disc_energy(helper3, geo, param, &clover2);
-	//max_dist = fabs((clover1-clover2)/clover1);
 	
 	if (max_dist < param->d_agf_delta) //if the integration step is accepted, advance t
 		{

@@ -25,8 +25,8 @@ void real_main(char *in_file)
 	GParam param;
 	Meas_Utils meas_aux;
 
-	int meas_count, stop;
-	long step;
+	int stop;
+	long step=0; // just to avoid gcc warning of maybe-uninitialized
 
 	time_t time1, time2;
 

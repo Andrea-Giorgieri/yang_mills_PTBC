@@ -1080,7 +1080,6 @@ void read_topo_potential(GParam * const param)
 void init_derived_constants(GParam *param)
 	{
 	int i;
-	double tmp1=0, tmp2=0;
 
 	// derived constants
 	param->d_volume=1;

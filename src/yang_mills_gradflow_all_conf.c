@@ -26,7 +26,7 @@ void real_main(char *in_file)
 	Meas_Utils meas_aux;
 	
 	int stop;
-	long step;
+	long step=0; // just to avoid gcc warning of maybe-uninitialized
 
 	time_t time1, time2;
 	

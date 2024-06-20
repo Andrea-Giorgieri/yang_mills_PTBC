@@ -290,7 +290,7 @@ double multicanonic_topcharge_cooling(Gauge_Conf * const GC,
 		{
 		Gauge_Conf helper;
 		
-		equal_lattice(GC->lattice_cold, GC->lattice, param);
+		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
 
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
@@ -321,7 +321,7 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 		{
 		Gauge_Conf helper;
 		
-		equal_lattice(GC->lattice_cold, GC->lattice, param);
+		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
 		
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;

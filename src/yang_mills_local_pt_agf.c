@@ -125,7 +125,7 @@ void real_main(char *in_file)
 
 	// print simulation details
 	print_parameters_local_pt_agf(&param, time1, time2);
-	setbuf(stdout, NULL);
+
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
 

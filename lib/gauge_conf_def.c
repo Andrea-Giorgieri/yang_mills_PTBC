@@ -18,6 +18,42 @@
 #include"../include/tens_prod.h"
 #include"../include/memalign.h"
 
+void equal_lattice(GAUGE_GROUP **lattice1, GAUGE_GROUP const * const * const lattice2,
+					GParam const * const param)
+	{
+	long s;
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+		equal(&(lattice1[r][i]), &(lattice2[r][i]));
+		}
+	}
+
+double lattice_dist(GAUGE_GROUP const * const * const lattice1,
+					GAUGE_GROUP const * const * const lattice2,
+					GParam const * const param)
+	{
+	double ris = 0.0;
+	long s;
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : ris)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+		GAUGE_GROUP aux;
+		equal(&aux, &(lattice1[r][i]));
+		minus_equal(&aux, &(lattice2[r][i]));
+		ris += norm(&aux);
+		}
+	return ris;
+	}
+
 void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const param)
 	{
 	long s;
@@ -40,7 +76,7 @@ void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const par
 
 void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 	{	
-	#ifdef MULTICANONICAL_MODE
+	#ifdef MULTICANONICAL_MODE	
 	GAUGE_GROUP **aux;
 	aux = GC->lattice_cold;
 	GC->lattice_cold = GC->lattice_copy_cold;
@@ -56,11 +92,11 @@ void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		// s = i * volume + r
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
-		unitarize(&(GC->lattice[r][i]));
+		//unitarize(&(GC->lattice[r][i]));
 		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
-		#ifdef MULTICANONICAL_MODE
-		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
-		#endif
+		//#ifdef MULTICANONICAL_MODE
+		//equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
+		//#endif
 		}
 	}
 
@@ -75,9 +111,9 @@ void restore_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
-		#ifdef MULTICANONICAL_MODE
-		equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
-		#endif
+		//#ifdef MULTICANONICAL_MODE
+		//equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
+		//#endif
 		}
 	}
 
@@ -104,7 +140,7 @@ void accept_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level,
 	aux = GC->lattice_cold;
 	GC->lattice_cold = GC->lattice_copy_cold;
 	GC->lattice_copy_cold = aux;
-	
+	/*
 	rect = &(rect_aux->topcharge_rect[hierarc_level]);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
@@ -116,6 +152,7 @@ void accept_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level,
 		int i = (int) ( (s - n) / (rect->d_vol_rect) );
 		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
 		}
+	*/
 	#endif
 	}
 
@@ -123,7 +160,7 @@ void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level
 	{
 	long s;
 	Rectangle *rect;
-
+	/*
 	#ifdef MULTICANONICAL_MODE	
 	rect = &(rect_aux->topcharge_rect[hierarc_level]);
 	#ifdef OPENMP_MODE
@@ -137,7 +174,7 @@ void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level
 		equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
 		}
 	#endif
-
+	*/
 	rect = &(rect_aux->update_rect[hierarc_level]);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
@@ -158,18 +195,10 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	// allocate the local lattice and auxiliary lattice
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
-	#ifdef MULTICANONICAL_MODE
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
-	#endif
 	for(r=0; r<(param->d_volume); r++) 
 		{
 		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
 		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
-		#ifdef MULTICANONICAL_MODE
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
-		#endif
 		}
 	
 	#ifdef THETA_MODE

@@ -226,13 +226,13 @@ void metropolis_single_swap(Gauge_Conf * const GC, int const a, int const b, dou
 		// swap of configurations
 		GAUGE_GROUP **aux;
 		double complex **aux_Z;
-		aux=GC[a].lattice;
-		aux_Z=GC[a].Z;
-		GC[a].lattice=GC[b].lattice;
-		GC[a].Z=GC[b].Z;
-		GC[b].lattice=aux;
-		GC[b].Z=aux_Z;
-		acc_counters->num_accepted_swap[a]++; // increase counter of successfull swaps for replicas (a, a+1)
+		aux = GC[a].lattice;
+		GC[a].lattice = GC[b].lattice;
+		GC[b].lattice = aux;
+		
+		aux_Z = GC[a].Z;
+		GC[a].Z = GC[b].Z;
+		GC[b].Z = aux_Z;
 		
 		// swap of auxiliary configurations
 		aux = GC[a].lattice_copy;
@@ -264,6 +264,9 @@ void metropolis_single_swap(Gauge_Conf * const GC, int const a, int const b, dou
 		aux_label = GC[a].conf_label;
 		GC[a].conf_label = GC[b].conf_label;
 		GC[b].conf_label = aux_label;
+		
+		// increase counter of successfull swaps for replicas (a, a+1)
+		acc_counters->num_accepted_swap[a]++; 
 		}
 	}
 
@@ -321,9 +324,6 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 		if(j<STDIM) 
 			{
 			equal(&(GC->lattice_copy[r][j]), &(GC->lattice[r][j]));
-			#ifdef MULTICANONICAL_MODE
-			equal(&(GC->lattice_cold[r][j]), &(GC->lattice[r][j]));
-			#endif
 			}
 		GC->Z_copy[r][j] = GC->Z[r][j];
 		}
@@ -383,8 +383,8 @@ void print_acceptances(Acc_Utils const * const acc_counters, GParam const * cons
 		int r;
   
 		fp=fopen(param->d_swap_acc_file, "w");
-		fprintf(fp, "#swap_from    swap_to    c_1    c_2    acceptance(%%)    err_acceptance(%%)    swap_accepted    swap_tried\n");
-		for(r=0;r<((param->d_N_replica_pt)-1);r++)
+		fprintf(fp, "#from    to         c_1      c_2    acc(%%) err_acc(%%)    accepted    tried\n");
+		for(r=0; r<((param->d_N_replica_pt)-1); r++)
 			{
 			if(acc_counters->num_swap[r]!=0)
 				{
@@ -396,7 +396,7 @@ void print_acceptances(Acc_Utils const * const acc_counters, GParam const * cons
 				acc=0.0;
 				err_acc=0.0;
 				}
-			fprintf(fp,"%d    %d    %lf    %lf    %lf    %lf    %ld    %ld\n", r, r+1, param->d_pt_bound_cond_coeff[r], param->d_pt_bound_cond_coeff[r+1], acc*100.0, err_acc*100.0, acc_counters->num_accepted_swap[r], acc_counters->num_swap[r]);
+			fprintf(fp,"%5d %5d %11.6f %8.6f %9.3f %10.3f %11ld %8ld\n", r, r+1, param->d_pt_bound_cond_coeff[r], param->d_pt_bound_cond_coeff[r+1], acc*100.0, err_acc*100.0, acc_counters->num_accepted_swap[r], acc_counters->num_swap[r]);
 			}
 		fclose(fp);	  
 		}
@@ -417,14 +417,22 @@ void init_swap_track_file(FILE **swaptrackfilep, GParam const * const param)
 			else // file does not exist -> create it and write first line
 				{
 				*swaptrackfilep=fopen(param->d_swap_tracking_file, "w");
-				fprintf(*swaptrackfilep, "# MC_step    conf_labels\n");
+				fprintf(*swaptrackfilep, "# MC_step    conf_labels");
+				#ifdef MULTICANONICAL_MODE
+				fprintf(*swaptrackfilep, "    conf_charges");
+				#endif
+				fprintf(*swaptrackfilep, "\n");
 				fflush(*swaptrackfilep);
 				}
 			}
 		else // starting run from scratch
 			{
 			*swaptrackfilep=fopen(param->d_swap_tracking_file, "w");
-			fprintf(*swaptrackfilep, "# MC_step    conf_labels\n");
+			fprintf(*swaptrackfilep, "# MC_step    conf_labels");
+			#ifdef MULTICANONICAL_MODE
+			fprintf(*swaptrackfilep, "    conf_charges");
+			#endif
+			fprintf(*swaptrackfilep, "\n");
 			fflush(*swaptrackfilep);
 			}
 		}
@@ -439,16 +447,22 @@ void print_conf_labels(FILE *fp, Gauge_Conf const * const GC, GParam const * con
 	{
 	if (param->d_N_replica_pt>1)
 		{
-		fprintf(fp, "%ld      ",GC[0].update_index);
-		for(int r=0;r<(param->d_N_replica_pt);r++) fprintf(fp,"%d ",GC[r].conf_label);
+		fprintf(fp, "%9ld ", GC[0].update_index);
+		for(int r=0; r<(param->d_N_replica_pt); r++)
+			{
+			fprintf(fp, "%d ", GC[r].conf_label);
+			#ifdef MULTICANONICAL_MODE
+			fprintf(fp, "% 9.6f ", GC[r].stored_topcharge);
+			#endif
+			}
 		fprintf(fp,"\n");
 		fflush(fp);
 		}
 	else
 		{
-		(void) fp; // to suppress compiler warning of unused variable
-		(void) GC; // to suppress compiler warning of unused variable
-		(void) param;  // to suppress compiler warning of unused variable
+		(void) fp;    // to suppress compiler warning of unused variable
+		(void) GC;    // to suppress compiler warning of unused variable
+		(void) param; // to suppress compiler warning of unused variable
 		}
 	}
 #endif

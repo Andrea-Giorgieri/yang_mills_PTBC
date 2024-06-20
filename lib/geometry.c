@@ -811,7 +811,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 	{
 	int border; // border = n -> up to n-th neighbors added to the rectangle
 	
-	// swap_rect: border = 1 (under swap action changes only for plaquettes around the defect)
+	// swap_rect: border = 1 (under swap, action changes only for plaquettes around the defect)
 	border=1;
 	init_rect(&(rect_aux->swap_rect), border, param);
 
@@ -835,8 +835,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 			border = param->d_L_rect[i];
 			init_rect(&(rect_aux->update_rect[i]), border, param);
 			}
-			
-		
+
 		#ifdef THETA_MODE
 		// clover_rect: border = d_L_rect + 2 
 		allocate_array_Rectangle(&(rect_aux->clover_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);

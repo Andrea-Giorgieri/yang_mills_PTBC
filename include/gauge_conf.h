@@ -91,6 +91,14 @@ typedef struct Meas_Utils {
 
 
 // in gauge_conf_def.c
+void equal_lattice(							GAUGE_GROUP **lattice1,
+											GAUGE_GROUP const * const * const lattice2,
+											GParam const * const param);
+
+double lattice_dist(						GAUGE_GROUP const * const * const lattice1,
+											GAUGE_GROUP const * const * const lattice2,
+											GParam const * const param);
+
 void equal_gauge_conf(						Gauge_Conf *GC1,
 											Gauge_Conf *GC2,
 											GParam const * const param);

@@ -1097,33 +1097,30 @@ void update(Gauge_Conf * const GC,
 				}
 			}
 		}
+	
+	// final unitarization
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		// s = i * volume + r
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+		unitarize(&(GC->lattice[r][i]));
+		}
 
-	// Metropolis test if using multicanonical and final unitarization
-	int acc=1;
-
+	// Metropolis test if using multicanonical
+	int acc = 1;
 	#ifdef MULTICANONICAL_MODE
 	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
 	acc_counters->num_accepted_metro_multicanonic[0] += acc;
 	acc_counters->num_metro_multicanonic[0] += 1;
 	#endif
+	// update or restore the lattice and auxiliary copies
+	if (acc == 1) accept_gauge_conf(GC, param);
+	else restore_gauge_conf(GC, param);
 
-	// update the copy of the lattice if the multicanonic Metropolis test was accepted.
-	// If rejected, lattice already restored by multicanonic_metropolis_step_all_links()
-	if (acc == 1)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(s)
-		#endif
-		for(s=0; s<STDIM*(param->d_volume); s++)
-			{
-			// s = i * volume + r
-			long r = s % (param->d_volume);
-			int i = (int) ( (s - r) / (param->d_volume) );
-			unitarize(&(GC->lattice[r][i]));
-			equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
-			}
-		}
-	
 	GC->update_index++;
 	}
 	
@@ -1218,20 +1215,30 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 			}
 		}
 	
-	// Metropolis test if using multicanonical and final unitarization
+	// final unitarization
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<(param->d_N_replica_pt)*STDIM*(param->d_volume); s++)
+		{
+		long r = s % (param->d_volume);
+		int  i = (int) ( s / (param->d_volume) ) % STDIM;
+		int  a = (int) ( s / ((param->d_volume) * STDIM )) % (param->d_N_replica_pt);
+		unitarize(&(GC[a].lattice[r][i]));
+		}
+	
+	// Metropolis test if using multicanonical
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
 		{
 		acc = 1;
-
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
 		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
-
-		// update or restore the lattice auxiliary copies
+		// update or restore the lattice and auxiliary copies
 		if (acc == 1) accept_gauge_conf(&(GC[j]), param);
 		else restore_gauge_conf(&(GC[j]), param);
 		}
@@ -1246,7 +1253,7 @@ void update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const 
 									Acc_Utils *acc_counters)
 	{
 	long s, num_even, num_odd;
-	int j,dir;
+	int j, dir;
 	
 	#ifndef MULTICANONICAL_MODE
 	(void) acc_counters;		// to avoid compiler warning of unused variable
@@ -1255,9 +1262,10 @@ void update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const 
 	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
 		If there's at least one even dimension: d_vol_rect/2 even sites and d_vol_rect/2 odd sites.
 		Otherwise: (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites. */
-	long is_even = ( (rect_aux->update_rect[hierarc_level]).d_vol_rect ) % 2;
-	num_even = ( (rect_aux->update_rect[hierarc_level]).d_vol_rect + is_even ) / 2; // number of even sites
-	num_odd  = ( (rect_aux->update_rect[hierarc_level]).d_vol_rect - is_even ) / 2; // number of odd sites
+	long rect_volume = (rect_aux->update_rect[hierarc_level]).d_vol_rect;
+	long is_even = rect_volume % 2;
+	num_even = ( rect_volume + is_even ) / 2; // number of even sites
+	num_odd  = ( rect_volume - is_even ) / 2; // number of odd sites
 
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
@@ -1328,25 +1336,35 @@ void update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const 
 			}
 		}
 	
-	// Metropolis test if using multicanonical and final unitarization
+	// final unitarization
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#endif
+	for(s=0; s<(param->d_N_replica_pt)*STDIM*rect_volume; s++)
+		{
+		long n = s % rect_volume;
+		int  i = (int) ( s / rect_volume ) % STDIM;
+		int  a = (int) ( s / (rect_volume * STDIM )) % (param->d_N_replica_pt);
+		long r = (rect_aux->update_rect[hierarc_level]).rect_sites[n];
+		unitarize(&(GC[a].lattice[r][i]));
+		}
+	
+	// Metropolis test if using multicanonical
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
 		{
 		acc = 1;
-
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
 		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
-
-		// update or restore the lattice auxiliary copies
-		// TO DO: fix bug in rectangle variants
-		if (acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
-		//if (acc == 1) accept_gauge_conf(&(GC[j]), param);
-		else restore_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
-		//else restore_gauge_conf(&(GC[j]), param);
+		// update or restore the lattice and auxiliary copies
+		//if (acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
+		if (acc == 1) accept_gauge_conf(&(GC[j]), param);
+		else restore_gauge_conf(&(GC[j]), param);
+		//else restore_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
 		}
 	}
 
@@ -1397,6 +1415,9 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry
 	
 	// full update + hierarchical update + swaps and translations after every sweep
 	update_with_defect(GC, geo, param, acc_counters);
+	
+	// TO DO: remove, debug only
+	if(param->d_N_replica_pt==1) hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, rect_aux, acc_counters);
 	if(param->d_N_replica_pt>1)
 		{
 		swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
@@ -1584,7 +1605,7 @@ void cooling(Gauge_Conf * const GC,
 		{
 		for(i=0; i<STDIM; i++)
 			{
-			unitarize(&(GC->lattice[r][i]));
+			//unitarize(&(GC->lattice[r][i]));
 			}
 		}
 	}

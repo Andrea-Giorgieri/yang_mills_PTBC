@@ -1,4 +1,4 @@
-src/yang_mills_polycorradj.o: src/yang_mills_polycorradj.c \
+src/yang_mills_local_agf.o: src/yang_mills_local_agf.c \
  /usr/include/stdc-predef.h src/../include/macro.h \
  src/../include/../config.h /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \

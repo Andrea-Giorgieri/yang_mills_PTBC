@@ -211,15 +211,16 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 		exit(EXIT_FAILURE);
 		}
 
-	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, aux;
+	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
 	const double coeff=(param->d_theta)*((double) NCOLOR)/(param->d_beta*128.0*PI*PI);
 	long k;
 	int j, l;
 	int i0, j0;
 	int sood1[4][4], sood2[4][4]; // signed ordered orthogonal directions
+	double complex factor;
 
-	zero(M); // M=0
-	zero(&topo_stap); // topo_stap=0
+	zero(M);			// M=0
+	zero(&topo_M);		// topo_M=0
 
 	// the theta term is written as
 	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood1[\mu][\nu] sood2[\mu][\nu]} )
@@ -263,100 +264,110 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 		j0=sood2[i][j];
 
 	//
-	//    i ^
-	//      |    (1)
-	//  (b) +----->-----+ (c)
-	//      |           |
-	//                  |
-	//      |           V (2)
-	//                  |
-	//      |           |
-	//  (a) +-----<-----+-->  j
-	//      r    (3)   (d)
+	//		i ^
+	//		|	(1)
+	//	(b) +----->-----+ (c)
+	//		|			|
+	//					|
+	//		|			V (2)
+	//					|
+	//		|			|
+	//	(a) +-----<-----+-->	j
+	//		r	(3)	(d)
 	//
-
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));               // link3 = (3)
-
-		times_dag2(&link12, &link1, &link2); // link12=link1*link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap=link12*stap^{dag}
 		
-		//twist (clockwise plaquette)		
-		times_equal_complex(&stap, GC->Z[r][dirs_to_si(i,j)]); //Z_\mu\nu(x) * staple
+		zero(&topo_stap);	// topo_stap=0
+		
+		// non-topo staple
+		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));	// link1 = (1)
+		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));	// link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
 
-		plus_equal(M, &stap);
+		times_dag2(&link12, &link1, &link2);	// link12=link1*link2^{dag}
+		times_dag2(&stap, &link12, &link3);		// stap=link12*stap^{dag}
 
 		// clover insertion in (a)
 		times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap); // clover*stap
+		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover*stap
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0])); // link1*clover
-		times_equal_dag(&aux, &link2);      // *=link2^{dag}
-		times_equal_dag(&aux, &link3);      // *=link3^{dag}
+		times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0]));  // link1*clover
+		times_equal_dag(&aux, &link2);		// *=link2^{dag}
+		times_equal_dag(&aux, &link3);		// *=link3^{dag}
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0])); // link1*link2*quadri
-		times_equal_dag(&aux, &link3);      // *=link3^{dag}
-
+		times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0]));  // link1*link2*quadri
+		times_equal_dag(&aux, &link3);		// *=link3^{dag}
 		plus_equal(&topo_stap, &aux);
+			
+		//twist modification (clockwise plaquette)
+		factor=GC->Z[r][dirs_to_si(i,j)];			//Z_\mu\nu(x)
+		times_equal_complex(&topo_stap, factor);	//Z_\mu\nu(x) * staple
+		times_equal_complex(&stap, factor);			//Z_\mu\nu(x) * staple
+		
+		plus_equal(M, &stap);
+		plus_equal(&topo_M, &topo_stap);
 
 	//
-	//    i ^
-	//      |    (1)
-	//  (d) +----<------+ (a)
-	//      |           |
-	//      |
-	//  (2) V           |
-	//      |
-	//      |           | (b)
-	//  (c) +------>----+---> j
-	//      k    (3)    r
+	//		i ^
+	//		|	(1)
+	//	(d) +----<------+ (a)
+	//		|			|
+	//		|
+	//	(2) V			|
+	//		|
+	//		|			| (b)
+	//	(c) +------>----+--->j
+	//		k	(3)	r
 	//
 
 		k=nnm(geo, r, j);
+		zero(&topo_stap);	// topo_stap=0
 
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
+		// non-topo staple
+		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));	// link1 = (1)
 		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
 		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
 
-		times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-		times(&stap, &link12, &link3);		// stap=link12*link3
-		
-		//twist (anticlockwise plaquette)		
-		times_equal_complex(&stap, GC->Z[k][dirs_to_si(j,i)]); //Z_\nu\mu(x) * staple
-
-		plus_equal(M, &stap);
+		times_dag12(&link12, &link1, &link2);	// link12=link1^{dag}*link2^{dag}
+		times(&stap, &link12, &link3);			// stap=link12*link3
 
 		// clover insertion in (a)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap); // clover*stap
+		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);	// clover*stap
 		minus_equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
+		times(&aux, &stap, &(GC->clover_array[r][i0][j0]));	// stap*clover
 		minus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link12, &(GC->clover_array[k][i0][j0])); // link1^{dag}*link2^{dag}*clover
-		times_equal(&aux, &link3);							// *=link3
+		times(&aux, &link12, &(GC->clover_array[k][i0][j0]));	// link1^{dag}*link2^{dag}*clover
+		times_equal(&aux, &link3);								// *=link3
 		minus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
 		times_dag1(&aux, &link1, &(GC->clover_array[nnp(geo, k, i)][i0][j0]));  // link1^{dag}*clover
 		times_equal_dag(&aux, &link2);			// *=link2^{dag}
 		times_equal(&aux, &link3);				// *=link3
-
 		minus_equal(&topo_stap, &aux);
+			
+		// twist modification (anticlockwise plaquette)
+		factor=GC->Z[k][dirs_to_si(j,i)];			//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		times_equal_complex(&topo_stap, factor);	//Z_\nu\mu(x-\nu) * staple
+		times_equal_complex(&stap, factor);			//Z_\nu\mu(x-\nu) * staple
+
+		plus_equal(M, &stap);
+		plus_equal(&topo_M, &topo_stap);	
 		}
 
-	times_equal_real(&topo_stap, coeff);
-	plus_equal(M, &topo_stap);
+	times_equal_real(&topo_M, coeff);
+	plus_equal(M, &topo_M);
+	
 	#endif
 	}
 	
@@ -374,31 +385,31 @@ void compute_clovers_replica(Gauge_Conf const * const GC,
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
 	for(s=0; s<((param->d_N_replica_pt)*param->d_volume); s++)
-	{
-	GAUGE_GROUP aux;
-	int i, j;
-		
-		// s = i_r * volume + r
-		long r = s % (param->d_volume); // space-time index
-		int i_r = (int) (  (s-r) / (param->d_volume) ) ; // replica index
-
-	for(i=0; i<STDIM; i++)
 		{
-		for(j=i+1; j<STDIM; j++)
-			{
-			if(i!=dir && j!=dir)
-			{
-			clover(&(GC[i_r]), geo, param, r, i, j, &aux);
+		GAUGE_GROUP aux;
+		int i, j;
+			
+			// s = i_r * volume + r
+			long r = s % (param->d_volume); // space-time index
+			int i_r = (int) (  (s-r) / (param->d_volume) ) ; // replica index
 
-			equal(&(GC[i_r].clover_array[r][i][j]), &aux);
-			minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux);  // clover_array[r][i][j]=aux-aux^{dag}
+		for(i=0; i<STDIM; i++)
+			{
+			for(j=i+1; j<STDIM; j++)
+				{
+				if(i!=dir && j!=dir)
+					{
+					clover(&(GC[i_r]), geo, param, r, i, j, &aux);
 
-			equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
-			times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i]=-clover_array[r][i][j]
-			}
+					equal(&(GC[i_r].clover_array[r][i][j]), &aux);
+					minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux);  // clover_array[r][i][j]=aux-aux^{dag}
+
+					equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
+					times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i]=-clover_array[r][i][j]
+					}
+				}
 			}
 		}
-	}
 	}
 
 // compute all the clovers in directions ortogonal to "dir" for all replica on a given rectangle
@@ -546,15 +557,15 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	{
 	#ifdef DEBUG
 	if(r >= param->d_volume)
-	{
-	fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	if(i >= STDIM)
-	{
-	fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	#endif
 
 	#ifndef THETA_MODE
@@ -562,12 +573,12 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	#else
 
 	if(STDIM!=4)
-	{
-	fprintf(stderr, "Error: imaginary theta term can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "Error: imaginary theta term can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 
-	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, aux;
+	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
 	const double coeff=(param->d_theta)*((double) NCOLOR)/(param->d_beta*128.0*PI*PI);
 	long k;
 	int j, l;
@@ -575,8 +586,8 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	int sood1[4][4], sood2[4][4]; // signed ordered orthogonal directions
 	double complex factor;
 
-	zero(M); // M=0
-	zero(&topo_stap); // topo_stap=0
+	zero(M);			// M=0
+	zero(&topo_M);		// topo_M=0
 
 	// the theta term is written as
 	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood1[\mu][\nu] sood2[\mu][\nu]} )
@@ -613,113 +624,121 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 	sood2[3][2] = 0;
 
 	for(l=i+1; l< i + STDIM; l++)
-	{
-	j = (l % STDIM);
+		{
+		j = (l % STDIM);
 
-	i0=sood1[i][j];
-	j0=sood2[i][j];
+		i0=sood1[i][j];
+		j0=sood2[i][j];
 
-//
-//		i ^
-//		|	(1)
-//	(b) +----->-----+ (c)
-//		|			|
-//					|
-//		|			V (2)
-//					|
-//		|			|
-//	(a) +-----<-----+-->	j
-//		r	(3)	(d)
-//
-			
+	//
+	//		i ^
+	//		|	(1)
+	//	(b) +----->-----+ (c)
+	//		|			|
+	//					|
+	//		|			V (2)
+	//					|
+	//		|			|
+	//	(a) +-----<-----+-->	j
+	//		r	(3)	(d)
+	//
+		
+		zero(&topo_stap);	// topo_stap=0
+		
 		// non-topo staple
-	equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-	equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-	equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
+		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));	// link1 = (1)
+		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));	// link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
 
-	times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
-	times_dag2(&stap, &link12, &link3);	// stap=link12*stap^{dag}
+		times_dag2(&link12, &link1, &link2);	// link12=link1*link2^{dag}
+		times_dag2(&stap, &link12, &link3);		// stap=link12*stap^{dag}
 
-	// clover insertion in (a)
-	times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
-	plus_equal(&topo_stap, &aux);
+		// clover insertion in (a)
+		times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
+		plus_equal(&topo_stap, &aux);
 
-	// clover insertion in (b)
-	times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover*stap
-	plus_equal(&topo_stap, &aux);
+		// clover insertion in (b)
+		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover*stap
+		plus_equal(&topo_stap, &aux);
 
-	// clover insertion in (c)
-	times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0]));  // link1*clover
-	times_equal_dag(&aux, &link2);		// *=link2^{dag}
-	times_equal_dag(&aux, &link3);		// *=link3^{dag}
-	plus_equal(&topo_stap, &aux);
+		// clover insertion in (c)
+		times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0]));  // link1*clover
+		times_equal_dag(&aux, &link2);		// *=link2^{dag}
+		times_equal_dag(&aux, &link3);		// *=link3^{dag}
+		plus_equal(&topo_stap, &aux);
 
-	// clover insertion in (d)
-	times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0]));  // link1*link2*quadri
-	times_equal_dag(&aux, &link3);		// *=link3^{dag}
-	plus_equal(&topo_stap, &aux);
+		// clover insertion in (d)
+		times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0]));  // link1*link2*quadri
+		times_equal_dag(&aux, &link3);		// *=link3^{dag}
+		plus_equal(&topo_stap, &aux);
+			
+		// boundary condition modification (only affects non-topo staple) and twist (clockwise plaquette)
+		factor=GC->Z[r][dirs_to_si(i,j)];			//Z_\mu\nu(x)
+		times_equal_complex(&topo_stap, factor);	//Z_\mu\nu(x) * staple
 		
-	// boundary condition modification (only affects non-topo staple) and twist (clockwise plaquette)
-	factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-	factor*=GC->Z[r][dirs_to_si(i,j)];		//Z_\mu\nu(x)
+		factor*=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
+		times_equal_complex(&stap, factor);			//K_\mu\nu(x) * Z_\mu\nu(x) * staple
 		
-	times_equal_complex(&stap, factor); //K_\mu\nu(x) * Z_\mu\nu(x) * staple
+		plus_equal(M, &stap);
+		plus_equal(&topo_M, &topo_stap);
+
+	//
+	//		i ^
+	//		|	(1)
+	//	(d) +----<------+ (a)
+	//		|			|
+	//		|
+	//	(2) V			|
+	//		|
+	//		|			| (b)
+	//	(c) +------>----+--->j
+	//		k	(3)	r
+	//
+
+		k=nnm(geo, r, j);
+		zero(&topo_stap);	// topo_stap=0
+
+		// non-topo staple
+		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));	// link1 = (1)
+		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
+		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
+
+		times_dag12(&link12, &link1, &link2);	// link12=link1^{dag}*link2^{dag}
+		times(&stap, &link12, &link3);			// stap=link12*link3
+
+		// clover insertion in (a)
+		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);	// clover*stap
+		minus_equal(&topo_stap, &aux);
+
+		// clover insertion in (b)
+		times(&aux, &stap, &(GC->clover_array[r][i0][j0]));	// stap*clover
+		minus_equal(&topo_stap, &aux);
+
+		// clover insertion in (c)
+		times(&aux, &link12, &(GC->clover_array[k][i0][j0]));	// link1^{dag}*link2^{dag}*clover
+		times_equal(&aux, &link3);								// *=link3
+		minus_equal(&topo_stap, &aux);
+
+		// clover insertion in (d)
+		times_dag1(&aux, &link1, &(GC->clover_array[nnp(geo, k, i)][i0][j0]));  // link1^{dag}*clover
+		times_equal_dag(&aux, &link2);			// *=link2^{dag}
+		times_equal(&aux, &link3);				// *=link3
+		minus_equal(&topo_stap, &aux);
+			
+		// boundary condition modification (only affects non-topo staple) and twist (anticlockwise plaquette)
+		factor=GC->Z[k][dirs_to_si(j,i)];			//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		times_equal_complex(&topo_stap, factor);	//K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 		
-	plus_equal(M, &stap);
+		factor*=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
+		times_equal_complex(&stap, factor);			//K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 
-//
-//		i ^
-//		|	(1)
-//	(d) +----<------+ (a)
-//		|			|
-//		|
-//	(2) V			|
-//		|
-//		|			| (b)
-//	(c) +------>----+--->j
-//		k	(3)	r
-//
+		plus_equal(M, &stap);
+		plus_equal(&topo_M, &topo_stap);	
+		}
 
-	k=nnm(geo, r, j);
-
-	// non-topo staple
-	equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
-	equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
-	equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
-
-	times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-	times(&stap, &link12, &link3);		// stap=link12*link3
-
-	// clover insertion in (a)
-	times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap); // clover*stap
-	minus_equal(&topo_stap, &aux);
-
-	// clover insertion in (b)
-	times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
-	minus_equal(&topo_stap, &aux);
-
-	// clover insertion in (c)
-	times(&aux, &link12, &(GC->clover_array[k][i0][j0])); // link1^{dag}*link2^{dag}*clover
-	times_equal(&aux, &link3);							// *=link3
-	minus_equal(&topo_stap, &aux);
-
-	// clover insertion in (d)
-	times_dag1(&aux, &link1, &(GC->clover_array[nnp(geo, k, i)][i0][j0]));  // link1^{dag}*clover
-	times_equal_dag(&aux, &link2);			// *=link2^{dag}
-	times_equal(&aux, &link3);				// *=link3
-	minus_equal(&topo_stap, &aux);
-		
-	// boundary condition modification (only affects non-topo staple) and twist (anticlockwise plaquette)
-	factor=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
-	factor*=GC->Z[k][dirs_to_si(j,i)];	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-
-	times_equal_complex(&stap, factor); //K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
-
-	plus_equal(M, &stap);	
-	}
-
-	times_equal_real(&topo_stap, coeff);
-	plus_equal(M, &topo_stap);
+	times_equal_real(&topo_M, coeff);
+	plus_equal(M, &topo_M);
+	
 	#endif
 	}
 
@@ -786,6 +805,42 @@ void overrelaxation(Gauge_Conf * const GC,
 	#endif
 
 	single_overrelaxation(&(GC->lattice[r][i]), &stap);
+	}
+
+// Compute the variation of the Wilson action for the proposed conf
+// TODO: remove, debug only
+double delta_action(Gauge_Conf const * const GC,
+				Geometry const * const geo,
+				GParam const * const param)
+	{
+	Gauge_Conf aux;
+	double ris1 = 0.0, ris2 = 0.0;
+	long s;
+	int dir;
+	
+	aux.lattice = GC->lattice_copy;
+	aux.Z = GC->Z_copy;
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : ris1, ris2)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		GAUGE_GROUP stap1, stap2;
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+
+		calcstaples_wilson(&aux, geo, param, r, i, &stap1);
+		calcstaples_wilson(GC, geo, param, r, i, &stap2);
+
+		// compute action
+		times_equal(&stap1, &(aux.lattice[r][i]));
+		times_equal(&stap2, &(GC->lattice[r][i]));
+		ris1 += retr(&stap1);
+		ris2 += retr(&stap2);
+		}
+	
+	//fprintf(stdout, "%lf %lf \n", ris1, ris2);
+	return (param->d_beta)*(ris1 - ris2)*0.25;
 	}
 
 
@@ -1097,23 +1152,11 @@ void update(Gauge_Conf * const GC,
 				}
 			}
 		}
-	
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s)
-	#endif
-	for(s=0; s<STDIM*(param->d_volume); s++)
-		{
-		// s = i * volume + r
-		long r = s % (param->d_volume);
-		int i = (int) ( (s - r) / (param->d_volume) );
-		unitarize(&(GC->lattice[r][i]));
-		}
 
 	// Metropolis test if using multicanonical
 	int acc = 1;
 	#ifdef MULTICANONICAL_MODE
-	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
+	acc = multicanonic_metropolis_step_all_links(GC, geo, param, 0);
 	acc_counters->num_accepted_metro_multicanonic[0] += acc;
 	acc_counters->num_metro_multicanonic[0] += 1;
 	#endif
@@ -1138,6 +1181,7 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 	
 	long s, num_even, num_odd;
 	int j, dir;
+	//double action1, action2, action3, pot; //TODO: remove, debug only (seems ok)
 	
 	#ifndef MULTICANONICAL_MODE
 	(void) acc_counters; // to avoid compiler warning of unused variable
@@ -1150,6 +1194,24 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 	num_even = ( param->d_volume + is_even ) / 2; // number of even sites
 	num_odd  = ( param->d_volume - is_even ) / 2; // number of odd sites
 
+	//TODO: remove, debug only (seems ok)
+	/*
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
+	
+	GAUGE_GROUP **aux;
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
+	
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	*/
+	
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
 		{
@@ -1215,17 +1277,22 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 			}
 		}
 	
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s)
-	#endif
-	for(s=0; s<(param->d_N_replica_pt)*STDIM*(param->d_volume); s++)
-		{
-		long r = s % (param->d_volume);
-		int  i = (int) ( s / (param->d_volume) ) % STDIM;
-		int  a = (int) ( s / ((param->d_volume) * STDIM )) % (param->d_N_replica_pt);
-		unitarize(&(GC[a].lattice[r][i]));
-		}
+	//TODO: remove, debug only (seems ok)
+	/*
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
+	
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
+	
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	*/
 	
 	// Metropolis test if using multicanonical
 	int acc;
@@ -1234,7 +1301,7 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 		acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
-		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
+		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
@@ -1242,6 +1309,23 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 		if (acc == 1) accept_gauge_conf(&(GC[j]), param);
 		else restore_gauge_conf(&(GC[j]), param);
 		}
+	
+	//TODO: remove, debug only (seems ok)
+	/*
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
+	
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	
+	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
+	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e \n", action1, action2, action3, pot);
+	
+	aux = GC->lattice;
+	GC->lattice = GC->lattice_copy;
+	GC->lattice_copy = aux;
+	*/
 	}
 
 // hierarchical update functions
@@ -1336,35 +1420,24 @@ void update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const 
 			}
 		}
 	
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s)
-	#endif
-	for(s=0; s<(param->d_N_replica_pt)*STDIM*rect_volume; s++)
-		{
-		long n = s % rect_volume;
-		int  i = (int) ( s / rect_volume ) % STDIM;
-		int  a = (int) ( s / (rect_volume * STDIM )) % (param->d_N_replica_pt);
-		long r = (rect_aux->update_rect[hierarc_level]).rect_sites[n];
-		unitarize(&(GC[a].lattice[r][i]));
-		}
-	
 	// Metropolis test if using multicanonical
+	// TODO: check rectange version (seems ok)
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
 		{
 		acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
-		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux);
+		//acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
+		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux, j);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
 		// update or restore the lattice and auxiliary copies
-		//if (acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
-		if (acc == 1) accept_gauge_conf(&(GC[j]), param);
-		else restore_gauge_conf(&(GC[j]), param);
-		//else restore_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
+		if (acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
+		else restore_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
+		//if (acc == 1) accept_gauge_conf(&(GC[j]), param);
+		//else restore_gauge_conf(&(GC[j]), param);
 		}
 	}
 
@@ -1416,8 +1489,8 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry
 	// full update + hierarchical update + swaps and translations after every sweep
 	update_with_defect(GC, geo, param, acc_counters);
 	
-	// TO DO: remove, debug only
-	if(param->d_N_replica_pt==1) hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, rect_aux, acc_counters);
+	// TODO: remove, debug only
+	//if(param->d_N_replica_pt==1) hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, rect_aux, acc_counters);
 	if(param->d_N_replica_pt>1)
 		{
 		swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
@@ -1438,7 +1511,7 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry
 
 
 // perform a complete update with trace deformation
-// TO DO: check if ok with multicanonical
+// TODO: check if ok with multicanonical
 void update_with_trace_def(Gauge_Conf * const GC,
 							Geometry const * const geo,
 							GParam const * const param,
@@ -1546,7 +1619,7 @@ void update_with_trace_def(Gauge_Conf * const GC,
 	int acc=1;
 
 	#ifdef MULTICANONICAL_MODE
-	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
+	acc = multicanonic_metropolis_step_all_links(GC, geo, param, j);
 	#endif
 
 	// update or restore the lattice auxiliary copies
@@ -1605,7 +1678,7 @@ void cooling(Gauge_Conf * const GC,
 		{
 		for(i=0; i<STDIM; i++)
 			{
-			//unitarize(&(GC->lattice[r][i]));
+			unitarize(&(GC->lattice[r][i]));
 			}
 		}
 	}

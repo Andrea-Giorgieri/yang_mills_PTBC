@@ -1,6 +1,6 @@
-src/yang_mills_polycorradj.o: src/yang_mills_polycorradj.c \
- /usr/include/stdc-predef.h src/../include/macro.h \
- src/../include/../config.h /usr/include/stdio.h \
+src/yang_mills_adaptive_gradient_flow.o: \
+ src/yang_mills_adaptive_gradient_flow.c /usr/include/stdc-predef.h \
+ src/../include/macro.h src/../include/../config.h /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \

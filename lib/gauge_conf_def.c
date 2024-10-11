@@ -67,11 +67,13 @@ void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const par
 		equal(&(GC1->lattice[r][i]), &(GC2->lattice[r][i]));
 		equal(&(GC1->lattice_copy[r][i]), &(GC2->lattice_copy[r][i]));
 		#ifdef MULTICANONICAL_MODE
-		GC1->stored_topcharge = GC1->stored_topcharge;
 		equal(&(GC1->lattice_cold[r][i]), &(GC2->lattice_cold[r][i]));
 		equal(&(GC1->lattice_copy_cold[r][i]), &(GC2->lattice_copy_cold[r][i]));
 		#endif
 		}
+	#ifdef MULTICANONICAL_MODE
+	GC1->stored_topcharge = GC2->stored_topcharge;
+	#endif
 	}
 
 void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
@@ -92,7 +94,7 @@ void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		// s = i * volume + r
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
-		//unitarize(&(GC->lattice[r][i]));
+		unitarize(&(GC->lattice[r][i]));
 		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
 		//#ifdef MULTICANONICAL_MODE
 		//equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
@@ -838,7 +840,6 @@ void write_conf_on_file_with_name(Gauge_Conf const * const GC,
 		}
 	}
 
-// TO DO: also save stored_topcharge
 void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 									GParam const * const param,
 									char const * const namefile)
@@ -888,6 +889,10 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 						}
 					}
 				}
+			}
+		else // arbitrary twist position to avoid errors 
+			{
+			fprintf(fp, "%d %d %d %d \n", 0, 1, 0, 0);
 			}
 		fclose(fp);
 		}
@@ -1038,7 +1043,7 @@ void init_twist_cond_from_twist_cond(double complex **Z, double complex const * 
 	// allocate Z[r][j]
 	allocate_array_double_complex_pointer(&Z, param->d_volume, __FILE__, __LINE__);
 	
-	// TO DO: is parallelization ok?
+	// TODO: is parallelization ok?
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r, j)
 	#endif

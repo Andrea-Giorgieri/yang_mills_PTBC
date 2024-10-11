@@ -949,7 +949,7 @@ void readinput(char *in_file, GParam *param)
 		
 		// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
 		// This prevents even-odd parallelization of updates.
-		// TO DO: implement sweep on the largest sublattice with even sides
+		// TODO: implement parallel sweep on the largest sublattice with even sides and sequential sweep of the rest
 		#ifdef OPENMP_MODE
 		for(i=0; i<STDIM; i++)
 			{
@@ -1053,13 +1053,13 @@ void read_topo_potential(GParam * const param)
 		err=fscanf(fp, "%lf", &x);
 		if(err!=1)
 			{
-			printf("Error: can't read the first element of the %d-th row of the file (%s, %d)\n", i,__FILE__, __LINE__);
+			fprintf(stderr, "Error: can't read the first element of the %d-th row of the file (%s, %d)\n", i,__FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		j=(int)floor((x+param->d_grid_max+(param->d_grid_step/2.0))/param->d_grid_step);
 		if (i!= j)
 			{
-			printf("Error: found %d (%lf) when expecting %d (%s, %d)\n", j, x, i, __FILE__, __LINE__);
+			fprintf(stderr, "Error: found %d (%lf) when expecting %d (%s, %d)\n", j, x, i, __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		// read V_a(x)
@@ -1068,7 +1068,7 @@ void read_topo_potential(GParam * const param)
 			err=fscanf(fp, "%lf", &V);
 			if(err!=1)
 				{
-				printf("Error: can't read the %d-th element of the %d-th row of the file (%s, %d)\n", a+2, i,__FILE__, __LINE__);
+				fprintf(stderr, "Error: can't read the %d-th element of the %d-th row of the file (%s, %d)\n", a+2, i,__FILE__, __LINE__);
 				exit(EXIT_FAILURE);
 				}
 			param->d_grid[a][i]=V;

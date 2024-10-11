@@ -68,8 +68,8 @@ double complex plaquettep_complex(Gauge_Conf const * const GC,
 											 Geometry const * const geo,
 											 GParam const * const param,
 											 long r,
-											 int i,
-											 int j)
+											 int j,
+											 int i)
 	{
 	GAUGE_GROUP matrix;
 	
@@ -152,7 +152,7 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
 	times_equal_dag(matrix, &(GC->lattice[r][j]));
 	
 	//twist factor: Z_\mu\nu for clockwise plaquette with \mu < \nu, matrix is the anticlockwise plaquette
-	times_equal_complex(matrix, GC->Z[r][dirs_to_si(j,i)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
+	times_equal_complex(matrix, GC->Z[r][dirs_to_si(i,j)]);	//Z_\mu\nu(x) = conj(Z_\nu\mu(x))
 	}
 
 
@@ -328,6 +328,53 @@ void clover_disc_energy(Gauge_Conf const * const GC,
 			}
 		}
 	*energy=ris*param->d_inv_vol;
+	}
+
+// Compute the total action
+// TODO: remove, debug only
+void action(Gauge_Conf const * const GC,
+				Geometry const * const geo,
+				GParam const * const param,
+				double *action1, double *action2, double *action3, double *pot, int idx)
+	{
+	double ris1 = 0.0, ris2 = 0.0, ris3 = 0.0;
+	long s;
+	int dir;
+	
+	for(dir=0; dir<STDIM; dir++)
+		{
+		compute_clovers(GC, geo, param, dir);
+		}
+	
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : ris1, ris2, ris3)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		GAUGE_GROUP stap1, stap2, stap3;
+		long r = s % (param->d_volume);
+		int i = (int) ( (s - r) / (param->d_volume) );
+
+		calcstaples_with_topo(GC, geo, param, r, i, &stap1);
+		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap2);
+		calcstaples_wilson(GC, geo, param, r, i, &stap3);
+
+		// compute action
+		times_equal(&stap1, &(GC->lattice[r][i]));
+		times_equal(&stap2, &(GC->lattice[r][i]));
+		times_equal(&stap3, &(GC->lattice[r][i]));
+		ris1 += retr(&stap1);
+		ris2 += retr(&stap2);
+		ris3 += retr(&stap3);
+		}
+	
+	*action1 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris1*0.25);
+	*action2 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris2*0.25);
+	*action3 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris3*0.25);
+	*pot = 0.0;
+	#ifdef MULTICANONICAL_MODE
+	*pot = compute_topo_potential(idx, topcharge(GC, geo, param), param);
+	#endif
 	}
 
 
@@ -583,6 +630,7 @@ double loc_topcharge(Gauge_Conf const * const GC,
 	
 	return ris;
 	}
+
 
 // compute the topological charge
 // see readme for more details
@@ -1144,7 +1192,7 @@ void loc_topcharge_corr(Gauge_Conf * const GC,
 	long r;
 	int i;
 	
-	// TO DO: refactor with meas_aux
+	// TODO: refactor with meas_aux
 	allocate_array_double(&topch, param->d_volume, __FILE__, __LINE__);
 	
 	// compute the local topological charge
@@ -1231,12 +1279,13 @@ void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GPa
 	if (param->d_charge_prime_meas    == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	}
 
-
+// TODO: remove action meas, debug only
 void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 								Meas_Utils *meas_aux)
 	{
 	int i;
 	double plaqs=0.0, plaqt=0.0, polyre=0.0, polyim=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, charge_prime[STDIM]; // =0.0 to suppress gcc warning
+	//double action1, action2, action3, pot;
 	
 	// perform meas
 	if (param->d_plaquette_meas       == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
@@ -1246,6 +1295,7 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 	if (param->d_chi_prime_meas       == 1) chi_prime = topo_chi_prime(GC, geo, param);
 	if (param->d_charge_prime_meas    == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
 	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
+	//action(GC, geo, param, &action1, &action2, &action3, &pot, 0);
 	
 	//print meas (topcharge_tcorr_timeslices already printed by topcharge_timeslices())
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
@@ -1255,6 +1305,7 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 	if (param->d_polyakov_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre, polyim);
 	if (param->d_chi_prime_meas     == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
 	if (param->d_charge_prime_meas  == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
+	//fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, pot);
 	
 	// flush data files
 	fflush(meas_aux->datafilep);
@@ -2499,7 +2550,7 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 		for (int i=0; i<4; i++)
 			{
 			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
-			// TO DO: is parallelization ok? is it useful?
+			// TODO: is parallelization ok? is it useful?
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
@@ -2584,7 +2635,7 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 		// free auxiliary lattices
 		for (int i=0; i<4; i++)
 			{
-			// TO DO: is parallelization ok? is it useful?
+			// TODO: is parallelization ok? is it useful?
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif

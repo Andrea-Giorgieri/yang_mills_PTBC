@@ -177,6 +177,15 @@ else
   AC_DEFINE_UNQUOTED(STDIM, ${ST_dim}, [Spacetime dimensionality])
 fi
 
+if test x${N_c} = x1; then
+  if test x${ST_dim} = x2; then
+    AC_DEFINE(TOPCHARGE,, [Enable the calculation of topological quantities])
+  fi
+else
+  if test x${ST_dim} = x4; then
+    AC_DEFINE(TOPCHARGE,, [Enable the calculation of topological quantities])
+  fi 
+fi
 
 ### CONDITIONALS
 

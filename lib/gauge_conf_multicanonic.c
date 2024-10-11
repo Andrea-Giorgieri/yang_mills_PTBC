@@ -27,8 +27,8 @@ void init_multicanonic_gauge_conf(Gauge_Conf * const GC, Geometry const * const 
 		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[s]), STDIM, __FILE__, __LINE__);
 		}
 	
-	/*
-	// initialize lattice_cold = lattice
+	// TODO: debug cold topcharge multicanonic
+	// initialize lattice_cold = lattice_copy_cold = lattice
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
@@ -37,8 +37,9 @@ void init_multicanonic_gauge_conf(Gauge_Conf * const GC, Geometry const * const 
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
+		equal(&(GC->lattice_copy_cold[r][i]), &(GC->lattice[r][i]));
 		}
-	*/
+	
 	// cool lattice_cold
 	switch (param->d_topo_cooling)
 		{
@@ -123,11 +124,11 @@ double compute_topo_potential(int const a, double x, GParam const * const param)
 	double x0, m, q;
 
 	//alpha-rounding of topcharge
-	if(param->d_topo_alpha > 0)  x = round(param->d_topo_alpha*x);
+	if(param->d_topo_alpha > MIN_VALUE)  x = round(param->d_topo_alpha*x);
 	
 	// find index of nearest grid point to x
 	i_grid=(int)(floor((x+param->d_grid_max)/param->d_grid_step));
-	
+
 	if(i_grid>=0 && i_grid<param->d_n_grid) // if x inside the barriers compute V_a(x) with a linear interpolation
 		{
 		// perform linear interpolation: V_a(x) = V_a(x0) + [dV_a/dx|(x0)] (x-x0)
@@ -206,7 +207,8 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 		}
 	ris = (loc_charge*chnorm);
 	
-	fprintf(stderr, "%ld % f ", r, ris);
+	// TODO: debug, remove
+	//fprintf(stderr, "%ld % f ", r, ris);
 	#endif
 	
 	#if (STDIM==2 && NCOLOR==1)
@@ -247,8 +249,7 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const * const GC,
 	helper.Z = GC->Z_copy;
 	ris=0.0;
 
-	// TO DO: benchmark number of threads, often rectangles are small
-	/*
+	// TODO: benchmark number of threads, often rectangles are small
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(n) reduction(+ : ris)
 	#endif
@@ -257,8 +258,9 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const * const GC,
 		long r = topcharge_rect->rect_sites[n];
 		ris += multicanonic_delta_loc_topcharge(GC, &helper, geo, param, r);
 		}
-	*/
-	// DEBUG
+
+	// TODO: remove, debug only
+	/*
 	for(n=0; n<(param->d_volume); n++)
 		{
 		ris += multicanonic_delta_loc_topcharge(GC, &helper, geo, param, n);
@@ -270,6 +272,7 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const * const GC,
 			}
 		fprintf(stderr, "%d\n", is_on_rect);
 		}
+	*/
 
 	return ris;
 	}
@@ -290,8 +293,10 @@ double multicanonic_topcharge_cooling(Gauge_Conf * const GC,
 		{
 		Gauge_Conf helper;
 		
-		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
-
+		// TODO: gcc gives warning
+		//equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
+		equal_lattice(GC->lattice_cold, GC->lattice, param);
+		// TODO: unitarize before cooling?
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
 		cooling(&helper, geo, param, param->d_topo_coolsteps);
@@ -316,12 +321,14 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	// TO DO: debug
+	// TODO: debug
 	if(param->d_topo_coolsteps>0)
 		{
 		Gauge_Conf helper;
 		
-		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
+		// TODO: gcc gives warning
+		//equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const * const)GC->lattice, param);
+		equal_lattice(GC->lattice_cold, GC->lattice, param);
 		
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
@@ -340,7 +347,7 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 	}
 
 // compute the topological charge after some gradflow time
-// TO DO: refactor or remove, very inefficient, currently unused
+// TODO: refactor or remove, very inefficient, currently unused
 double topcharge_agf_multicanonic(Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const * const param,
@@ -388,7 +395,7 @@ double metropolis_prob_multicanonic(int const a, double const Q_new, double cons
 	
 	V_old = compute_topo_potential(a, Q_old, param);
 	V_new = compute_topo_potential(a, Q_new, param);
-
+	//return 1.1;
 	return exp(V_old-V_new);
 	}
 
@@ -409,8 +416,8 @@ double delta_topo_potential_swap(Gauge_Conf const * const GC, int const a, int c
 	}
 
 
-//	Metropolis test with p_metro=exp(- delta topo_potential) when using cold charge
-int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param)
+//	Metropolis test with p_metro=exp(- delta topo_potential)
+int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param, int const idx)
 	{
 	// perform multicanonic Metropolis test
 	double Q_old, Q_new, p;
@@ -429,7 +436,7 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const
 			exit(EXIT_FAILURE);
 		}
 	
-	p = metropolis_prob_multicanonic(GC->conf_label, Q_new, Q_old, param);
+	p = metropolis_prob_multicanonic(idx, Q_new, Q_old, param);
 	
 	// Metropolis test: p < 1 --> acc=1 with probability p, else --> acc=1
 	int acc = 1;
@@ -446,29 +453,31 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const
 
 //	Metropolis test with p_metro=exp(- delta topo_potential) only on a given rectangle when using cold charge
 int multicanonic_metropolis_step_rectangle(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-											int const hierarc_level,
-											Rect_Utils const * const rect_aux)
+											int const hierarc_level, Rect_Utils const * const rect_aux, int const idx)
 	{
 	// perform multicanonic Metropolis test
-	double Q_old, Q_new, Q_new_debug, p;
+	double Q_old, Q_new, p;
+	//double Q_new_debug;
 	
 	Q_old = GC->stored_topcharge;
 	switch (param->d_topo_cooling)
 		{
 		case 0:	// topcharge not cooled
 			Q_new = Q_old + multicanonic_delta_topcharge_rectangle(GC, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
-			Q_new_debug = topcharge(GC, geo, param);
+			//Q_new_debug = topcharge(GC, geo, param);
 			break;
 		case 1:	// topcharge cooled
 			Q_new = Q_old + multicanonic_delta_topcharge_cooling_rectangle(GC, geo, param, hierarc_level, rect_aux);
-			Q_new_debug = multicanonic_topcharge_cooling(GC, geo, param);
+			//Q_new_debug = multicanonic_topcharge_cooling(GC, geo, param);
 			break;
 		default:
 			fprintf(stderr, "Undefined cooling method %d! (%s, %d)\n", param->d_topo_cooling, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			//exit(EXIT_FAILURE);
 		}
-	fprintf(stdout, "%ld %d %f %f\n", GC->update_index, hierarc_level, Q_new, Q_new_debug);
-	p = metropolis_prob_multicanonic(GC->conf_label, Q_new, Q_old, param);
+	// TODO: debug, remove
+	//fprintf(stdout, "%ld %d %f %f\n", GC->update_index, hierarc_level, Q_new, Q_new_debug);
+	
+	p = metropolis_prob_multicanonic(idx, Q_new, Q_old, param);
 	
 	// Metropolis test: p < 1 --> acc=1 with probability p, else --> acc=1
 	int acc = 1;
@@ -993,13 +1002,13 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 	// multicanonic Metropolis tests and add number of accepted and number of proposed ones
 	for(j=0; j<param->d_N_replica_pt; j++)
 		{
-		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
+		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		}
 	}
 
-// TO BE MODIFIED
+// TODO: BUGGED, conf_label -> conf index
 //	Metropolis test with p_metro=exp(- delta topo_potential)
 int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 												long r, int i, GAUGE_GROUP old_link)
@@ -1307,11 +1316,11 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 	// multicanonic Metropolis tests and add number of accepted and number of proposed ones
 	for(j=0; j<param->d_N_replica_pt; j++)
 		{
-		// TO DO: It should be possible to calculate Q_new as Q_old + delta_Q with delta_Q calculated
-		//		  around the rectangle. At each gradflow step the rectangle in which links change needs to
-		//		  extend to the first neighbors. delta_Q is non-zero only for those clovers intersecting
-		//		  the final rectangle. Big performance gain expected.
-		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
+		// TODO: It should be possible to calculate Q_new as Q_old + delta_Q with delta_Q calculated
+		//	  around the rectangle. At each gradflow step the rectangle in which links change needs to
+		//	  extend to the first neighbors. delta_Q is non-zero only for those clovers intersecting
+		//	  the final rectangle
+		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		}

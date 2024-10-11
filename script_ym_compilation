@@ -4,18 +4,18 @@ NCOLORS=3
 STDIM=4
 NLEVELS=1
 
-NTHREADS=112
+NTHREADS=16
 
-#compile_targets='yang_mills_local_pt_agf'
+compile_targets='yang_mills_local_pt_agf'
 
 #compile everything
-compile_targets='conf_check debug_rng debug_su2 debug_su2_adj debug_sun debug_u1 debug_twist debug_agf_vs_gf debug_agf_vs_delta yang_mills_local yang_mills_local_agf yang_mills_polycorr yang_mills_polycorr_long yang_mills_polycorradj yang_mills_t0 yang_mills_tube_conn yang_mills_tube_conn_long yang_mills_tube_disc yang_mills_tracedef yang_mills_local_pt yang_mills_local_pt_gf yang_mills_local_pt_agf yang_mills_gradient_flow yang_mills_adaptive_gradient_flow yang_mills_gradflow_all_conf'
+#compile_targets='conf_check debug_rng debug_su2 debug_su2_adj debug_sun debug_u1 debug_twist debug_agf_vs_gf debug_agf_vs_delta yang_mills_local yang_mills_local_agf yang_mills_polycorr yang_mills_polycorr_long yang_mills_polycorradj yang_mills_t0 yang_mills_tube_conn yang_mills_tube_conn_long yang_mills_tube_disc yang_mills_tracedef yang_mills_local_pt yang_mills_local_pt_gf yang_mills_local_pt_agf yang_mills_gradient_flow yang_mills_adaptive_gradient_flow yang_mills_gradflow_all_conf'
 
 # 1=yes, 0=no
 ENABLE_THETA=0
 ENABLE_OPENMP=1
-ENABLE_MULTICAN=1
-ENABLE_MEAS_REPLICA=1
+ENABLE_MULTICAN=0
+ENABLE_MEAS_REPLICA=0
 
 flag_theta=''
 flag_openmp=''
@@ -39,11 +39,11 @@ automake
 #./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=skylake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
 
 # optimized configuration for Leonardo (optimized compilation with Intel compiler on Intel Icelake processors)
-module load intel-oneapi-compilers
-./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
+#module load intel-oneapi-compilers
+#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
 
 # optimized compilation with gcc
-#./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=gcc CFLAGS='-O3' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
+./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=gcc CFLAGS='-O3 -fcommon' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
 
 # compile
-make ${compile_targets} -j 32
+make ${compile_targets} -j 16

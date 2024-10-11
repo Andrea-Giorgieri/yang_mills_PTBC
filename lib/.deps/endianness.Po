@@ -1,39 +1,34 @@
 lib/endianness.o: lib/endianness.c /usr/include/stdc-predef.h \
- /usr/include/stdlib.h /usr/include/bits/libc-header-start.h \
- /usr/include/features.h /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
- /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
- /usr/include/gnu/stubs-64.h \
- /leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/intel-oneapi-compilers-2023.0.0-ad24mh4soaclwr7gkzad65dglmi5ideg/compiler/2023.0.0/linux/bin/intel64/../../compiler/include/icc/stddef.h \
- /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
- /usr/include/bits/stdlib-bsearch.h /usr/include/bits/stdlib-float.h \
- lib/../include/endianness.h
-
+ /usr/include/stdlib.h \
+ /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
+ /usr/include/features.h /usr/include/features-time64.h \
+ /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+ /usr/include/x86_64-linux-gnu/bits/timesize.h \
+ /usr/include/x86_64-linux-gnu/sys/cdefs.h \
+ /usr/include/x86_64-linux-gnu/bits/long-double.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+ /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn.h \
+ /usr/include/x86_64-linux-gnu/bits/floatn-common.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
+ /usr/include/x86_64-linux-gnu/bits/stdlib.h lib/../include/endianness.h
 /usr/include/stdc-predef.h:
-
 /usr/include/stdlib.h:
-
-/usr/include/bits/libc-header-start.h:
-
+/usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 /usr/include/features.h:
-
-/usr/include/sys/cdefs.h:
-
-/usr/include/bits/wordsize.h:
-
-/usr/include/bits/long-double.h:
-
-/usr/include/gnu/stubs.h:
-
-/usr/include/gnu/stubs-64.h:
-
-/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/intel-oneapi-compilers-2023.0.0-ad24mh4soaclwr7gkzad65dglmi5ideg/compiler/2023.0.0/linux/bin/intel64/../../compiler/include/icc/stddef.h:
-
-/usr/include/bits/floatn.h:
-
-/usr/include/bits/floatn-common.h:
-
-/usr/include/bits/stdlib-bsearch.h:
-
-/usr/include/bits/stdlib-float.h:
-
+/usr/include/features-time64.h:
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+/usr/include/x86_64-linux-gnu/bits/timesize.h:
+/usr/include/x86_64-linux-gnu/sys/cdefs.h:
+/usr/include/x86_64-linux-gnu/bits/long-double.h:
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
+/usr/include/x86_64-linux-gnu/bits/floatn.h:
+/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
+/usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h:
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+/usr/include/x86_64-linux-gnu/bits/stdlib.h:
 lib/../include/endianness.h:

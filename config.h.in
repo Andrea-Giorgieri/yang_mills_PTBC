@@ -15,9 +15,6 @@
 /* Define to 1 if you have the <math.h> header file. */
 #undef HAVE_MATH_H
 
-/* Define to 1 if you have the <memory.h> header file. */
-#undef HAVE_MEMORY_H
-
 /* Define to 1 if you have the <omp.h> header file. */
 #undef HAVE_OMP_H
 
@@ -50,6 +47,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Enable the use of the multicanonical algorithm */
+#undef MULTICANONICAL_MODE
 
 /* Number of colors */
 #undef NCOLOR
@@ -84,7 +84,12 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Define to 1 if you have the ANSI C header files. */
+/* Enable measurement of observables on parallel tempering replicas */
+#undef REPLICA_MEAS_MODE
+
+/* Define to 1 if all of the C90 standard headers exist (not just the ones
+   required in a freestanding environment). This macro is provided for
+   backward compatibility; new code need not use it. */
 #undef STDC_HEADERS
 
 /* Spacetime dimensionality */
@@ -92,6 +97,9 @@
 
 /* Enable the use of an imaginary theta term */
 #undef THETA_MODE
+
+/* Enable the calculation of topological quantities */
+#undef TOPCHARGE
 
 /* Version number of package */
 #undef VERSION

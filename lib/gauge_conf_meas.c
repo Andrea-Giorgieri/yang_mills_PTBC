@@ -330,14 +330,14 @@ void clover_disc_energy(Gauge_Conf const * const GC,
 	*energy=ris*param->d_inv_vol;
 	}
 
-// Compute the total action
-// TODO: remove, debug only
+
+// compute the total action (debug only)
 void action(Gauge_Conf const * const GC,
 				Geometry const * const geo,
 				GParam const * const param,
-				double *action1, double *action2, double *action3, double *pot, int idx)
+				double *action1, double *action2, double *action3, double *pot)
 	{
-	double ris1 = 0.0, ris2 = 0.0, ris3 = 0.0;
+	double ris1 = 0.0, ris2 = 0.0, ris3 = 0.0, aux;
 	long s;
 	int dir;
 	
@@ -368,20 +368,22 @@ void action(Gauge_Conf const * const GC,
 		ris3 += retr(&stap3);
 		}
 	
-	*action1 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris1*0.25);
-	*action2 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris2*0.25);
-	*action3 = (param->d_beta)*((param->d_n_planes)*(param->d_volume)*0.5 - ris3*0.25);
+	aux = (double)((param->d_n_planes)*(param->d_volume))/2;
+	*action1 = (param->d_beta)*(aux - ris1*0.25);
+	*action2 = (param->d_beta)*(aux - ris2*0.25);
+	*action3 = (param->d_beta)*(aux - ris3*0.25);
 	*pot = 0.0;
 	#ifdef MULTICANONICAL_MODE
-	*pot = compute_topo_potential(idx, topcharge(GC, geo, param), param);
+	*pot = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
 	#endif
 	}
 
 
-// compute the mean Polyakov loop (the trace of)
+// compute the mean Polyakov loop (the trace of) along direction mu
 void polyakov(Gauge_Conf const * const GC,
 					Geometry const * const geo,
 					GParam const * const param,
+					int mu,
 					double *repoly,
 					double *impoly)
 	{
@@ -394,27 +396,27 @@ void polyakov(Gauge_Conf const * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
 	#endif
-	for(rsp=0; rsp<param->d_space_vol; rsp++)
+	for(rsp=0; rsp<(param->d_volume)/(param->d_size[mu]); rsp++)
 		{
 		long r;
 		int i;
 		GAUGE_GROUP matrix;
 
-		r=sisp_and_t_to_si(geo, rsp, 0);
+		r=sisp_and_mu_to_si(geo, rsp, 0, mu);
 
 		one(&matrix);
-		for(i=0; i<param->d_size[0]; i++)
+		for(i=0; i<param->d_size[mu]; i++)
 			{
-			times_equal(&matrix, &(GC->lattice[r][0]));
-			r=nnp(geo, r, 0);
+			times_equal(&matrix, &(GC->lattice[r][mu]));
+			r=nnp(geo, r, mu);
 			}
 
 		rep+=retr(&matrix);
 		imp+=imtr(&matrix);
 		}
 
-	*repoly=rep*param->d_inv_space_vol;
-	*impoly=imp*param->d_inv_space_vol;
+	*repoly=rep*(param->d_inv_space_vol[mu]);
+	*impoly=imp*(param->d_inv_space_vol[mu]);
 	}
 
 
@@ -435,7 +437,7 @@ void polyakov_adj(Gauge_Conf const * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
 	#endif
-	for(rsp=0; rsp<param->d_space_vol; rsp++)
+	for(rsp=0; rsp<param->d_space_vol[0]; rsp++)
 		{
 		long r;
 		int i;
@@ -460,8 +462,8 @@ void polyakov_adj(Gauge_Conf const * const GC,
 		imp+=0.0;
 		}
 
-	*repoly=rep*param->d_inv_space_vol;
-	*impoly=imp*param->d_inv_space_vol;
+	*repoly=rep*param->d_inv_space_vol[0];
+	*impoly=imp*param->d_inv_space_vol[0];
 	}
 
 
@@ -484,15 +486,15 @@ void polyakov_with_tracedef(Gauge_Conf const * const GC,
 		impoly[j]=0.0;
 		}
 	
-	allocate_array_double_pointer(&rep, param->d_space_vol, __FILE__, __LINE__);
-	allocate_array_double_pointer(&imp, param->d_space_vol, __FILE__, __LINE__);
-	for(i=0; i<param->d_space_vol; i++)
+	allocate_array_double_pointer(&rep, param->d_space_vol[0], __FILE__, __LINE__);
+	allocate_array_double_pointer(&imp, param->d_space_vol[0], __FILE__, __LINE__);
+	for(i=0; i<param->d_space_vol[0]; i++)
 		{
 		allocate_array_double(&(rep[i]), (int)floor(NCOLOR/2), __FILE__, __LINE__);
 		allocate_array_double(&(imp[i]), (int)floor(NCOLOR/2), __FILE__, __LINE__);
 		}
 
-	for(i=0; i<param->d_space_vol; i++)
+	for(i=0; i<param->d_space_vol[0]; i++)
 		{
 		for(j=0; j<(int)floor(NCOLOR/2); j++)
 			{
@@ -504,7 +506,7 @@ void polyakov_with_tracedef(Gauge_Conf const * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(rsp)
 	#endif
-	for(rsp=0; rsp<param->d_space_vol; rsp++)
+	for(rsp=0; rsp<param->d_space_vol[0]; rsp++)
 		{
 		long r;
 		int k;
@@ -534,7 +536,7 @@ void polyakov_with_tracedef(Gauge_Conf const * const GC,
 
 	for(j=0; j<(int)floor(NCOLOR/2); j++)
 		{
-		for(i=0; i<param->d_space_vol; i++)
+		for(i=0; i<param->d_space_vol[0]; i++)
 			{
 			repoly[j] += rep[i][j];
 			impoly[j] += imp[i][j];
@@ -543,11 +545,11 @@ void polyakov_with_tracedef(Gauge_Conf const * const GC,
 
 	for(j=0; j<(int)floor(NCOLOR/2.0); j++)
 		{
-		repoly[j] *= param->d_inv_space_vol;
-		impoly[j] *= param->d_inv_space_vol;
+		repoly[j] *= param->d_inv_space_vol[0];
+		impoly[j] *= param->d_inv_space_vol[0];
 		}
 
-	for(i=0; i<param->d_space_vol; i++)
+	for(i=0; i<param->d_space_vol[0]; i++)
 		{
 		free(rep[i]);
 		free(imp[i]);
@@ -660,6 +662,7 @@ double topcharge(Gauge_Conf const * const GC,
 	return ris;
 	}
 
+
 // sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
 double topcharge_prime(Gauge_Conf const * const GC,
 					Geometry const * const geo,
@@ -711,6 +714,7 @@ double topcharge_prime(Gauge_Conf const * const GC,
 	free(tmp);
 	return ris;
 	}
+
 
 // chi^\prime = (1/8) int d^4x |x|^2 <q(x)q(0)> = < (1/8) int d^4x |x|^2 q(x) q(0) > = < G2 >
 // This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensamble is a^2 chi^\prime
@@ -1274,35 +1278,36 @@ void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GPa
 		}
 	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
 	if (param->d_charge_meas          == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
+	if (param->d_polyakov_meas        == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
 	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);				
 	if (param->d_chi_prime_meas       == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
 	if (param->d_charge_prime_meas    == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	}
 
-// TODO: remove action meas, debug only
+
 void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 								Meas_Utils *meas_aux)
 	{
 	int i;
-	double plaqs=0.0, plaqt=0.0, polyre=0.0, polyim=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, charge_prime[STDIM]; // =0.0 to suppress gcc warning
+	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, polyre[STDIM], polyim[STDIM], charge_prime[STDIM]; // =0.0 to suppress gcc warning
 	//double action1, action2, action3, pot;
 	
 	// perform meas
 	if (param->d_plaquette_meas       == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
 	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &clover_energy);
 	if (param->d_charge_meas          == 1) charge = topcharge(GC, geo, param);
-	if (param->d_polyakov_meas        == 1) polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_polyakov_meas        == 1) for (i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(polyre[i]), &(polyim[i]));
 	if (param->d_chi_prime_meas       == 1) chi_prime = topo_chi_prime(GC, geo, param);
 	if (param->d_charge_prime_meas    == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
 	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
-	//action(GC, geo, param, &action1, &action2, &action3, &pot, 0);
+	//action(GC, geo, param, &action1, &action2, &action3, &pot);
 	
 	//print meas (topcharge_tcorr_timeslices already printed by topcharge_timeslices())
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
 	if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
 	if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
 	if (param->d_charge_meas        == 1) fprintf(meas_aux->datafilep, "% 18.12e ", charge);
-	if (param->d_polyakov_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre, polyim);
+	if (param->d_polyakov_meas      == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
 	if (param->d_chi_prime_meas     == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
 	if (param->d_charge_prime_meas  == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
 	//fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, pot);
@@ -1317,15 +1322,15 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 void perform_measures_localobs_notopo(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 										Meas_Utils *meas_aux)
 	{
-	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, polyre=0.0, polyim=0.0;
+	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, polyre[STDIM], polyim[STDIM];
 	
 	if (param->d_plaquette_meas     == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
 	if (param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_polyakov_meas      == 1) polyakov(GC, geo, param, &polyre, &polyim);
+	if (param->d_polyakov_meas      == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(polyre[i]), &(polyim[i]));
 	
 	if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
 	if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
-	if (param->d_polyakov_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre, polyim);
+	if (param->d_polyakov_meas      == 1) for (int i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
 	
 	fflush(meas_aux->datafilep);
 	}
@@ -1397,12 +1402,14 @@ void perform_measures_localobs_with_gradflow(Gauge_Conf * const GC,
 		restore_gauge_conf(GC, param);
 		
 		// print meas gradflow
-		print_measures_arrays(gradflowrepeat, GC->update_index, param, meas_aux);
+		print_measures_aux(gradflowrepeat, GC->update_index, param, meas_aux);
 		}
 	
 	// cold topcharge used to evaluate the multicanonical potential
 	#ifdef MULTICANONICAL_MODE
-	fprintf(meas_aux->datafilep, "% 18.12e ", GC->stored_topcharge);
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
 	#endif
 	
 	fprintf(meas_aux->datafilep, "\n");
@@ -1458,12 +1465,14 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf * const GC,
 		restore_gauge_conf(GC, param);
 		
 		// print meas gradflow
-		print_measures_arrays(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
 		}
 	
 	// cold topcharge used to evaluate the multicanonical potential
 	#ifdef MULTICANONICAL_MODE
-	fprintf(meas_aux->datafilep, "% 18.12e ", GC->stored_topcharge);
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
 	#endif
 	
 	fprintf(meas_aux->datafilep, "\n");
@@ -1513,7 +1522,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf * const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_arrays(gradflowrepeat, GC->update_index, param, meas_aux);
+		print_measures_aux(gradflowrepeat, GC->update_index, param, meas_aux);
 		}
 	
 	fprintf(meas_aux->datafilep, "\n");
@@ -1646,7 +1655,7 @@ void perform_measures_localobs_with_tracedef(Gauge_Conf * const GC,
 	double plaqs, plaqt, polyre, polyim;
 	
 	plaquette(GC, geo, param, &plaqs, &plaqt);
-	polyakov(GC, geo, param, &polyre, &polyim);
+	polyakov(GC, geo, param, 0, &polyre, &polyim);
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e ", plaqs, plaqt, polyre, polyim);
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
@@ -1672,7 +1681,7 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 	time_t time1, time2;
 	GAUGE_GROUP matrix, tmp;
 	
-	allocate_array_double_complex(&poly_array, param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 	
 	#ifdef THETA_MODE
 	compute_clovers(GC, geo, param, 0);
@@ -1686,7 +1695,7 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 		time(&time1);
 
 		// polyakov loop computation
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			one(&matrix);
 			for(i=0; i<param->d_size[0]; i++)
@@ -1706,7 +1715,7 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 		// average correlator computation
 		poly_corr=0.0+I*0.0;
 		poly_corr_abs=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			r1=sisp_and_t_to_si(geo, r, 0);
 			for(i=0; i<param->d_dist_poly; i++)
@@ -1718,12 +1727,12 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 			poly_corr += poly_array[r]*conj(poly_array[r2]);
 			poly_corr_abs += cabs(poly_array[r]*conj(poly_array[r2]));
 			}
-		poly_corr*=param->d_inv_space_vol;
-		poly_corr_abs*=param->d_inv_space_vol;
+		poly_corr*=param->d_inv_space_vol[0];
+		poly_corr_abs*=param->d_inv_space_vol[0];
 
 		// fluctuation of the average correlator computation
 		poly_corr_fluct=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			r1=sisp_and_t_to_si(geo, r, 0);
 			for(i=0; i<param->d_dist_poly; i++)
@@ -1733,7 +1742,7 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
 			poly_corr_fluct+=cabs( poly_array[r]*conj(poly_array[r2]) - poly_corr );
 			}
-		poly_corr_fluct*=param->d_inv_space_vol;
+		poly_corr_fluct*=param->d_inv_space_vol[0];
 
 
 		time(&time2);
@@ -1760,7 +1769,7 @@ void optimize_multilevel_polycorr(Gauge_Conf * const GC,
 	double poly_corr_abs, poly_corr_fluct;
 	double complex *poly_array;
 	
-	allocate_array_double_complex(&poly_array, param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 	
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
@@ -1774,7 +1783,7 @@ void optimize_multilevel_polycorr(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 			}
@@ -1783,23 +1792,23 @@ void optimize_multilevel_polycorr(Gauge_Conf * const GC,
 	// averages
 	poly_corr=0.0+I*0.0;
 	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_array[r]=retr_TensProd(&(GC->ml_polycorr[0][0][r]))+I*imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 
 		poly_corr+=poly_array[r];
 		poly_corr_abs+=cabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol;
-	poly_corr_abs*=param->d_inv_space_vol;
+	poly_corr*=param->d_inv_space_vol[0];
+	poly_corr_abs*=param->d_inv_space_vol[0];
 
 	// fluctuations
 	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_corr_fluct += cabs(poly_array[r]-poly_corr);
 		}
-	poly_corr_fluct*=param->d_inv_space_vol;
+	poly_corr_fluct*=param->d_inv_space_vol[0];
 
 	// normalizations
 	for(i=0; i<NLEVELS; i++)
@@ -1845,18 +1854,18 @@ void perform_measures_polycorr(Gauge_Conf * const GC,
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(r)
 			#endif
-			for(r=0; r<param->d_space_vol; r++)
+			for(r=0; r<param->d_space_vol[0]; r++)
 				{
 				times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 				}
 			}
 
 		ris=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			ris+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
 			}
-		ris*=param->d_inv_space_vol;
+		ris*=param->d_inv_space_vol[0];
 
 		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
 		fflush(meas_aux->datafilep);
@@ -1890,7 +1899,7 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 	time_t time1, time2;
 	GAUGE_GROUP matrix, tmp;
 	
-	allocate_array_double(&poly_array, param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 	
 	#ifdef THETA_MODE
 	compute_clovers(GC, geo, param, 0);
@@ -1904,7 +1913,7 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 		time(&time1);
 
 		// polyakov loop in the adjoint representation computation
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			one(&matrix);
 			for(i=0; i<param->d_size[0]; i++)
@@ -1932,7 +1941,7 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 		// average correlator computation
 		poly_corr=0.0;
 		poly_corr_abs=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			r1=sisp_and_t_to_si(geo, r, 0);
 			for(i=0; i<param->d_dist_poly; i++)
@@ -1944,12 +1953,12 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 			poly_corr+= poly_array[r]*poly_array[r2];
 			poly_corr_abs+=fabs(poly_array[r]*poly_array[r2]);
 			}
-		poly_corr*=param->d_inv_space_vol;
-		poly_corr_abs*=param->d_inv_space_vol;
+		poly_corr*=param->d_inv_space_vol[0];
+		poly_corr_abs*=param->d_inv_space_vol[0];
 
 		// fluctuation of the average correlator computation
 		poly_corr_fluct=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			r1=sisp_and_t_to_si(geo, r, 0);
 			for(i=0; i<param->d_dist_poly; i++)
@@ -1960,7 +1969,7 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 
 			poly_corr_fluct+=fabs(poly_array[r]*poly_array[r2]-poly_corr);
 			}
-		poly_corr_fluct*=param->d_inv_space_vol;
+		poly_corr_fluct*=param->d_inv_space_vol[0];
 
 		time(&time2);
 		diff_sec = difftime(time2, time1);
@@ -1985,7 +1994,7 @@ void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
 	double poly_corr, poly_corr_abs, poly_corr_fluct;
 	double *poly_array;
 	
-	allocate_array_double(&poly_array, param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 	
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
@@ -2000,7 +2009,7 @@ void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
 			}
@@ -2009,23 +2018,23 @@ void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
 	// averages
 	poly_corr=0.0;
 	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_array[r]=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
 
 		poly_corr+=poly_array[r];
 		poly_corr_abs+=fabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol;
-	poly_corr_abs*=param->d_inv_space_vol;
+	poly_corr*=param->d_inv_space_vol[0];
+	poly_corr_abs*=param->d_inv_space_vol[0];
 
 	// fluctuations
 	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_corr_fluct+=fabs(poly_array[r]-poly_corr);
 		}
-	poly_corr_fluct*=param->d_inv_space_vol;
+	poly_corr_fluct*=param->d_inv_space_vol[0];
 
 	// normalizations
 	for(i=0; i<NLEVELS; i++)
@@ -2068,18 +2077,18 @@ void perform_measures_polycorradj(Gauge_Conf * const GC,
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(r)
 			#endif
-			for(r=0; r<param->d_space_vol; r++)
+			for(r=0; r<param->d_space_vol[0]; r++)
 				{
 				times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
 				}
 			}
 
 		ris=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			ris+=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
 			}
-		ris*=param->d_inv_space_vol;
+		ris*=param->d_inv_space_vol[0];
 
 		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
 		fflush(meas_aux->datafilep);
@@ -2107,7 +2116,7 @@ void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
 	double complex poly_corr;
 	double complex *poly_array;
 	
-	allocate_array_double_complex(&poly_array, param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 	
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
@@ -2117,7 +2126,7 @@ void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 			}
@@ -2126,23 +2135,23 @@ void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
 	// average
 	poly_corr=0.0+I*0.0;
 	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_array[r]=retr_TensProd(&(GC->ml_polycorr[0][0][r]))+I*imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 
 		poly_corr+=poly_array[r];
 		poly_corr_abs+=cabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol;
-	poly_corr_abs*=param->d_inv_space_vol;
+	poly_corr*=param->d_inv_space_vol[0];
+	poly_corr_abs*=param->d_inv_space_vol[0];
 
 	// fluctuation
 	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		poly_corr_fluct+=cabs(poly_array[r]-poly_corr);
 		}
-	poly_corr_fluct*=param->d_inv_space_vol;
+	poly_corr_fluct*=param->d_inv_space_vol[0];
 
 	// normalization
 	for(i=0; i<NLEVELS; i++)
@@ -2188,18 +2197,18 @@ void perform_measures_polycorr_long(Gauge_Conf * const GC,
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(r)
 			#endif
-			for(r=0; r<param->d_space_vol; r++)
+			for(r=0; r<param->d_space_vol[0]; r++)
 				{
 				times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 				}
 			}
 
 		ris=0.0;
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			ris+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
 			}
-		ris*=param->d_inv_space_vol;
+		ris*=param->d_inv_space_vol[0];
 
 		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
 		fflush(meas_aux->datafilep);
@@ -2225,7 +2234,7 @@ void perform_measures_tube_disc(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
@@ -2234,24 +2243,24 @@ void perform_measures_tube_disc(Gauge_Conf * const GC,
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	fprintf(meas_aux->datafilep, "\n");
@@ -2277,7 +2286,7 @@ void perform_measures_tube_conn(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
@@ -2287,35 +2296,35 @@ void perform_measures_tube_conn(Gauge_Conf * const GC,
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	fprintf(meas_aux->datafilep, "\n");
@@ -2338,7 +2347,7 @@ void perform_measures_tube_conn_long(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=0; r<param->d_space_vol; r++)
+		for(r=0; r<param->d_space_vol[0]; r++)
 			{
 			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
 			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
@@ -2348,78 +2357,41 @@ void perform_measures_tube_conn_long(Gauge_Conf * const GC,
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	risr=0.0;
 	risi=0.0;
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		risr+=retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		risi+=imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		}
-	risr*=param->d_inv_space_vol;
-	risi*=param->d_inv_space_vol;
+	risr*=param->d_inv_space_vol[0];
+	risi*=param->d_inv_space_vol[0];
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
 	}
 
-
-void allocate_measures_arrays(int const num_meas, GParam const * const param, double **meanplaq,
-								double **clover_energy, double **charge, double **sum_q_timeslices,
-								double **chi_prime, double ***charge_prime)
-	{
-	if (param->d_plaquette_meas == 1)
-		allocate_array_double(meanplaq, num_meas, __FILE__, __LINE__);
-	
-	if (param->d_clover_energy_meas == 1)
-		allocate_array_double(clover_energy, num_meas, __FILE__, __LINE__);	
-	
-	if (param->d_charge_meas == 1)
-		allocate_array_double(charge, num_meas, __FILE__, __LINE__);
-	
-	if (param->d_topcharge_tcorr_meas == 1 )
-		allocate_array_double(sum_q_timeslices, param->d_size[0], __FILE__, __LINE__);
-	
-	if (param->d_chi_prime_meas == 1)
-		allocate_array_double(chi_prime, num_meas, __FILE__, __LINE__);
-	
-	if (param->d_charge_prime_meas == 1)
-		{
-		allocate_array_double_pointer(charge_prime, num_meas, __FILE__, __LINE__);
-		for(int i=0; i<num_meas; i++)
-			allocate_array_double(&((*charge_prime)[i]), STDIM, __FILE__, __LINE__);
-		}
-	}
-
-
-void allocate_measures_arrays_cooling(int const num_meas, GParam const * const param,
-										double **const meanplaq, double **const charge, double **const chi_prime)
-	{
-	allocate_array_double(charge, num_meas, __FILE__, __LINE__);
-	allocate_array_double(meanplaq, num_meas, __FILE__, __LINE__);
-	if (param->d_chi_prime_meas == 1)
-		allocate_array_double(chi_prime, num_meas, __FILE__, __LINE__);
-	}
 
 // open data files
 void open_data_file(Meas_Utils *meas_aux, char const * const data, char const * const chiprime,
@@ -2533,6 +2505,17 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 		if (param->d_charge_meas == 1)
 			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
 		
+		if (param->d_polyakov_meas == 1)
+			{
+			allocate_array_double_pointer(&(meas_aux->polyre), num_meas, __FILE__, __LINE__);
+			allocate_array_double_pointer(&(meas_aux->polyim), num_meas, __FILE__, __LINE__);
+			for(int i=0; i<num_meas; i++)
+				{
+				allocate_array_double(&(meas_aux->polyre[i]), STDIM, __FILE__, __LINE__);
+				allocate_array_double(&(meas_aux->polyim[i]), STDIM, __FILE__, __LINE__);
+				}
+			}
+		
 		if (param->d_topcharge_tcorr_meas == 1)
 			allocate_array_double(&(meas_aux->sum_q_timeslices), param->d_size[0], __FILE__, __LINE__);
 		
@@ -2550,7 +2533,6 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 		for (int i=0; i<4; i++)
 			{
 			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
-			// TODO: is parallelization ok? is it useful?
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
@@ -2619,6 +2601,17 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 		if (param->d_charge_meas == 1)
 			free(meas_aux.charge);
 		
+		if (param->d_polyakov_meas == 1)
+			{
+			for(int i=0; i<num_meas; i++)
+				{
+				free(meas_aux.polyre[i]);
+				free(meas_aux.polyim[i]);
+				}
+			free(meas_aux.polyre);
+			free(meas_aux.polyim);
+			}
+		
 		if (param->d_topcharge_tcorr_meas == 1 )
 			free(meas_aux.sum_q_timeslices);
 		
@@ -2635,7 +2628,6 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 		// free auxiliary lattices
 		for (int i=0; i<4; i++)
 			{
-			// TODO: is parallelization ok? is it useful?
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
@@ -2677,7 +2669,7 @@ void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const * const param)
 	free(meas_aux);
 	}
 	
-void print_measures_arrays(int const num_meas, long const update_index, GParam const * const param,
+void print_measures_aux(int const num_meas, long const update_index, GParam const * const param,
 							Meas_Utils *meas_aux)
 	{
 	double time_step;
@@ -2689,28 +2681,9 @@ void print_measures_arrays(int const num_meas, long const update_index, GParam c
 		if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
 		if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
 		if (param->d_charge_meas        == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
+		if (param->d_polyakov_meas      == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
 		if (param->d_chi_prime_meas     == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i+1)*time_step, meas_aux->chi_prime[i]);
 		if (param->d_charge_prime_meas  == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
-		}
-	}
-
-
-void free_measures_arrays(int const num_meas, GParam const * const param, double *meanplaq, double *clover_energy,
-							double *charge, double *sum_q_timeslices,
-							double *chi_prime, double **charge_prime)
-	{
-	if (num_meas > 0)
-		{
-		if (param->d_plaquette_meas       == 1) free(meanplaq);
-		if (param->d_clover_energy_meas   == 1) free(clover_energy);
-		if (param->d_charge_meas          == 1) free(charge);
-		if (param->d_topcharge_tcorr_meas == 1) free(sum_q_timeslices);
-		if (param->d_chi_prime_meas       == 1) free(chi_prime);
-		if (param->d_charge_prime_meas    == 1)
-			{
-			for(int i=0; i<num_meas; i++) free(charge_prime[i]);
-			free(charge_prime);
-			}
 		}
 	}
 

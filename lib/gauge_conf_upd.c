@@ -807,8 +807,8 @@ void overrelaxation(Gauge_Conf * const GC,
 	single_overrelaxation(&(GC->lattice[r][i]), &stap);
 	}
 
-// Compute the variation of the Wilson action for the proposed conf
-// TODO: remove, debug only
+
+// Compute the variation of the Wilson action for the proposed conf (debug only)
 double delta_action(Gauge_Conf const * const GC,
 				Geometry const * const geo,
 				GParam const * const param)
@@ -816,7 +816,6 @@ double delta_action(Gauge_Conf const * const GC,
 	Gauge_Conf aux;
 	double ris1 = 0.0, ris2 = 0.0;
 	long s;
-	int dir;
 	
 	aux.lattice = GC->lattice_copy;
 	aux.Z = GC->Z_copy;
@@ -1156,7 +1155,7 @@ void update(Gauge_Conf * const GC,
 	// Metropolis test if using multicanonical
 	int acc = 1;
 	#ifdef MULTICANONICAL_MODE
-	acc = multicanonic_metropolis_step_all_links(GC, geo, param, 0);
+	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
 	acc_counters->num_accepted_metro_multicanonic[0] += acc;
 	acc_counters->num_metro_multicanonic[0] += 1;
 	#endif
@@ -1181,7 +1180,6 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 	
 	long s, num_even, num_odd;
 	int j, dir;
-	//double action1, action2, action3, pot; //TODO: remove, debug only (seems ok)
 	
 	#ifndef MULTICANONICAL_MODE
 	(void) acc_counters; // to avoid compiler warning of unused variable
@@ -1193,24 +1191,6 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 	long is_even = ( param->d_volume ) % 2;
 	num_even = ( param->d_volume + is_even ) / 2; // number of even sites
 	num_odd  = ( param->d_volume - is_even ) / 2; // number of odd sites
-
-	//TODO: remove, debug only (seems ok)
-	/*
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
-	
-	GAUGE_GROUP **aux;
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
-	
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	*/
 	
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
@@ -1277,23 +1257,6 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 			}
 		}
 	
-	//TODO: remove, debug only (seems ok)
-	/*
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
-	
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
-	
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	*/
-	
 	// Metropolis test if using multicanonical
 	int acc;
 	for(j=0; j<(param->d_N_replica_pt); j++)
@@ -1301,7 +1264,7 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 		acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
-		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
+		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
@@ -1309,23 +1272,6 @@ void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GPara
 		if (acc == 1) accept_gauge_conf(&(GC[j]), param);
 		else restore_gauge_conf(&(GC[j]), param);
 		}
-	
-	//TODO: remove, debug only (seems ok)
-	/*
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, pot);
-	
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	
-	action(&(GC[0]), geo, param, &action1, &action2, &action3, &pot, 0);
-	fprintf(stdout, "% 18.12e % 18.12e % 18.12e % 18.12e \n", action1, action2, action3, pot);
-	
-	aux = GC->lattice;
-	GC->lattice = GC->lattice_copy;
-	GC->lattice_copy = aux;
-	*/
 	}
 
 // hierarchical update functions
@@ -1428,8 +1374,8 @@ void update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const 
 		acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
-		//acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param, j);
-		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux, j);
+		//acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
+		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux);
 		acc_counters->num_accepted_metro_multicanonic[j] += acc;
 		acc_counters->num_metro_multicanonic[j] += 1;
 		#endif
@@ -1521,11 +1467,11 @@ void update_with_trace_def(Gauge_Conf * const GC,
 	long r, asum, num_even, num_sp_even;
 	int j, dir, t;
 	
-	allocate_array_int(&a, param->d_space_vol, __FILE__, __LINE__);
-	for(r=0; r<param->d_space_vol; r++) a[r]=0;
+	allocate_array_int(&a, param->d_space_vol[0], __FILE__, __LINE__);
+	for(r=0; r<param->d_space_vol[0]; r++) a[r]=0;
 	
 	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
-	num_sp_even = (param->d_space_vol + (param->d_space_vol % 2)) / 2;
+	num_sp_even = (param->d_space_vol[0] + (param->d_space_vol[0] % 2)) / 2;
 
 	// heatbath on spatial links
 	for(dir=1; dir<STDIM; dir++)
@@ -1570,7 +1516,7 @@ void update_with_trace_def(Gauge_Conf * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(r)
 		#endif
-		for(r=num_sp_even; r<(param->d_space_vol); r++)
+		for(r=num_sp_even; r<(param->d_space_vol[0]); r++)
 			{
 			long r4=sisp_and_t_to_si(geo, r, t);
 			a[r]+=metropolis_with_tracedef(GC, geo, param, r4, 0);
@@ -1581,7 +1527,7 @@ void update_with_trace_def(Gauge_Conf * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for reduction(+:asum) private(r)
 	#endif
-	for(r=0; r<param->d_space_vol; r++)
+	for(r=0; r<param->d_space_vol[0]; r++)
 		{
 		asum+=(long)a[r];
 		}
@@ -1619,7 +1565,7 @@ void update_with_trace_def(Gauge_Conf * const GC,
 	int acc=1;
 
 	#ifdef MULTICANONICAL_MODE
-	acc = multicanonic_metropolis_step_all_links(GC, geo, param, j);
+	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
 	#endif
 
 	// update or restore the lattice auxiliary copies
@@ -1682,6 +1628,7 @@ void cooling(Gauge_Conf * const GC,
 			}
 		}
 	}
+
 
 // perform n cooling steps around the defect minimizing the action at theta=0
 void hierarchical_cooling(Gauge_Conf * const GC,
@@ -1830,7 +1777,8 @@ void gradflow_RKstep(Gauge_Conf * const GC,
 		}
 	// now GC = W_3, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
 	}
-	
+
+
 // perform a single step of the Runge Kutta integrator for the Wilson flow
 // with adaptive integration step as described in Fritzsch-Ramos arXiv:1301.4388 app. D	
 void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
@@ -1987,6 +1935,7 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 	*dt = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
 	}
 
+
 void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const *const param,
@@ -2141,6 +2090,7 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
 		}
 	}
 
+
 void gradflow_RKstep_adaptive_debug2(Gauge_Conf * const GC,
 									Geometry const * const geo,
 									GParam const *const param,
@@ -2292,7 +2242,8 @@ void gradflow_RKstep_adaptive_debug2(Gauge_Conf * const GC,
 		//*dt = *dt-param->d_agf_meas_each;
 		}
 	}
-	
+
+
 // n step of ape smearing with parameter alpha
 // new=Proj[old + alpha *staple ]
 void ape_smearing(Gauge_Conf * const GC,

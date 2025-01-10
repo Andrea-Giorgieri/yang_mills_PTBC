@@ -20,6 +20,7 @@ void init_indexing_lexeo(void)
 	si_to_lex = &lexeo_to_lex;
 	sisp_and_t_to_si_compute=&lexeosp_and_t_to_lexeo;
 	si_to_sisp_and_t_compute=&lexeo_to_lexeosp_and_t;
+	si_to_sisp_and_mu_compute=&lexeo_to_lexeosp_and_mu;
 	
 	// for rectangles
 	cart_to_si_rect = &cart_to_lexeo_rect;
@@ -47,7 +48,15 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	
 	allocate_array_long_pointer(&(geo->d_tsp), param->d_size[0], __FILE__, __LINE__);
 	for(r=0; r<param->d_size[0]; r++)
-		allocate_array_long(&(geo->d_tsp[r]), param->d_space_vol, __FILE__, __LINE__);
+		allocate_array_long(&(geo->d_tsp[r]), param->d_space_vol[0], __FILE__, __LINE__);
+	
+	allocate_array_long_pointer_pointer(&(geo->d_musp), STDIM, __FILE__, __LINE__);
+	for(i=0; i<STDIM; i++)
+		{
+		allocate_array_long_pointer(&(geo->d_musp[i]), param->d_size[i], __FILE__, __LINE__);
+		for(r=0; r<param->d_size[i]; r++)
+			allocate_array_long(&(geo->d_musp[i][r]), (param->d_volume)/(param->d_size[i]), __FILE__, __LINE__);
+		}
 	
 	// INITIALIZE
 	for(r=0; r<param->d_volume; r++)
@@ -86,6 +95,11 @@ void init_geometry(Geometry *geo, GParam const * const param)
 		geo->d_spacecomp[r]=rp;
 		geo->d_timeslice[r]=value;
 		geo->d_tsp[value][rp]=r;
+		for(i=0; i<STDIM; i++)
+			{
+			si_to_sisp_and_mu_compute(&rp, &value, r, i, param);
+			geo->d_musp[i][value][rp]=r;	
+			}
 		}
 	
 	#ifdef DEBUG
@@ -93,11 +107,11 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	#endif
 	}
 
-
 // free memory
 void free_geometry(Geometry *geo, GParam const * const param)
 	{
 	long r;
+	int i;
 	
 	for(r=0; r<param->d_volume; r++)
 		{
@@ -114,6 +128,15 @@ void free_geometry(Geometry *geo, GParam const * const param)
 		free(geo->d_tsp[r]);
 		}
 	free(geo->d_tsp);
+	for(i=0; i<STDIM; i++)
+		{
+		for(r=0; r<param->d_size[i]; r++)
+			{
+			free(geo->d_musp[i][r]);
+			}
+		free(geo->d_musp[i]);
+		}
+	free(geo->d_musp);
 	}
 
 
@@ -177,7 +200,7 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 		}
 	
 	// test of lexsp_to_cartsp <-> cartsp_to_lexsp
-	for(sisp=0; sisp < param->d_space_vol; sisp++)
+	for(sisp=0; sisp < param->d_space_vol[0]; sisp++)
 		{
 		lexsp_to_cartsp(cartsp, sisp, param);
 		ris_test=cartsp_to_lexsp(cartsp, param);
@@ -190,7 +213,7 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 		}
 	
 	// test of lexeosp_to_cartsp <-> cartsp_to_lexeosp
-	for(sisp=0; sisp < param->d_space_vol; sisp++)
+	for(sisp=0; sisp < param->d_space_vol[0]; sisp++)
 		{
 		lexeosp_to_cartsp(cartsp, sisp, param);
 		ris_test=cartsp_to_lexeosp(cartsp, param);
@@ -463,6 +486,34 @@ long cartsp_to_lexsp(int const * const ccsp, GParam const * const param)
 	*/
 	}
 
+// spatial cartesian coordinates -> spatial lexicographic index
+long cartsp_to_lexsp_mu(int const * const ccsp, int mu, GParam const * const param)
+	{
+	// the index for the spatial cartesian coord. goes from 0 to STDIM-2 hence ccsp[STDIM-1]
+	// cc	= x0 x1 x_mu ... x_{STDIM-1}
+	// ccsp = x0 x1	 -   ... x_{STDIM-1}
+	int i, j;
+	long ris, aux;
+	
+	ris=0;
+	aux=1;
+	for(i=0; i<STDIM-1; i++)
+		{
+		ris+=ccsp[i]*aux;
+		if (i < mu) j = i;
+		else j = i + 1;
+		aux*=param->d_size[j];
+		}
+	
+	// ris = ccsp[0]
+	//		+ccsp[1]*size[0]
+	//		+ccsp[2]*size[0]*size[1]
+	//		+... (skipping size[mu])
+	//		+ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
+	
+	return ris;
+	}
+
 
 // spatial lexicographic index -> spatial cartesian coordinates
 void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param)
@@ -535,7 +586,31 @@ long cartsp_to_lexeosp(int const * const ccsp, GParam const * const param)
 		}
 	else
 		{
-		return (lexsp + param->d_space_vol)/2;
+		return (lexsp + param->d_space_vol[0])/2;
+		}
+	}
+
+// spatial cartesian coordinates -> spatial lexicographic eo index
+long cartsp_to_lexeosp_mu(int const * const ccsp, int mu, GParam const * const param)
+	{
+	long lexsp;
+	int i, eo;
+	
+	lexsp=cartsp_to_lexsp_mu(ccsp, mu, param);
+	
+	eo=0;
+	for(i=0; i<STDIM-1; i++)
+		{
+		eo+=ccsp[i];
+		}
+	
+	if(eo % 2==0)
+		{
+		return lexsp/2;
+		}
+	else
+		{
+		return (lexsp + param->d_space_vol[mu])/2;
 		}
 	}
 
@@ -546,15 +621,15 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 	long lexsp;
 	int i, eo;
 	
-	if(param->d_space_vol % 2 == 0)
+	if(param->d_space_vol[0] % 2 == 0)
 		{
-		if(lexeosp < param->d_space_vol/2)
+		if(lexeosp < param->d_space_vol[0]/2)
 			{
 			lexsp=2*lexeosp;
 			}
 		else
 			{
-			lexsp=2*(lexeosp - param->d_space_vol/2);
+			lexsp=2*(lexeosp - param->d_space_vol[0]/2);
 			}
 		lexsp_to_cartsp(ccsp, lexsp, param);
 		
@@ -565,8 +640,8 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 			}
 		eo = eo % 2;
 		
-		if( (eo == 0 && lexeosp >= param->d_space_vol/2) ||
-			(eo == 1 && lexeosp <  param->d_space_vol/2) )
+		if( (eo == 0 && lexeosp >= param->d_space_vol[0]/2) ||
+			(eo == 1 && lexeosp <  param->d_space_vol[0]/2) )
 			{
 			lexsp+=1;
 			lexsp_to_cartsp(ccsp, lexsp, param);
@@ -574,13 +649,13 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 		}
 	else
 		{
-		if(lexeosp <= param->d_space_vol/2)
+		if(lexeosp <= param->d_space_vol[0]/2)
 			{
 			lexsp=2*lexeosp;
 			}
 		else
 			{
-			lexsp=2*(lexeosp - param->d_space_vol/2)-1;
+			lexsp=2*(lexeosp - param->d_space_vol[0]/2)-1;
 			}
 		lexsp_to_cartsp(ccsp, lexsp, param);
 		}
@@ -636,6 +711,24 @@ void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const * co
 		}
 	
 	*lexeosp=cartsp_to_lexeosp(ccsp, param);
+	}
+
+void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const * const param)
+	{
+	int i, j, cc[STDIM], ccsp[STDIM-1];
+	
+	lexeo_to_cart(cc, lexeo, param);
+	
+	*t=cc[mu];
+	
+	for(i=0; i<STDIM-1; i++)
+		{
+		if (i < mu) j = i;
+		else j = i + 1;
+		ccsp[i]=cc[j];
+		}
+	
+	*lexeosp=cartsp_to_lexeosp_mu(ccsp, mu, param);
 	}
 	
 // 4d only geometry for rectangles to be used for hierarchical update during parallel tempering

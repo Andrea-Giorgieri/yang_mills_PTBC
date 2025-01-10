@@ -39,6 +39,15 @@ void allocate_array_long_pointer(long ***const array, long size, char const * co
 		}
 	}
 
+void allocate_array_long_pointer_pointer(long ****const array, long size, char const * const file, int line)
+	{
+	if(posix_memalign((void **)array, (size_t)INT_ALIGN, (size_t)size*sizeof(long**)) != 0)
+		{
+		fprintf(stderr, "Problems allocating an array of ptrs to ptrs to long! (%s, %d)\n", file, line);
+		exit(EXIT_FAILURE);
+		}
+	}
+
 void allocate_array_Rectangle(Rectangle **const array, long size, char const * const file, int line)
 	{
 	if(posix_memalign((void**)array, (size_t)INT_ALIGN, (size_t)size*sizeof(Rectangle)) != 0)

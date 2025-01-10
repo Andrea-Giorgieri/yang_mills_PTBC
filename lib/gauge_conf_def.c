@@ -325,7 +325,9 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param)
 	{
 	(void) geo; // to avoid compiler warning of unused variable
-
+	
+	GC->replica_index = 0;
+	
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
 	#ifdef MULTICANONICAL_MODE
@@ -337,6 +339,8 @@ void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *file;
+	
+	GC->replica_index = 0;
 	
 	//gauge conf filename at step
 	strcpy(name, param->d_conf_file);
@@ -447,31 +451,32 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam
 	#pragma omp parallel for num_threads(NTHREADS) private(i)
 	#endif
 	for(i=0; i<param->d_N_replica_pt; i++)
-		{
-		char filename[STD_STRING_LENGTH], replica_index[STD_STRING_LENGTH];
+		{		
+		char filename[STD_STRING_LENGTH], replica_index_str[STD_STRING_LENGTH];
 		strcpy(filename,param->d_conf_file); // filename = param->d_conf_file
 		strcat(filename,"_replica_");			
-		sprintf(replica_index, "%d", i);
-		strcat(filename, replica_index); // filename = param->d_conf_file + "_replica_${i}"
+		sprintf(replica_index_str, "%d", i);
+		strcat(filename, replica_index_str); // filename = param->d_conf_file + "_replica_${i}"
 		init_gauge_conf_from_file_with_name(&((*GC)[i]), param, filename);
 		
 		strcpy(filename,param->d_twist_file); // filename = param->d_twist_file
 		strcat(filename,"_replica_");			
-		strcat(filename, replica_index); // filename = param->d_twist_file + "_replica_${i}"
+		strcat(filename, replica_index_str); // filename = param->d_twist_file + "_replica_${i}"
 		init_twist_cond_from_file_with_name(&((*GC)[i]), param, filename);
 		
-		init_bound_cond(&((*GC)[i]), param, i);
-		
 		((*GC)[i]).conf_label=i;
-
+		((*GC)[i]).replica_index=i;
+		
+		init_bound_cond(&((*GC)[i]), param);
+		
 		#ifdef MULTICANONICAL_MODE
 		init_multicanonic_gauge_conf(&((*GC)[i]), geo, param);
 		#endif
 		}
 	}
 
-// initialization of the defect for the replica with label i
-void init_bound_cond(Gauge_Conf *GC, GParam const * const param, int const i)
+// initialization of the defect for a single replica
+void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 	{
 	const int TRUE	= 1;
 	const int FALSE = 0;
@@ -510,7 +515,7 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param, int const i)
 			else is_on_defect=FALSE;
 			
 			// if r is on defect assign bound cond
-			if (is_on_defect==TRUE) {GC->C[r][j]=param->d_pt_bound_cond_coeff[i];}
+			if (is_on_defect==TRUE) {GC->C[r][j]=param->d_pt_bound_cond_coeff[GC->replica_index];}
 			}
 		}
 	}
@@ -913,16 +918,16 @@ void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const par
 	#endif	
 	for(i=0; i<param->d_N_replica_pt; i++)
 		{
-		char filename[STD_STRING_LENGTH], replica_index[STD_STRING_LENGTH];
+		char filename[STD_STRING_LENGTH], replica_index_str[STD_STRING_LENGTH];
 		strcpy(filename,param->d_conf_file);
 		strcat(filename,"_replica_");
-		sprintf(replica_index, "%d", i);
-		strcat(filename,replica_index); // filename = d_conf_file + "_replica_${i}"
+		sprintf(replica_index_str, "%d", i);
+		strcat(filename,replica_index_str); // filename = d_conf_file + "_replica_${i}"
 		write_conf_on_file_with_name(&(GC[i]),param,filename);
 		
 		strcpy(filename,param->d_twist_file);
 		strcat(filename,"_replica_");
-		strcat(filename,replica_index); // filename = d_twist_file + "_replica_${i}"
+		strcat(filename,replica_index_str); // filename = d_twist_file + "_replica_${i}"
 		write_twist_on_file_with_name(&(GC[i]),param,filename);
 		}
 	}
@@ -937,21 +942,21 @@ void write_replica_on_file_back(Gauge_Conf const * const GC, GParam const * cons
 	#endif
 	for(i=0; i<param->d_N_replica_pt; i++)
 		{
-		char filename[STD_STRING_LENGTH], replica_index[STD_STRING_LENGTH], aux_back[STD_STRING_LENGTH];
+		char filename[STD_STRING_LENGTH], replica_index_str[STD_STRING_LENGTH], aux_back[STD_STRING_LENGTH];
 		if(counter==0)
 			sprintf(aux_back, "_back0");
 		else
 			sprintf(aux_back, "_back1");
 		strcpy(filename,param->d_conf_file);
 		strcat(filename,"_replica_");
-		sprintf(replica_index, "%d", i);
-		strcat(filename, replica_index);
+		sprintf(replica_index_str, "%d", i);
+		strcat(filename, replica_index_str);
 		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${i}_back${counter}"
 		write_conf_on_file_with_name(&(GC[i]),param,filename);
 		
 		strcpy(filename,param->d_twist_file);
 		strcat(filename,"_replica_");
-		strcat(filename, replica_index);
+		strcat(filename, replica_index_str);
 		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${i}_back${counter}"
 		write_twist_on_file_with_name(&(GC[i]),param,filename);
 		}
@@ -1033,6 +1038,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 		}
 	
 	GC->update_index=GC2->update_index;
+	GC->replica_index=GC2->replica_index;
 	}
 
 void init_twist_cond_from_twist_cond(double complex **Z, double complex const * const * const Z2, GParam const * const param) 
@@ -1043,7 +1049,6 @@ void init_twist_cond_from_twist_cond(double complex **Z, double complex const * 
 	// allocate Z[r][j]
 	allocate_array_double_complex_pointer(&Z, param->d_volume, __FILE__, __LINE__);
 	
-	// TODO: is parallelization ok?
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r, j)
 	#endif
@@ -1120,13 +1125,13 @@ void alloc_polycorr_stuff(Gauge_Conf *GC,
 		allocate_array_TensProd_pointer(&(GC->ml_polycorr[i]), param->d_size[0]/param->d_ml_step[i], __FILE__, __LINE__);
 		for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
 			{
-			allocate_array_TensProd(&(GC->ml_polycorr[i][j]), param->d_space_vol, __FILE__, __LINE__);
+			allocate_array_TensProd(&(GC->ml_polycorr[i][j]), param->d_space_vol[0], __FILE__, __LINE__);
 			}
 		}
 	
 	allocate_array_GAUGE_GROUP_pointer(&(GC->loc_poly), param->d_size[0]/param->d_ml_step[NLEVELS-1], __FILE__, __LINE__);
 	for(i=0; i<param->d_size[0]/param->d_ml_step[NLEVELS-1]; i++)
-		allocate_array_GAUGE_GROUP(&(GC->loc_poly[i]), param->d_space_vol, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->loc_poly[i]), param->d_space_vol[0], __FILE__, __LINE__);
 	}
 
 
@@ -1180,7 +1185,7 @@ void write_polycorr_on_file(Gauge_Conf const * const GC,
 	}
 	else
 	{
-	fprintf(fp, "%ld %d %s\n", param->d_space_vol, iteration, md5sum);
+	fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
 	}
 	fclose(fp);
 
@@ -1194,7 +1199,7 @@ void write_polycorr_on_file(Gauge_Conf const * const GC,
 	{
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
 			}
@@ -1234,7 +1239,7 @@ void read_polycorr_from_file(Gauge_Conf const * const GC,
 		fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	if(loc_space_vol != param->d_space_vol)
+	if(loc_space_vol != param->d_space_vol[0])
 		{
 		fprintf(stderr, "Error: space_vol in the multilevel file %s is different from the one in the input (%s, %d)\n",
 				param->d_ml_file, __FILE__, __LINE__);
@@ -1260,7 +1265,7 @@ void read_polycorr_from_file(Gauge_Conf const * const GC,
 
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
 			}
@@ -1295,7 +1300,7 @@ void compute_md5sum_polycorr(char *res, Gauge_Conf const * const GC, GParam cons
 
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			for(n1=0; n1<NCOLOR; n1++)
 				{
@@ -1340,7 +1345,7 @@ void alloc_polycorradj(Gauge_Conf *GC,
 		allocate_array_TensProdAdj_pointer(&(GC->ml_polycorradj[i]), param->d_size[0]/param->d_ml_step[i], __FILE__, __LINE__);
 		for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
 			{
-			allocate_array_TensProdAdj(&(GC->ml_polycorradj[i][j]), param->d_space_vol, __FILE__, __LINE__);
+			allocate_array_TensProdAdj(&(GC->ml_polycorradj[i][j]), param->d_space_vol[0], __FILE__, __LINE__);
 			}
 		}
 	}
@@ -1373,9 +1378,9 @@ void alloc_tube_disc_stuff(Gauge_Conf *GC,
 	alloc_polycorr_stuff(GC, param);
 	
 	allocate_array_TensProd_pointer(&(GC->ml_polyplaq), NLEVELS, __FILE__, __LINE__);
-	for(i=0; i<NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaq[i]), param->d_space_vol, __FILE__, __LINE__);
+	for(i=0; i<NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaq[i]), param->d_space_vol[0], __FILE__, __LINE__);
 	
-	allocate_array_double_complex(&(GC->loc_plaq), param->d_space_vol, __FILE__, __LINE__);
+	allocate_array_double_complex(&(GC->loc_plaq), param->d_space_vol[0], __FILE__, __LINE__);
 	}
 
 
@@ -1400,8 +1405,8 @@ void alloc_tube_conn_stuff(Gauge_Conf *GC,
 	
 	alloc_tube_disc_stuff(GC, param);
 	allocate_array_TensProd_pointer(&(GC->ml_polyplaqconn), NLEVELS, __FILE__, __LINE__);
-	for(i=0; i<NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaqconn[i]), param->d_space_vol, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP(&(GC->loc_plaqconn), param->d_space_vol, __FILE__, __LINE__);
+	for(i=0; i<NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaqconn[i]), param->d_space_vol[0], __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP(&(GC->loc_plaqconn), param->d_space_vol[0], __FILE__, __LINE__);
 	}
 
 
@@ -1451,7 +1456,7 @@ void write_tube_conn_stuff_on_file(Gauge_Conf const * const GC,
 	}
 	else
 	{
-	fprintf(fp, "%ld %d %s\n", param->d_space_vol, iteration, md5sum);
+	fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
 	}
 	fclose(fp);
 
@@ -1465,16 +1470,16 @@ void write_tube_conn_stuff_on_file(Gauge_Conf const * const GC,
 	{
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
 			}
 		}
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaq[0][i]));
 		}
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaqconn[0][i]));
 		}
@@ -1513,7 +1518,7 @@ void read_tube_conn_stuff_from_file(Gauge_Conf const * const GC,
 		fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	if(loc_space_vol != param->d_space_vol)
+	if(loc_space_vol != param->d_space_vol[0])
 		{
 		fprintf(stderr, "Error: space_vol in the multilevel file %s is different from the one in the input (%s, %d)\n",
 				param->d_ml_file, __FILE__, __LINE__);
@@ -1539,16 +1544,16 @@ void read_tube_conn_stuff_from_file(Gauge_Conf const * const GC,
 
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
 			}
 		}
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaq[0][i]));
 		}
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaqconn[0][i]));
 		}
@@ -1582,7 +1587,7 @@ void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const * const GC, GPar
 
 	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol); i++)
+		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
 			for(n1=0; n1<NCOLOR; n1++)
 				{
@@ -1600,7 +1605,7 @@ void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const * const GC, GPar
 			}
 		}
 
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		for(n1=0; n1<NCOLOR; n1++)
 			{
@@ -1617,7 +1622,7 @@ void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const * const GC, GPar
 			}
 		}
 
-	for(i=0; i<(param->d_space_vol); i++)
+	for(i=0; i<(param->d_space_vol[0]); i++)
 		{
 		for(n1=0; n1<NCOLOR; n1++)
 			{

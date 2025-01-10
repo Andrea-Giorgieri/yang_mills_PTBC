@@ -5,11 +5,12 @@
 #include"gparam.h"
 
 typedef struct Geometry {
-   long **d_nnp;      // d_nnp_loc[r][i] = next neighbour (on the local lattice) in dir.  i of the site r
-   long **d_nnm;      // d_nnm_loc[r][i] = next neighbour (on the local lattice) in dir. -i of the site r
-   int *d_timeslice;  // d_timeslice[r]  = time component of r
-   long *d_spacecomp; // d_spacecomp[r]  = space component of r
-   long **d_tsp;      // d_tsp[t][rsp] = r such that d_timeslice[r]=t and d_spacecomp[r]=rsp
+   long  **d_nnp;        // d_nnp_loc[r][i]    = next neighbour (on the local lattice) in dir.  i of the site r
+   long  **d_nnm;        // d_nnm_loc[r][i]    = next neighbour (on the local lattice) in dir. -i of the site r
+   int    *d_timeslice;  // d_timeslice[r]     = time component of r
+   long   *d_spacecomp;  // d_spacecomp[r]     = space component of r
+   long  **d_tsp;        // d_tsp[t][rsp]      = r such that d_timeslice[r] = t and d_spacecomp[r] = rsp
+   long ***d_musp;       // d_musp[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
 } Geometry;
 
 typedef struct Rectangle {
@@ -37,6 +38,7 @@ long (*lex_to_si)(long lex, GParam const * const param);          // lexicograph
 long (*si_to_lex)(long si, GParam const * const param);           // lexicographic -> single index
 long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);            // single index spatial and time -> single index tot
 void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param); // single index tot -> single index spatial and time
+void (*si_to_sisp_and_mu_compute)(long *sisp, int *t, long si, int mu, GParam const * const param); // single index tot -> single index spatial and mu
 int	dirs_to_si(int const i, int const j); //plane i-j -> single index, for twist factors
 
 long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
@@ -64,6 +66,12 @@ inline long sisp_and_t_to_si(Geometry const * const geo, long sisp, int t)
   return geo->d_tsp[t][sisp];
   }
 
+// single index nu != mu and mu -> single index tot
+inline long sisp_and_mu_to_si(Geometry const * const geo, long sisp, int t, int mu)
+  {
+  return geo->d_musp[mu][t][sisp];
+  }
+
 // single index tot -> single index spatial and time
 inline void si_to_sisp_and_t(long *sisp, int *t, Geometry const * const geo, long si)
   {
@@ -85,17 +93,20 @@ void lexeo_to_cart(int *cartcoord, long lexeo, GParam const * const param);  // 
 long lex_to_lexeo(long lex, GParam const * const param);                     //  lexicographic index -> lexicographic eo index
 long lexeo_to_lex(long lexeo, GParam const * const param);                   //  lexicographic eo index -> lexicographic index
 
-long cartsp_to_lexsp(int const * const ccsp, GParam const * const param); // spatial cartesian coordinates -> spatial lexicographic index
-void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param);  // spatial lexicographic index -> spatial cartesian coordinates
+long cartsp_to_lexsp(int const * const ccsp, GParam const * const param);              // spatial cartesian coordinates -> spatial lexicographic index
+long cartsp_to_lexsp_mu(int const * const ccsp, int mu, GParam const * const param);   // (nu != mu) cartesian coordinates -> (nu != mu) lexicographic index
+void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param);               // spatial lexicographic index -> spatial cartesian coordinates
 
-long cartsp_to_lexeosp(int const * const ccsp, GParam const * const param);  // spatial cartesian coordinates -> spatial lexicographic eo index
-void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param); // spatial lexicographic eo index -> spatial cartesian coordinates
+long cartsp_to_lexeosp(int const * const ccsp, GParam const * const param);            // spatial cartesian coordinates -> spatial lexicographic eo index
+long cartsp_to_lexeosp_mu(int const * const ccsp, int mu, GParam const * const param); // (nu != mu) cartesian coordinates -> (nu != mu) lexicographic eo index
+void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param);           // spatial lexicographic eo index -> spatial cartesian coordinates
 
-long lexsp_to_lexeosp(long lexsp, GParam const * const param);     //  spatial lexicographic index -> spatial lexicographic eo index
-long lexeosp_to_lexsp(long lexeosp, GParam const * const param);   //  spatial lexicographic eo index -> spatial lexicographic index
+long lexsp_to_lexeosp(long lexsp, GParam const * const param);   //  spatial lexicographic index -> spatial lexicographic eo index
+long lexeosp_to_lexsp(long lexeosp, GParam const * const param); //  spatial lexicographic eo index -> spatial lexicographic index
 
-long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const * const param);    // lexicographic eo spatial and time -> lexicographic eo index
-void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const * const param); // lex. eo index -> lex. eo spatial and t
+long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const * const param);                        // lexicographic eo spatial and time -> lexicographic eo index
+void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const * const param);          // lex. eo index -> lex. eo spatial and t
+void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const * const param); // lex. eo index -> lex. eo (nu != mu) and mu
 
 long cart_to_lexeo_rect(int const * const cartcoord, Rectangle const * const most_update);
 

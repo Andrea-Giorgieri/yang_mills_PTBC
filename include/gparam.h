@@ -98,31 +98,37 @@ typedef struct GParam {
 	unsigned int d_randseed;
 
 	// derived constants
-	long   d_volume;        // total volume
-	double d_inv_vol;       // 1 / total volume
-	long   d_space_vol;     // spatial component of the volume
-	double d_inv_space_vol; // 1 / spatial component of the volume
-	long   d_volume_defect; // volume of the defect (only for parallel tempering)
-	int    d_n_grid;        // total grid points (only for multicanonic)
-	int    d_n_planes;      // number of planes (only for twisted boundary conditions)
+	long   d_volume;               // total volume
+	double d_inv_vol;              // 1 / total volume
+	long   d_space_vol[STDIM];     // volume without given component
+	double d_inv_space_vol[STDIM]; // 1 / volume without given component
+	long   d_volume_defect;        // volume of the defect (only for parallel tempering)
+	int    d_n_grid;               // total grid points (only for multicanonic)
+	int    d_n_planes;             // number of planes (only for twisted boundary conditions)
 	
 	// for multicanonic
 	char     d_topo_potential_file[STD_STRING_LENGTH];
 	char     d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
 	double   d_grid_step;
 	double   d_grid_max;
-	double **d_grid;           // d_grid [a][x] = V_a(x) is the topo potential for replica a
-	int      d_topo_cooling;   // cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
-	int      d_topo_coolsteps; // cooling steps of the charge before evaluating V_a
-	double   d_topo_agf_time;  // adaptive gradflow time before evaluating V_a. TO DO: unused, debug only, remove?
-	double   d_topo_alpha;     // alpha parameter for alpha-rounding of cooled charge
-
+	double **d_grid;            // d_grid [a][x] = V_a(x) is the topo potential for replica a
+	int      d_topo_cooling;    // cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
+	int      d_topo_coolsteps;  // cooling steps of the charge before evaluating V_a
+	double   d_topo_agf_time;   // adaptive gradflow time before evaluating V_a. TODO: unused, debug only, remove?
+	double   d_topo_alpha;      // alpha parameter for alpha-rounding of cooled charge
+	
+	// for tuning
+	int      d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
+	int      d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)
+	double   d_topo_tuning_thr;        // threshold below wich tuning of topo potential is completed
+	double   d_topo_tuning_stp;        // initial variation of topo potential during tuning
 	} GParam;
 
 
 void readinput(char *in_file, GParam *param);
 void remove_white_line_and_comments(FILE *input);
 void read_topo_potential(GParam *param);
+void write_topo_potential(GParam const * const param, char *filename);
 void init_derived_constants(GParam *param);
 void print_header_datafile(FILE *dataf, GParam const * const param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tcorr_f, GParam const * const param);
@@ -132,6 +138,7 @@ void free_hierarc_params(GParam *param);
 void print_configuration_parameters(FILE *fp);
 void print_pt_parameters(FILE *fp, GParam const * const param);
 void print_multicanonic_parameters(FILE *fp, GParam const * const param);
+void print_multicanonic_tuning_parameters(FILE *fp, GParam const * const param);
 void print_simul_parameters(FILE *fp, GParam const * const param);
 void print_adaptive_gradflow_parameters(FILE *fp, GParam const * const param);
 void print_gradflow_parameters(FILE *fp, GParam const * const param);
@@ -157,6 +164,7 @@ void print_parameters_tracedef(GParam const * const param, time_t time_start, ti
 void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_end);
 void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t time_end);
+void print_parameters_tuning_pt_mc(GParam const * const param, time_t time_start, time_t time_end, int count);
 
 // print template input aux
 void print_template_volume_parameters(FILE *fp);
@@ -168,6 +176,7 @@ void print_template_gradflow_parameters(FILE *fp);
 void print_template_cooling_parameters(FILE *fp);
 void print_template_metro_parameters(FILE *fp);
 void print_template_multicanonic_parameters(FILE *fp);
+void print_template_multicanonic_tuning_parameters(FILE *fp);
 void print_template_multilevel_parameters(FILE *fp);
 void print_template_output_parameters(FILE *fp);
 

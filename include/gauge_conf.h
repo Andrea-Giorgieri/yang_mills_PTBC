@@ -20,6 +20,7 @@
 typedef struct Gauge_Conf {
 
 	long update_index;
+	int replica_index;
 
 	GAUGE_GROUP **lattice;			// [volume] [STDIM]
 	GAUGE_GROUP ***clover_array;	// [volume] [STDIM] [STDIM]
@@ -57,7 +58,7 @@ typedef struct Gauge_Conf {
 } Gauge_Conf;
 	
 // to compute swap and multicanonic acceptances during parallel tempering evolution
-// TO DO: refactor swaptrackfilep with this?
+// TODO: refactor swaptrackfilep with this?
 typedef struct Acc_Utils {
 	long *num_accepted_swap;	// number of accepted swaps during parallel tempering
 	long *num_swap;				// number of proposed swaps during parallel tempering
@@ -72,11 +73,13 @@ typedef struct Acc_Utils {
 // auxiliary arrays and files for measures
 typedef struct Meas_Utils {
 	// for measurement of localobs
-	double *meanplaq;
-	double *clover_energy;
-	double *charge;
-	double *sum_q_timeslices;
-	double *chi_prime;
+	double  *meanplaq;
+	double  *clover_energy;
+	double  *charge;
+	double **polyre;
+	double **polyim;
+	double  *sum_q_timeslices;
+	double  *chi_prime;
 	double **charge_prime;
 
 	// for adaptive gradienf flow
@@ -88,6 +91,14 @@ typedef struct Meas_Utils {
 	FILE *chiprimefilep;
 	FILE *topchar_tcorr_filep;
 	}	Meas_Utils;
+
+// auxiliary arrays and flags for tuning of topo_potential
+typedef struct Tune_Utils {
+	double *tuning_stp;
+	int    *sweep_counter;
+	int    *sweep_check;
+	int    *sweep_flag;
+	}	Tune_Utils;
 
 
 // in gauge_conf_def.c
@@ -140,8 +151,7 @@ void init_gauge_conf_replica(				Gauge_Conf **GC,
 											GParam const * const param);
 											
 void init_bound_cond(						Gauge_Conf *GC,
-											GParam const * const param,
-											int const a);
+											GParam const * const param);
 											
 void init_twist_cond_from_file_with_name(	Gauge_Conf *GC, GParam const * const param,
 											char const * const filename);
@@ -294,11 +304,18 @@ void clover_disc_energy(Gauge_Conf const * const GC,
 void action(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
-						double *action1, double *action2, double *action3, double *pot, int idx);
-						
+						double *action1, double *action2, double *action3, double *pot);
+/*		
 void polyakov(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
+						double *repoly,
+						double *impoly);
+*/
+void polyakov(			Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						int mu,
 						double *repoly,
 						double *impoly);
 				
@@ -506,12 +523,6 @@ void perform_measures_tube_conn_long(	Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
 									 
-void allocate_measures_arrays(			int const num_meas, GParam const * const param, double **meanplaq,
-										double **clover_energy, double **charge, double **sum_q_timeslices,
-										double **chi_prime, double ***charge_prime);
-								
-void allocate_measures_arrays_cooling(	int const num_meas, GParam const * const param,
-										double **meanplaq, double **charge, double **chi_prime);
 
 void open_data_file(			Meas_Utils *meas_aux,
 								char const * const data,
@@ -533,13 +544,8 @@ void free_meas_utils(			Meas_Utils meas_aux,
 void free_meas_utils_replica(	Meas_Utils *meas_aux,
 								GParam const * const param);
 
-void print_measures_arrays(		int const num_meas, long const update_index, GParam const * const param,
+void print_measures_aux(		int const num_meas, long const update_index, GParam const * const param,
 								Meas_Utils *meas_aux);
-
-// TO DO: remove after refactoring						
-void free_measures_arrays(		int const num_meas, GParam const * const param, double *meanplaq, double *clover_energy,
-								double *charge, double *sum_q_timeslices,
-								double *chi_prime, double **charge_prime);
 
 
 // in gauge_conf_multilevel.c
@@ -831,10 +837,29 @@ void print_multicanonic_acceptance(	Gauge_Conf const * const,
 									GParam const * const,
 									Acc_Utils const * const);
 
+void init_tune_utils(	Tune_Utils * const,
+						GParam const * const);
 
-double compute_topo_potential(			int const,
-										double,
-										GParam const * const);
+void free_tune_utils(	Tune_Utils *);
+
+void tune_topo_potential(	Gauge_Conf const * const,
+							GParam * const,
+							Tune_Utils * const);
+
+int update_tuning_stp(	Tune_Utils * const,
+						GParam const * const);
+
+void print_tuning_stp(	long,
+						Tune_Utils const * const,
+						GParam const * const);
+
+double compute_topo_potential(		int const,
+									double,
+									GParam const * const);
+
+void compute_topo_potential_debug(	char *filename,
+									double x_min, double x_max, double x_stp,
+									GParam const * const param);
 
 double multicanonic_topcharge_cooling(	Gauge_Conf * const,
 										Geometry const * const,
@@ -871,15 +896,13 @@ int multicanonic_metropolis_step_single_link(	Gauge_Conf * const,
 
 int multicanonic_metropolis_step_all_links(		Gauge_Conf * const,
 												Geometry const * const,
-												GParam const * const,
-												int const);
+												GParam const * const);
 
 int multicanonic_metropolis_step_rectangle(		Gauge_Conf * const,
 												Geometry const * const,
 												GParam const * const,
 												int const,
-												Rect_Utils const * const,
-												int const);
+												Rect_Utils const * const);
 
 // old implementation of multicanonic
 

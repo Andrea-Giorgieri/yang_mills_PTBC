@@ -94,16 +94,20 @@ void readinput(char *in_file, GParam *param)
 	
 	param->d_agf_length    = 0;
 	param->d_agf_meas_each = 1;
-	param->d_agf_step      = 1;
-	param->d_agf_delta     = 0.1;
-	param->d_agf_time_bin  = 0.1;
+	param->d_agf_step      = 0.1;
+	param->d_agf_delta     = 0.00001;
+	param->d_agf_time_bin  = 0;
 	
 	param->d_coolsteps  = 0;
 	param->d_coolrepeat = 0;
 	
-	param->d_topo_cooling   = 0;
-	param->d_topo_coolsteps = 0;
-	param->d_topo_alpha     = 0;
+	param->d_topo_cooling    = 0;
+	param->d_topo_coolsteps  = 0;
+	param->d_topo_alpha      = 0;
+	param->d_topo_tuning_thr = 0.1;
+	param->d_topo_tuning_stp = 0.1;
+	param->d_topo_tuning_save_every = 0;
+	param->d_topo_tuning_even = 1;
 	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
@@ -902,6 +906,53 @@ void readinput(char *in_file, GParam *param)
 					else fprintf(stderr, "Error: topo_alpha must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 			
+			else if(strncmp(str, "topo_tuning_thr", 15)==0)
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d >= 0) param->d_topo_tuning_thr=temp_d;
+					else fprintf(stderr, "Error: topo_tuning_thr must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+			
+			else if(strncmp(str, "topo_tuning_stp", 15)==0)
+					{
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_topo_tuning_stp=temp_d;
+					else fprintf(stderr, "Error: topo_tuning_stp must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+			
+			else if(strncmp(str, "topo_tuning_save_every", 22)==0)
+					{ 
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					param->d_topo_tuning_save_every=temp_i;
+					}
+			
+			else if(strncmp(str, "topo_tuning_even", 16)==0)
+					{ 
+					err=fscanf(input, "%d", &temp_i);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_i == 0 || temp_i == 1) param->d_topo_tuning_even=temp_i;
+					else fprintf(stderr, "Error: topo_tuning_even must be 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					}
+			
 			else
 				{
 				fprintf(stderr, "Error: unrecognized option %s in the file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
@@ -995,6 +1046,11 @@ void readinput(char *in_file, GParam *param)
 			fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
+		if(param->d_agf_meas_each < param->d_agf_step)
+			{
+			fprintf(stderr, "Error: agf_meas_each must be greater than agf_step (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
 		if(param->d_agf_meas_each > 0 && param->d_agf_meas_each <= MIN_VALUE)
 			{
 			fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
@@ -1077,26 +1133,54 @@ void read_topo_potential(GParam * const param)
 	fclose(fp);
 	}
 
+// write topo potential to file with name
+void write_topo_potential(GParam const * const param, char * filename)
+	{
+	int i, a;
+	double x;
+	FILE *fp;
+	
+	fp=fopen(filename, "w");
+	if( fp==NULL )
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}	
+
+	// write x and V_a(x)
+	for (i=0; i<param->d_n_grid; i++)
+		{
+		x = i * param->d_grid_step - param->d_grid_max;
+		
+		// write x
+		fprintf(fp, "% 12.6e ", x);
+		
+		// write V_a(x)
+		for(a=0; a<param->d_N_replica_pt; a++)
+			{
+			fprintf(fp, "% 12.6e ", param->d_grid[a][i]);
+			}
+		fprintf(fp, "\n");
+		}
+	fprintf(fp, "\n");
+	fclose(fp);
+	}
+
 void init_derived_constants(GParam *param)
 	{
-	int i;
+	int i, j;
 
 	// derived constants
 	param->d_volume=1;
+	for(i=0; i<STDIM; i++) param->d_space_vol[i]=1;
 	for(i=0; i<STDIM; i++)
 		{
 		(param->d_volume)*=(param->d_size[i]);
-		}
-
-	param->d_space_vol=1;
-	// direction 0 is time
-	for(i=1; i<STDIM; i++)
-		{
-		(param->d_space_vol)*=(param->d_size[i]);
+		for(j=0; j<STDIM; j++) if (j != i) (param->d_space_vol[j])*=(param->d_size[i]);
 		}
 
 	param->d_inv_vol = 1.0/((double) param->d_volume);
-	param->d_inv_space_vol = 1.0/((double) param->d_space_vol);
+	for(i=0; i<STDIM; i++) param->d_inv_space_vol[i] = 1.0/((double) param->d_space_vol[i]);
 	
 	// volume of the defect
 	param->d_volume_defect=1;
@@ -1222,11 +1306,11 @@ void print_header_datafile(FILE *dataf, GParam const * const param)
 	for(int i=0; i<STDIM; i++) fprintf(dataf, "%d ", param->d_size[i]);
 	fprintf(dataf, "\n");
 	fprintf(dataf, "# upd_index ");
-	if (param->d_plaquette_meas==1) fprintf(dataf, "plaqs plaqt ");
-	if (param->d_clover_energy_meas==1) fprintf(dataf, "clover_energy ");
-	if (param->d_charge_meas==1) fprintf(dataf, "charge ");
-	if (param->d_polyakov_meas==1) fprintf(dataf, "polyre polyim ");
-	if (param->d_charge_prime_meas==1) fprintf(dataf, "charge_prime[%d] ", STDIM);
+	if (param->d_plaquette_meas     == 1) fprintf(dataf, "plaqs plaqt ");
+	if (param->d_clover_energy_meas == 1) fprintf(dataf, "clover_energy ");
+	if (param->d_charge_meas        == 1) fprintf(dataf, "charge ");
+	if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "polyre_%d polyim_%d ", i, i);
+	if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "charge_prime_%d ", i);
 	
 	if (param->d_agf_meas_each > 0) 
 		{
@@ -1241,16 +1325,16 @@ void print_header_datafile(FILE *dataf, GParam const * const param)
 	if (gf_meas_num > 0)
 		{
 		fprintf(dataf, "( ");
-		if (param->d_plaquette_meas==1) fprintf(dataf, "plaq ");
-		if (param->d_clover_energy_meas==1) fprintf(dataf, "clover_energy ");
-		if (param->d_charge_meas==1) fprintf(dataf, "charge ");
-		if (param->d_charge_prime_meas==1) fprintf(dataf, "charge_prime[%d] ", STDIM);
+		if (param->d_plaquette_meas     == 1) fprintf(dataf, "plaq ");
+		if (param->d_clover_energy_meas == 1) fprintf(dataf, "clover_energy ");
+		if (param->d_charge_meas        == 1) fprintf(dataf, "charge ");
+		if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "polyre_%d polyim_%d ", i, i);
+		if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "charge_prime_%d ", i);
 		fprintf(dataf, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
-		
-		#ifdef MULTICANONICAL_MODE
-		fprintf(dataf, " mc_topcharge");
-		#endif
 		}
+	#ifdef MULTICANONICAL_MODE
+	fprintf(dataf, " mc_topcharge mc_weight");
+	#endif
 	fprintf(dataf, "\n");
 	}
 
@@ -1314,9 +1398,18 @@ void print_pt_parameters(FILE *fp, GParam const * const param)
 void print_multicanonic_parameters(FILE *fp, GParam const * const param)
 	{
 	fprintf(fp,"Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
-	fprintf(fp,"topo_cooling:    %d\n", param->d_topo_cooling);
-	fprintf(fp,"topo_coolsteps:  %d\n", param->d_topo_coolsteps);
-	fprintf(fp,"topo_alpha:      %lf\n", param->d_topo_alpha);
+	fprintf(fp,"topo_cooling:     %d\n", param->d_topo_cooling);
+	fprintf(fp,"topo_coolsteps:   %d\n", param->d_topo_coolsteps);
+	fprintf(fp,"topo_alpha:       %lf\n", param->d_topo_alpha);
+	fprintf(fp,"\n");
+	}
+
+void print_multicanonic_tuning_parameters(FILE *fp, GParam const * const param)
+	{
+	fprintf(fp,"topo_tuning_thr:         %lf\n", param->d_topo_tuning_thr);
+	fprintf(fp,"topo_tuning_stp:         %lf\n", param->d_topo_tuning_stp);
+	fprintf(fp,"topo_tuning_save_every:  %d\n",  param->d_topo_tuning_save_every);
+	fprintf(fp,"topo_tuning_even:        %d\n",  param->d_topo_tuning_even);
 	fprintf(fp,"\n");
 	}
 
@@ -1896,6 +1989,32 @@ void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t t
 	fclose(fp);
 	}
 
+void print_parameters_tuning_pt_mc(GParam const * const param, time_t time_start, time_t time_end, int count)
+	{
+	FILE *fp;
+	double diff_sec;
+
+	fp=fopen(param->d_log_file, "w");
+	fprintf(fp, "+------------------------------------------------+\n");
+	fprintf(fp, "| Simulation details for yang_mills_tuning_pt_mc |\n");
+	fprintf(fp, "+------------------------------------------------+\n\n");
+
+	print_configuration_parameters(fp);
+	print_pt_parameters(fp, param);
+	print_multicanonic_parameters(fp, param);
+	print_multicanonic_tuning_parameters(fp, param);
+	print_simul_parameters(fp, param);
+	print_adaptive_gradflow_parameters(fp, param);
+	print_cooling_parameters(fp, param);
+	
+	fprintf(fp, "Tuning steps: %d\n", count );
+	diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
+	fprintf(fp, "\n");
+	
+	fclose(fp);
+	}
+
 // print template input aux
 
 void print_template_volume_parameters(FILE *fp)
@@ -2000,6 +2119,16 @@ void print_template_multicanonic_parameters(FILE *fp)
 	fprintf(fp,"topo_alpha               1.0                   # used for alpha-rounding if >0, no alpha-rounding if =0\n");
 	fprintf(fp,"topo_potential_file      topo_potential        # file to read the topo_potential from\n");
 	fprintf(fp,"multicanonic_acc_file    multicanonic_acc.dat  # file to save acceptances of Metropolis tests with topo_potential\n");
+	fprintf(fp, "\n");
+	}
+
+void print_template_multicanonic_tuning_parameters(FILE *fp)
+	{
+	fprintf(fp,"# Multicanonic tuning parameters\n");
+	fprintf(fp,"topo_tuning_thr           0.05 # Tuning ends if topo potential changes less than this threshold\n");
+	fprintf(fp,"topo_tuning_stp           0.1  # Maximum variation of topo_potential at each point every step \n");
+	fprintf(fp,"topo_tuning_save_every    1    # Save topo_potential at each point every step \n");
+	fprintf(fp,"topo_tuning_even          1    # Force topo_potential to be even during tuning (0 = False, 1 = True) \n");
 	fprintf(fp, "\n");
 	}
 

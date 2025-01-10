@@ -1,5 +1,5 @@
-#ifndef DEBUG_AGF_VS_DELTA_C
-#define DEBUG_AGF_VS_DELTA_C
+#ifndef YM_TUNING_PT_MC_C
+#define YM_TUNING_PT_MC_C
 
 #include"../include/macro.h"
 
@@ -25,15 +25,13 @@ void real_main(char *in_file)
 	GParam param;
 	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
-	Meas_Utils meas_aux0, meas_aux1, meas_aux2, meas_aux3;
+	Meas_Utils *meas_aux;
+	Tune_Utils tune_utils;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	char name0[STD_STRING_LENGTH], name1[STD_STRING_LENGTH], name2[STD_STRING_LENGTH], name3[STD_STRING_LENGTH];
-	int count;
+	int count, tune_check;
 	FILE *swaptrackfilep;
-	FILE *step_filep0, *step_filep1, *step_filep2, *step_filep3;
-	time_t time_mc_start, time_mc_end, time1, time2, time3, time4, time5, time_agf0, time_agf1, time_agf2, time_agf3;
-	double delta0, delta1, delta2, delta3;
+	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -41,45 +39,17 @@ void real_main(char *in_file)
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
 	
+	// check if program was compiled in multicanonical mode
+	#ifndef MULTICANONICAL_MODE
+	fprintf(stderr, "Error: this program can be used only in MULTICANONICAL_MODE (%s, %d)\n", __FILE__, __LINE__);
+	exit(EXIT_FAILURE);
+	#endif
+	
 	// read input file
 	readinput(in_file, &param);
-	delta0 = param.d_agf_delta;
-	delta1 = delta0/10.0;
-	delta2 = delta1/10.0;
-	delta3 = delta2/10.0;
 	
 	// initialize random generator
 	initrand(param.d_randseed);
-	
-	// open data_file
-	strcpy(aux, param.d_data_file);
-	strcpy(name0, aux);
-	strcpy(name1, aux);
-	strcpy(name2, aux);
-	strcpy(name3, aux);
-	strcat(name0, "_delta0");
-	strcat(name1, "_delta1");
-	strcat(name2, "_delta2");
-	strcat(name3, "_delta3");
-	
-	strcpy(param.d_data_file, name0);
-	init_meas_utils(&meas_aux0, &param, 0);
-	strcpy(param.d_data_file, name1);
-	init_meas_utils(&meas_aux1, &param, 0);
-	strcpy(param.d_data_file, name2);
-	init_meas_utils(&meas_aux2, &param, 0);
-	strcpy(param.d_data_file, name3);
-	init_meas_utils(&meas_aux3, &param, 0);
-	strcpy(param.d_data_file, aux);
-	
-	step_filep0 = fopen("step_file0.dat", "a");
-	if (step_filep0 == NULL) step_filep0 = fopen("step_file0.dat", "w");
-	step_filep1 = fopen("step_file1.dat", "a");
-	if (step_filep1 == NULL) step_filep0 = fopen("step_file1.dat", "w");
-	step_filep2 = fopen("step_file2.dat", "a");
-	if (step_filep2 == NULL) step_filep0 = fopen("step_file2.dat", "w");
-	step_filep3 = fopen("step_file3.dat", "a");
-	if (step_filep3 == NULL) step_filep0 = fopen("step_file3.dat", "w");
 	
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
@@ -88,57 +58,40 @@ void real_main(char *in_file)
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	
-	// initialize gauge configurations replica and volume defects
-	init_gauge_conf_replica(&GC, &geo, &param);
+	// initialize arrays and flags for tuning of topo_potential
+	init_tune_utils(&tune_utils, &param);
 	
 	// initialize rectangles for hierarchical update and swap
 	init_rect_utils(&rect_aux, &param);
 	
-	// init acceptances array
+	// init swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
 	init_acc_utils(&acc_counters, &param);
 	
+	// init auxiliary arrays and lattices for measurements, open data files
+	init_meas_utils_replica(&meas_aux, &param);
+	
+	// initialize gauge configurations replica and volume defects
+	init_gauge_conf_replica(&GC, &geo, &param);
+	
 	// Monte Carlo begin
-	time(&time_mc_start);
-	time_agf0 = 0;
-	time_agf1 = 0;
-	time_agf2 = 0;
-	time_agf3 = 0;
+	time(&time1);
 	for(count=0; count < param.d_sample; count++)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
-		
+
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
-			param.d_agf_delta = delta0;
-			time(&time1);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux0));
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux0, step_filep0);
+			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
 			
-			param.d_agf_delta = delta1;
-			time(&time2);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux1));
-			//perform_measures_localobs_with_adaptive_gradflow_debug2(&(GC[0]), &geo, &param, &meas_aux1, step_filep1);
-			
-			param.d_agf_delta = delta2;
-			time(&time3);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux2));
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux2, step_filep2);
-			
-			param.d_agf_delta = delta3;
-			time(&time4);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux3));
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, &meas_aux3, step_filep3);
-			
-			time(&time5);
-			time_agf0 += time2 - time1;
-			time_agf1 += time3 - time2;
-			time_agf2 += time4 - time3;
-			time_agf3 += time5 - time4;
+			#ifdef REPLICA_MEAS_MODE
+			for (int i=1; i<param.d_N_replica_pt; i++)
+				perform_measures_localobs_with_adaptive_gradflow(&(GC[i]), &geo, &param, &(meas_aux[i]));
+			#endif
 			}
-		param.d_agf_delta = delta0;
+
 		// save configurations for backup
 		if(param.d_saveconf_back_every!=0)
 			{
@@ -150,7 +103,7 @@ void real_main(char *in_file)
 				write_replica_on_file_back(GC, &param);
 				}
 			}
-		
+
 		// save homogeneous configuration for offline analysis
 		if(param.d_saveconf_analysis_every!=0)
 			{
@@ -168,44 +121,65 @@ void real_main(char *in_file)
 				write_twist_on_file_with_name(&(GC[0]), &param, name);
 				}
 			}
+		
+		// tune topo_potential
+		tune_topo_potential(GC, &param, &tune_utils);
+		
+		// save current potentials
+		if (param.d_topo_tuning_save_every!=0)
+			{
+			if(GC[0].update_index % param.d_topo_tuning_save_every == 0 )
+				{
+				strcpy(name, param.d_topo_potential_file);
+				strcat(name, "_step_");
+				sprintf(aux, "%ld", GC[0].update_index);
+				strcat(name, aux);
+				write_topo_potential(&param, name);
+				}
+			}
+		
+		// update tuning_stp and check if tuning is completed
+		tune_check = update_tuning_stp(&tune_utils, &param);
+		if (tune_check ==  1) print_tuning_stp(GC[0].update_index, &tune_utils, &param);
+		if (tune_check == -1) break;
 		}
 	
-	time(&time_mc_end);
+	time(&time2);
 	// Monte Carlo end
 	
-	// free meas utils
-	free_meas_utils(meas_aux0, &param, 0);
-	free_meas_utils(meas_aux1, &param, 0);
-	free_meas_utils(meas_aux2, &param, 0);
-	free_meas_utils(meas_aux3, &param, 0);
-
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 	
+	// save topo potential
+	write_topo_potential(&param, param.d_topo_potential_file);
+	
 	// save configurations
-	if (param.d_saveconf_back_every!=0)
-		{
-		write_replica_on_file(GC, &param);
-		}
-	
+	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
+
 	// print simulation details
-	print_parameters_debug_agf_vs_delta(&param, time_mc_end-time_mc_start, time_agf0, time_agf1, time_agf2, time_agf3);
-	
+	print_parameters_tuning_pt_mc(&param, time1, time2, count);
+
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
-	
+
 	// free gauge configurations
 	free_replica(GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 	
+	// free tune_utils
+	free_tune_utils(&tune_utils);
+
 	// free rectangles for hierarchical update and swap
 	free_rect_utils(&rect_aux, &param);
-	
-	// free acceptances array
+
+	// free swap acceptance and multicanonic Metropolis acceptance arrays, close multicanonic file
 	free_acc_utils(&acc_counters, &param);
-	
+
+	// free auxiliary arrays and lattices for measurements, close data files
+	free_meas_utils_replica(meas_aux, &param);
+
 	// free hierarchical update parameters
 	free_hierarc_params(&param);
 	}
@@ -227,6 +201,8 @@ void print_template_input(void)
 		print_template_volume_parameters(fp);
 		print_template_pt_parameters(fp);
 		print_template_twist_parameters(fp);
+		print_template_multicanonic_parameters(fp);
+		print_template_multicanonic_tuning_parameters(fp);
 		print_template_simul_parameters(fp);
 		print_template_adaptive_gradflow_parameters(fp);
 		print_template_output_parameters(fp);
@@ -240,7 +216,10 @@ int main (int argc, char **argv)
 	
 	if(argc != 2)
 		{
-		printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+		int parallel_tempering = 1;
+		int twisted_bc = 1;
+		print_authors(parallel_tempering, twisted_bc);
+		
 		printf("Usage: %s input_file\n\n", argv[0]);
 		
 		print_compilation_details();

@@ -22,7 +22,8 @@ bin_PROGRAMS = conf_check \
             yang_mills_local_pt_agf \
             yang_mills_gradient_flow \
             yang_mills_adaptive_gradient_flow \
-            yang_mills_gradflow_all_conf
+            yang_mills_gradflow_all_conf \
+            yang_mills_tuning_pt_mc
 
 align = ./include/aligncheck.h \
         ./include/memalign.h \
@@ -414,6 +415,21 @@ debug_agf_vs_gf_SOURCES=./src/debug_agf_vs_gf.c \
                           $(u1)
 
 debug_agf_vs_delta_SOURCES=./src/debug_agf_vs_delta.c \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(funcpoint) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -26,11 +26,11 @@ void real_main(char *in_file)
 	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
+	Time_Utils timers;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
 	FILE *swaptrackfilep;
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -40,6 +40,11 @@ void real_main(char *in_file)
 	
 	// read input file
 	readinput(in_file, &param);
+	
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -63,24 +68,30 @@ void real_main(char *in_file)
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 	
-	// Monte Carlo begin
-	time(&time1);
+	stop_timer(&(timers.init_timer));
 	
+	// Monte Carlo begin
 	for(count=0; count < param.d_sample; count++)
 		{
+		start_timer(&(timers.step_timer));
+		
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
+		start_timer(&(timers.update_timer));
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
+		stop_timer(&(timers.update_timer));
 		print_conf_labels(swaptrackfilep, GC, &param);
-
+		
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
+			start_timer(&(timers.meas_timer));
 			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
 			
 			#ifdef REPLICA_MEAS_MODE
 			for (int i=1; i<param.d_N_replica_pt; i++)
 				perform_measures_localobs_with_adaptive_gradflow(&(GC[i]), &geo, &param, &(meas_aux[i]));
 			#endif
+			stop_timer(&(timers.meas_timer));
 			}
 
 		// save configurations for backup
@@ -112,11 +123,13 @@ void real_main(char *in_file)
 				write_twist_on_file_with_name(&(GC[0]), &param, name);
 				}
 			}
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
-	
-	time(&time2);
+
 	// Monte Carlo end
-	
+	stop_timer(&(timers.prog_timer));
+
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 	
@@ -124,7 +137,7 @@ void real_main(char *in_file)
 	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
 
 	// print simulation details
-	print_parameters_local_pt_agf(&param, time1, time2);
+	print_parameters_local_pt_agf(&param, &timers);
 
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);

@@ -25,6 +25,9 @@ bin_PROGRAMS = conf_check \
             yang_mills_gradflow_all_conf \
             yang_mills_tuning_pt_mc
 
+timing = ./include/timing.h \
+        ./lib/timing.c
+
 align = ./include/aligncheck.h \
         ./include/memalign.h \
         ./lib/aligncheck.c \
@@ -92,6 +95,7 @@ u1 = ./include/u1.h \
      ./lib/u1_upd.c
 
 conf_check_SOURCES=./src/conf_check.c \
+                   $(timing) \
                    $(align) \
                    $(dSFMT) \
                    $(endian) \
@@ -108,6 +112,7 @@ debug_rng_SOURCES=./src/debug_rng.c \
                   $(random)
 
 debug_su2_SOURCES=./src/debug_su2.c \
+                  $(timing) \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
@@ -117,6 +122,7 @@ debug_su2_SOURCES=./src/debug_su2.c \
                   $(su2)
 
 debug_su2_adj_SOURCES=./src/debug_su2_adj.c \
+                      $(timing) \
                       $(align) \
                       $(dSFMT) \
                       $(endian) \
@@ -126,6 +132,7 @@ debug_su2_adj_SOURCES=./src/debug_su2_adj.c \
                       $(su2) 
 
 debug_sun_SOURCES=./src/debug_sun.c \
+                  $(timing) \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
@@ -136,6 +143,7 @@ debug_sun_SOURCES=./src/debug_sun.c \
                   $(sun)
 
 debug_u1_SOURCES=./src/debug_u1.c \
+                  $(timing) \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
@@ -145,6 +153,7 @@ debug_u1_SOURCES=./src/debug_u1.c \
                   $(u1)
 
 debug_twist_SOURCES=./src/debug_twist.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -160,6 +169,7 @@ debug_twist_SOURCES=./src/debug_twist.c \
                           $(u1)
 
 yang_mills_local_SOURCES=./src/yang_mills_local.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -175,6 +185,7 @@ yang_mills_local_SOURCES=./src/yang_mills_local.c \
                           $(u1)
 
 yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -190,6 +201,7 @@ yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
                           $(u1)
 
 yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
+                             $(timing) \
                              $(align) \
                              $(dSFMT)  \
                              $(endian) \
@@ -205,6 +217,7 @@ yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
                              $(u1) 
 
 yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
+                                  $(timing) \
                                   $(align) \
                                   $(dSFMT)  \
                                   $(endian) \
@@ -220,6 +233,7 @@ yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
                                   $(u1) 
 
 yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
+                                $(timing) \
                                 $(align) \
                                 $(dSFMT)  \
                                 $(endian) \
@@ -235,6 +249,7 @@ yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
                                 $(u1) 
 
 yang_mills_t0_SOURCES=./src/yang_mills_t0.c \
+                       $(timing) \
                        $(align) \
                        $(dSFMT)  \
                        $(endian) \
@@ -250,6 +265,7 @@ yang_mills_t0_SOURCES=./src/yang_mills_t0.c \
                        $(u1) 
 
 yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
+                             $(timing) \
                              $(align) \
                              $(dSFMT)  \
                              $(endian) \
@@ -265,6 +281,7 @@ yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
                              $(u1) 
 
 yang_mills_tube_conn_long_SOURCES=./src/yang_mills_tube_conn_long.c \
+                                  $(timing) \
                                   $(align) \
                                   $(dSFMT)  \
                                   $(endian) \
@@ -280,6 +297,7 @@ yang_mills_tube_conn_long_SOURCES=./src/yang_mills_tube_conn_long.c \
                                   $(u1) 
      
 yang_mills_tube_disc_SOURCES=./src/yang_mills_tube_disc.c \
+                             $(timing) \
                              $(align) \
                              $(dSFMT)  \
                              $(endian) \
@@ -295,6 +313,7 @@ yang_mills_tube_disc_SOURCES=./src/yang_mills_tube_disc.c \
                              $(u1) 
 
 yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
+                            $(timing) \
                             $(align) \
                             $(dSFMT)  \
                             $(endian) \
@@ -310,6 +329,7 @@ yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(u1) 
 
 yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -325,6 +345,7 @@ yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
                           $(u1)
 
 yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -340,6 +361,7 @@ yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
                           $(u1)
                   
 yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -355,6 +377,7 @@ yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(u1)
 
 yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
+                       $(timing) \
                        $(align) \
                        $(dSFMT)  \
                        $(endian) \
@@ -370,6 +393,7 @@ yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
                        $(u1)
 
 yang_mills_adaptive_gradient_flow_SOURCES=./src/yang_mills_adaptive_gradient_flow.c \
+                       $(timing) \
                        $(align) \
                        $(dSFMT)  \
                        $(endian) \
@@ -385,6 +409,7 @@ yang_mills_adaptive_gradient_flow_SOURCES=./src/yang_mills_adaptive_gradient_flo
                        $(u1)
 
 yang_mills_gradflow_all_conf_SOURCES=./src/yang_mills_gradflow_all_conf.c \
+                       $(timing) \
                        $(align) \
                        $(dSFMT)  \
                        $(endian) \
@@ -400,6 +425,7 @@ yang_mills_gradflow_all_conf_SOURCES=./src/yang_mills_gradflow_all_conf.c \
                        $(u1)
 
 debug_agf_vs_gf_SOURCES=./src/debug_agf_vs_gf.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -415,6 +441,7 @@ debug_agf_vs_gf_SOURCES=./src/debug_agf_vs_gf.c \
                           $(u1)
 
 debug_agf_vs_delta_SOURCES=./src/debug_agf_vs_delta.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
@@ -430,6 +457,7 @@ debug_agf_vs_delta_SOURCES=./src/debug_agf_vs_delta.c \
                           $(u1)
 
 yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
+                          $(timing) \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \

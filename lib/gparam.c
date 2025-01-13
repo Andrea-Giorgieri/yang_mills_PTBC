@@ -5,6 +5,7 @@
 #include"../include/endianness.h"
 #include"../include/gparam.h"
 #include"../include/memalign.h"
+#include"../include/timing.h"
 
 #include<math.h>
 #include<stdio.h>
@@ -108,6 +109,8 @@ void readinput(char *in_file, GParam *param)
 	param->d_topo_tuning_stp = 0.1;
 	param->d_topo_tuning_save_every = 0;
 	param->d_topo_tuning_even = 1;
+	
+	param->d_walltime = 24.0*3600;
 	
 	// to avoid possible mistakes with uninitialized twist factors
 	for (i=0; i<STDIM*(STDIM-1)/2; i++)
@@ -697,6 +700,18 @@ void readinput(char *in_file, GParam *param)
 					exit(EXIT_FAILURE);
 					}
 					param->d_randseed=temp_ui;
+					}
+			
+			else if(strncmp(str, "walltime", 8)==0)
+					{ 
+					err=fscanf(input, "%lf", &temp_d);
+					if(err!=1)
+					{
+					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+					exit(EXIT_FAILURE);
+					}
+					if (temp_d > 0) param->d_walltime=temp_d * 3600;
+					else fprintf(stderr, "Error: walltime must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 					}
 
 			else if(strncmp(str, "defect_dir", 10)==0)
@@ -1506,7 +1521,7 @@ void print_metro_parameters(FILE *fp, GParam const * const param, double acc)
 
 // print simulation parameters
 
-void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1523,14 +1538,12 @@ void print_parameters_local(GParam const * const param, time_t time_start, time_
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 
 	fclose(fp);
 	}
 
-void print_parameters_local_agf(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local_agf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1548,14 +1561,12 @@ void print_parameters_local_agf(GParam const * const param, time_t time_start, t
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1571,14 +1582,12 @@ void print_parameters_local_pt_multicanonic(GParam const * const param, time_t t
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local_pt(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1596,14 +1605,12 @@ void print_parameters_local_pt(GParam const * const param, time_t time_start, ti
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 	
-void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1622,14 +1629,12 @@ void print_parameters_local_pt_gf(GParam const * const param, time_t time_start,
 	print_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 	
-void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end)
+void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1648,9 +1653,7 @@ void print_parameters_local_pt_agf(GParam const * const param, time_t time_start
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
@@ -1714,7 +1717,7 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	fclose(fp);
 	}
 
-void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_polycorr_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1737,14 +1740,12 @@ void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t ti
 	#endif
 	print_simul_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_polycorr(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1761,14 +1762,12 @@ void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_en
 	#endif
 	print_simul_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_t0(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
@@ -1795,14 +1794,12 @@ void print_parameters_t0(GParam * param, time_t time_start, time_t time_end)
 	fprintf(fp, "gfstep:	%lf\n", param->d_gfstep);
 	fprintf(fp, "\n");
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_gf(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
@@ -1829,14 +1826,12 @@ void print_parameters_gf(GParam * param, time_t time_start, time_t time_end)
 	
 	print_gradflow_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_agf(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
@@ -1863,14 +1858,12 @@ void print_parameters_agf(GParam * param, time_t time_start, time_t time_end)
 	
 	print_adaptive_gradflow_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_tracedef(GParam const * const param, time_t time_start, time_t time_end, double acc)
+void print_parameters_tracedef(GParam const * const param, Time_Utils const * const timers, double acc)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1894,14 +1887,12 @@ void print_parameters_tracedef(GParam const * const param, time_t time_start, ti
 	print_metro_parameters(fp, param, acc);
 	print_cooling_parameters(fp, param);
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1923,14 +1914,12 @@ void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_e
 	fprintf(fp, "plaq_dir:		%d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1952,14 +1941,12 @@ void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_e
 	fprintf(fp, "plaq_dir: %d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t time_end)
+void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -1982,14 +1969,12 @@ void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t t
 	fprintf(fp, "plaq_dir: %d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
 	
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
 
-void print_parameters_tuning_pt_mc(GParam const * const param, time_t time_start, time_t time_end, int count)
+void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const * const timers, int count)
 	{
 	FILE *fp;
 	double diff_sec;
@@ -2008,9 +1993,7 @@ void print_parameters_tuning_pt_mc(GParam const * const param, time_t time_start
 	print_cooling_parameters(fp, param);
 	
 	fprintf(fp, "Tuning steps: %d\n", count );
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time: %.3lf seconds\n", diff_sec );
-	fprintf(fp, "\n");
+	print_time_utils(fp, timers);
 	
 	fclose(fp);
 	}
@@ -2043,6 +2026,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "\n");
 	
 	fprintf(fp, "randseed 0    # (0=time)\n");
+	fprintf(fp, "walltime 24   # wall time in hours\n");
 	fprintf(fp, "\n");
 	
 	fprintf(fp, "# Observables to measure\n");

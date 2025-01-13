@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -24,11 +24,10 @@ void real_main(char *in_file)
 	Geometry geo;
 	GParam param;
 	Meas_Utils meas_aux;
+	Time_Utils timers;
 	
 	int count;
 	double gftime, chi_prime, tch;
-	
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -38,6 +37,11 @@ void real_main(char *in_file)
 	
 	// read input file	
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// this code has to start from saved conf.
 	param.d_start=2;
@@ -54,27 +58,34 @@ void real_main(char *in_file)
 
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
+	
+	stop_timer(&(timers.init_timer));
 
-	time(&time1);
 	gftime=0.0;
-		// count starts from 1 to avoid problems with %
-		for(count=1; count < (param.d_ngfsteps+1); count++)
+	// count starts from 1 to avoid problems with %
+	for(count=1; count < (param.d_ngfsteps+1); count++)
+		{
+		start_timer(&(timers.step_timer));
+		
+		gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
+		gftime+=param.d_gfstep;
+		
+		if ( (count % param.d_gf_meas_each) == 0)
 			{
-			gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
-			gftime+=param.d_gfstep;
-			
-			if ( (count % param.d_gf_meas_each) == 0)
-				{
-				tch=topcharge(&GC, &geo, &param);
-				chi_prime=topo_chi_prime(&GC, &geo, &param);
-				fprintf(meas_aux.datafilep, "%ld	%.16lf	%.16lf	%16lf\n", GC.update_index, gftime, tch, chi_prime);
-				fflush(meas_aux.datafilep);
-				}
+			tch=topcharge(&GC, &geo, &param);
+			chi_prime=topo_chi_prime(&GC, &geo, &param);
+			fprintf(meas_aux.datafilep, "%ld	%.16lf	%.16lf	%16lf\n", GC.update_index, gftime, tch, chi_prime);
+			fflush(meas_aux.datafilep);
 			}
-	time(&time2);
+		
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
+		}
+	
+	stop_timer(&(timers.prog_timer));
 	
 	// print simulation details
-	print_parameters_gf(&param, time1, time2);
+	print_parameters_gf(&param, &timers);
 	
 	// free gauge configurations
 	free_gauge_conf(&GC, &param);

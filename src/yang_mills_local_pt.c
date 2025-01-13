@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -26,11 +26,11 @@ void real_main(char *in_file)
 	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
+	Time_Utils timers;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *swaptrackfilep;
 	int count;
-	time_t time1, time2;
 	
 	
 	// to disable nested parallelism
@@ -41,6 +41,11 @@ void real_main(char *in_file)
 	
 	// read input file
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -64,11 +69,13 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils_replica(&meas_aux, &param);
 	
-	// Monte Carlo begin
-	time(&time1);
+	stop_timer(&(timers.init_timer));
 	
+	// Monte Carlo begin	
 	for(count=0; count < param.d_sample; count++)
 		{
+		start_timer(&(timers.step_timer));
+		
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
@@ -103,10 +110,12 @@ void real_main(char *in_file)
 				write_conf_on_file_with_name(&(GC[0]), &param, name);
 				}
 			}
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
 	
-	time(&time2);
 	// Monte Carlo end
+	stop_timer(&(timers.prog_timer));
 	
 	// free meas utils
 	free_meas_utils_replica(meas_aux, &param);
@@ -121,7 +130,7 @@ void real_main(char *in_file)
 		}
 	
 	// print simulation details
-	print_parameters_local_pt(&param, time1, time2);
+	print_parameters_local_pt(&param, &timers);
 	
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);

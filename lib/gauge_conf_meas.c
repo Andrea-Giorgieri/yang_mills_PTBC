@@ -2066,41 +2066,41 @@ void perform_measures_polycorradj(Gauge_Conf * const GC,
 	{
 	#ifndef OPT_MULTIHIT
 	#ifndef OPT_MULTILEVEL
-		double ris;
-		long r;
-		int i;
+	double ris;
+	long r;
+	int i;
 
-		multilevel_polycorradj(GC, geo, param, param->d_size[0]);
+	multilevel_polycorradj(GC, geo, param, param->d_size[0]);
 
-		for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_space_vol[0]; r++)
-				{
-				times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
-				}
-			}
-
-		ris=0.0;
+	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#endif
 		for(r=0; r<param->d_space_vol[0]; r++)
 			{
-			ris+=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
+			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
 			}
-		ris*=param->d_inv_space_vol[0];
+		}
 
-		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
-		fflush(meas_aux->datafilep);
+	ris=0.0;
+	for(r=0; r<param->d_space_vol[0]; r++)
+		{
+		ris+=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
+		}
+	ris*=param->d_inv_space_vol[0];
+
+	fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
+	fflush(meas_aux->datafilep);
 	#endif
 	#endif
 
 	#ifdef OPT_MULTIHIT
-		optimize_multihit_polycorradj(GC, geo, param, meas_aux->datafilep);
+	optimize_multihit_polycorradj(GC, geo, param, meas_aux->datafilep);
 	#endif
 
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorradj(GC, geo, param, meas_aux->datafilep);
+	optimize_multilevel_polycorradj(GC, geo, param, meas_aux->datafilep);
 	#endif
 	}
 

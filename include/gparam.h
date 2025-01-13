@@ -2,6 +2,7 @@
 #define GPARAM_H
 
 #include"macro.h"
+#include"timing.h"
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -38,6 +39,9 @@ typedef struct GParam {
 	int d_thermal;
 	int d_overrelax;
 	int d_measevery;
+	
+	// time limit in hours
+	double d_walltime; 
 
 	// initialization & saving
 	int d_start;
@@ -147,24 +151,24 @@ void print_multilevel_parameters(FILE *fp, GParam const * const param);
 void print_metro_parameters(FILE *fp, GParam const * const param, double acc);
 
 // print simulation parameters
-void print_parameters_local(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_agf(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_pt(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_pt_gf(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_local_pt_agf(GParam const * const param, time_t time_start, time_t time_end);
+void print_parameters_local(GParam const * const param, Time_Utils const * const timers);
+void print_parameters_local_agf(GParam const * const param, Time_Utils const * const timers);
+void print_parameters_local_pt(GParam const * const param, Time_Utils const * const timers);
+void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const * const timers);
+void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const * const timers);
 void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time);
 void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3);
-void print_parameters_local_pt_multicanonic(GParam const * const param, time_t time_start, time_t time_end);
-void print_parameters_polycorr_long(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_polycorr(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_t0(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_gf(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_agf(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_tracedef(GParam const * const param, time_t time_start, time_t time_end, double acc);
-void print_parameters_tube_disc(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_tube_conn(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_tube_conn_long(GParam * param, time_t time_start, time_t time_end);
-void print_parameters_tuning_pt_mc(GParam const * const param, time_t time_start, time_t time_end, int count);
+void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Utils const * const timers);
+void print_parameters_polycorr_long(GParam * param, Time_Utils const * const timers);
+void print_parameters_polycorr(GParam * param, Time_Utils const * const timers);
+void print_parameters_t0(GParam * param, Time_Utils const * const timers);
+void print_parameters_gf(GParam * param, Time_Utils const * const timers);
+void print_parameters_agf(GParam * param, Time_Utils const * const timers);
+void print_parameters_tracedef(GParam const * const param, Time_Utils const * const timers, double acc);
+void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers);
+void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers);
+void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const timers);
+void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const * const timers, int count);
 
 // print template input aux
 void print_template_volume_parameters(FILE *fp);

@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -25,10 +25,10 @@ void real_main(char *in_file)
 	GParam param;
 	Acc_Utils acc_counters;
 	Meas_Utils meas_aux;
+	Time_Utils timers;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -38,6 +38,11 @@ void real_main(char *in_file)
 	
 	// read input file
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -52,14 +57,19 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 	
+	stop_timer(&(timers.init_timer));
+	
 	// Monte Carlo begin
-	time(&time1);
 	if(param.d_sample == 0) // no update is done, only measures are performed on read configuration
 		{
+		start_timer(&(timers.step_timer));
 		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
+		stop_timer(&(timers.step_timer));
 		}
 	for(count=0; count < param.d_sample; count++)
 		{
+		start_timer(&(timers.step_timer));
+		
 		// update conf
 		update(&GC, &geo, &param, &acc_counters);
 
@@ -99,10 +109,12 @@ void real_main(char *in_file)
 				write_twist_on_file_with_name(&GC, &param, name);
 				}
 			}
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
 	
-	time(&time2);
 	// Monte Carlo end
+	stop_timer(&(timers.prog_timer));
 	
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
@@ -114,7 +126,7 @@ void real_main(char *in_file)
 		}
 
 	// print simulation details
-	print_parameters_local_agf(&param, time1, time2);
+	print_parameters_local_agf(&param, &timers);
 	
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);

@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -27,11 +27,11 @@ void real_main(char *in_file)
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
 	Tune_Utils tune_utils;
+	Time_Utils timers;
 	
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count, tune_check;
 	FILE *swaptrackfilep;
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -47,6 +47,11 @@ void real_main(char *in_file)
 	
 	// read input file
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -73,10 +78,13 @@ void real_main(char *in_file)
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 	
+	stop_timer(&(timers.init_timer));
+	
 	// Monte Carlo begin
-	time(&time1);
 	for(count=0; count < param.d_sample; count++)
 		{
+		start_timer(&(timers.step_timer));
+		
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
@@ -140,12 +148,15 @@ void real_main(char *in_file)
 		
 		// update tuning_stp and check if tuning is completed
 		tune_check = update_tuning_stp(&tune_utils, &param);
+		
+		stop_timer(&(timers.step_timer));
 		if (tune_check ==  1) print_tuning_stp(GC[0].update_index, &tune_utils, &param);
 		if (tune_check == -1) break;
+		if (wall_time_check(&timers) == 1) break;
 		}
 	
-	time(&time2);
 	// Monte Carlo end
+	stop_timer(&(timers.prog_timer));
 	
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
@@ -157,7 +168,7 @@ void real_main(char *in_file)
 	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
 
 	// print simulation details
-	print_parameters_tuning_pt_mc(&param, time1, time2, count);
+	print_parameters_tuning_pt_mc(&param, &timers, count);
 
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);

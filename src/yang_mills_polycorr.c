@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -25,9 +25,9 @@ void real_main(char *in_file)
 	GParam param;
 	Acc_Utils acc_counters;
 	Meas_Utils meas_aux;
+	Time_Utils timers;
 	
 	int count;
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -47,6 +47,11 @@ void real_main(char *in_file)
 			exit(EXIT_FAILURE);
 			}
 		}
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -64,11 +69,13 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 	
-	// montecarlo
-	time(&time1);
-	// count starts from 1 to avoid problems using %
+	stop_timer(&(timers.init_timer));
+	
+	// Monte Carlo begin (count starts from 1 to avoid problems using %)
 	for(count=1; count < param.d_sample + 1; count++)
 		{
+		start_timer(&(timers.step_timer));
+		
 		update(&GC, &geo, &param, &acc_counters);
 
 		if(count % param.d_measevery ==0 && count >= param.d_thermal)
@@ -88,9 +95,12 @@ void real_main(char *in_file)
 				write_conf_on_file_back(&GC, &param);
 				}
 			}
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
-	time(&time2);
-	// montecarlo end
+	
+	// Monte Carlo end
+	stop_timer(&(timers.prog_timer));
 	
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
@@ -102,7 +112,7 @@ void real_main(char *in_file)
 		}
 	
 	// print simulation details
-	print_parameters_polycorr(&param, time1, time2);
+	print_parameters_polycorr(&param, &timers);
 	
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
@@ -131,7 +141,7 @@ void print_template_input(void)
 		print_template_volume_parameters(fp);
 		print_template_simul_parameters(fp);
 		print_template_multilevel_parameters(fp);
-		fprintf(fp, "dist_poly    2  # distance between the polyakov loop\n");
+		fprintf(fp, "dist_poly      2  # distance between the polyakov loop\n");
 		fprintf(fp,"\n");
 		print_template_output_parameters(fp);
 		fclose(fp);

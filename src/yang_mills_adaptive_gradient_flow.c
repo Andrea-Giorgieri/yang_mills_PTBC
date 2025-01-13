@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -24,12 +24,11 @@ void real_main(char *in_file)
 	Geometry geo;
 	GParam param;
 	Meas_Utils meas_aux;
+	Time_Utils timers;
 
 	int stop;
 	long step=0; // just to avoid gcc warning of maybe-uninitialized
-
-	time_t time1, time2;
-
+	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
@@ -38,6 +37,11 @@ void real_main(char *in_file)
 
 	// read input file
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 
 	// this code has to start from saved conf.
 	param.d_start = 2;
@@ -58,7 +62,6 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 	
-	time(&time1);
 	if (param.d_saveconf_analysis_every == 0) stop = 1;
 	else
 		{
@@ -66,14 +69,22 @@ void real_main(char *in_file)
 		step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
 		init_gauge_conf_step(&GC, &param, step, &stop);
 		}
+	
+	stop_timer(&(timers.init_timer));
 
 	while(stop == 0)
 		{
+		start_timer(&(timers.step_timer));
+		
 		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
 		step += param.d_saveconf_analysis_every;
 		read_gauge_conf_step(&GC, &param, step, &stop);
+		
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
-	time(&time2);
+	
+	stop_timer(&(timers.prog_timer));
 	
 	// free gauge conf
 	free_gauge_conf(&GC, &param);
@@ -85,7 +96,7 @@ void real_main(char *in_file)
 	free_geometry(&geo, &param);
 
 	// print simulation details
-	print_parameters_agf(&param, time1, time2);
+	print_parameters_agf(&param, &timers);
 	}
 
 void print_template_input(void)

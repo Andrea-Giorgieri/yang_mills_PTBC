@@ -6,7 +6,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<time.h>
 
 #ifdef OPENMP_MODE
 #include<omp.h>
@@ -17,6 +16,7 @@
 #include"../include/geometry.h"
 #include"../include/gparam.h"
 #include"../include/random.h"
+#include"../include/timing.h"
 
 void real_main(char *in_file)
 	{
@@ -24,12 +24,12 @@ void real_main(char *in_file)
 	Geometry geo;
 	GParam param;
 	Meas_Utils meas_aux;
+	Time_Utils timers;
 	
 	long count;
 	const long max_count=10000;
 	double gftime, energy_clover, energy_clover_old, tch, ris;
 
-	time_t time1, time2;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -39,6 +39,11 @@ void real_main(char *in_file)
 	
 	// read input file
 	readinput(in_file, &param);
+
+	// initialize timers
+	init_time_utils(&timers, param.d_walltime);
+	start_timer(&(timers.prog_timer));
+	start_timer(&(timers.init_timer));
 	
 	// this code has to start from saved conf.
 	param.d_start=2;
@@ -56,12 +61,15 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 	
-	time(&time1);
+	stop_timer(&(timers.init_timer));
+
 	gftime=0.0;
 	count=0;
 	energy_clover_old=0.0;
 	while(count<max_count)
 		{
+		start_timer(&(timers.step_timer));
+		
 		gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
 		gftime+=param.d_gfstep;
 		
@@ -79,8 +87,10 @@ void real_main(char *in_file)
 		
 		count++;
 		energy_clover_old=energy_clover;
+		
+		stop_timer(&(timers.step_timer));
+		if (wall_time_check(&timers) == 1) break;
 		}
-	time(&time2);
 	
 	if(count==max_count)
 		{
@@ -88,11 +98,13 @@ void real_main(char *in_file)
 		exit(EXIT_FAILURE);
 		}
 	
+	stop_timer(&(timers.prog_timer));
+	
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
 	
 	// print simulation details
-	print_parameters_t0(&param, time1, time2);
+	print_parameters_t0(&param, &timers);
 	
 	// free gauge configurations
 	free_gauge_conf(&GC, &param);

@@ -41,7 +41,7 @@ void stop_timer(Timer * const timer)
 	timer->stop_time = get_wtime();
 	timer->elapsed_time = (timer->stop_time - timer->start_time);
 	if (timer->elapsed_time > timer->max_elapsed_time) timer->max_elapsed_time = timer->elapsed_time;
-	timer->avg_elapsed_time = (timer->avg_elapsed_time * timer->count + timer->elapsed_time)/(timer->count+1);
+	timer->avg_elapsed_time = (timer->avg_elapsed_time * (double)timer->count + timer->elapsed_time)/((double)(timer->count+1));
 	timer->count += 1;
 	}
 
@@ -78,7 +78,7 @@ void print_time_utils(FILE *fp, Time_Utils const * const timers)
 	print_timer(fp, &(timers->meas_timer));
 	print_timer(fp, &(timers->step_timer));
 	print_timer(fp, &(timers->prog_timer));
-	fprintf(fp, "Completed steps : %ld (%.3g steps/s)\n", timers->step_timer.count, timers->step_timer.count/timers->prog_timer.avg_elapsed_time);
+	fprintf(fp, "Completed steps : %ld (%.3g steps/s)\n", timers->step_timer.count, (double)timers->step_timer.count/timers->prog_timer.avg_elapsed_time);
 	}
 
 int wall_time_check(Time_Utils const * const timers)

@@ -14,50 +14,874 @@
 #include<time.h>
 
 
-// remove from input file white/empty lines and comments
-// comments start with the charachter #
+// functions to impose conditions on params
+int param_any_ui(unsigned int val, char * msg)
+	{
+	(void) val;
+	(void) msg;
+	return 0;
+	}
+
+int param_any_int(int val, char * msg)
+	{
+	(void) val;
+	(void) msg;
+	return 0;
+	}
+
+int param_bool_int(int val, char * msg)
+	{
+	if ((val == 0) || (val == 1)) return 0;
+	sprintf(msg, "must be either 0 or 1");
+	return 1;
+	}
+
+int param_positive_int(int val, char * msg)
+	{
+	if (val > 0) return 0;
+	sprintf(msg, "must be positive");
+	return 1;
+	}
+
+int param_nonnegative_int(int val, char * msg)
+	{
+	if (val >= 0) return 0;
+	sprintf(msg, "must be non-negative");
+	return 1;
+	}
+
+int param_any_double(double val, char * msg)
+	{
+	(void) val;
+	(void) msg;
+	return 0;
+	}
+
+int param_positive_double(double val, char * msg)
+	{
+	if (val > 0) return 0;
+	sprintf(msg, "must be positive");
+	return 1;
+	}
+
+int param_nonnegative_double(double val, char * msg)
+	{
+	if (val >= 0) return 0;
+	sprintf(msg, "must be non-negative");
+	return 1;
+	}
+
+int param_any_string(char * val, char * msg)
+	{
+	(void) val;
+	(void) msg;
+	return 0;
+	}
+
+
+// functions to set values of params
+void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*condition)(unsigned int, char *))
+	{
+	unsigned int temp;
+	int err;
+	char msg[STD_STRING_LENGTH];
+	err=fscanf(fp, "%u", &temp);
+	if(err!=1)
+		{
+		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if (condition(temp, msg) == 1)
+		{
+		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	*ptr=temp;
+	}
+
+void set_int_param(FILE* fp, int * ptr, char const * const name, int (*condition)(int, char *))
+	{
+	int temp;
+	int err;
+	char msg[STD_STRING_LENGTH];
+	err=fscanf(fp, "%d", &temp);
+	if(err!=1)
+		{
+		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if (condition(temp, msg) == 1)
+		{
+		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	*ptr=temp;
+	}
+
+void set_double_param(FILE* fp, double * ptr, char const * const name, int (*condition)(double, char *))
+	{
+	double temp;
+	int err;
+	char msg[STD_STRING_LENGTH];
+	err=fscanf(fp, "%lf", &temp);
+	if(err!=1)
+		{
+		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if (condition(temp, msg) == 1)
+		{
+		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	*ptr=temp;
+	}
+
+void set_string_param(FILE* fp, char * ptr, char const * const name, int (*condition)(char *, char *))
+	{
+	char temp[STD_STRING_LENGTH];
+	int err;
+	char msg[STD_STRING_LENGTH];
+	err=fscanf(fp, "%s", temp);
+	if(err!=1)
+		{
+		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if (condition(temp, msg) == 1)
+		{
+		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	strcpy(ptr, temp);
+	}
+
+// remove white lines and comments starting with # from input file
 void remove_white_line_and_comments(FILE *input)
 	{
 	int temp_i;
 
-	temp_i=getc(input);
-	if(temp_i=='\n' || temp_i==' ' || temp_i=='\043') // scan for white lines and comments
-	{
+	// skip empty line
+	{do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');}
+	
+	// skip comment, from \043 = ascii oct for # to first newline or EOF
+	if(temp_i == '\043') {do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF);}
+	
+	// return if EOF reached or nothing else to remove, after pushing back last char
+	if(temp_i == EOF) return;
 	ungetc(temp_i, input);
-
-	temp_i=getc(input);
-	if(temp_i=='\n' || temp_i==' ') // white line
-		{
-		do
-		{
-		temp_i=getc(input);
-		}
-		while(temp_i=='\n' || temp_i==' ');
-		}
-	ungetc(temp_i, input);
-
-	temp_i=getc(input);
-	if(temp_i=='\043')	// comment, \043 = ascii oct for #
-		{
-		do
-		{
-		temp_i=getc(input);
-		}
-		while(temp_i!='\n');
-		}
-	else
-		{
-		ungetc(temp_i, input);
-		}
-
+	if(temp_i != '\n' && temp_i != ' ' && temp_i != '\043') return;
+	
+	// recursive call if another white line or comment
 	remove_white_line_and_comments(input);
 	}
-	else
+
+void set_defaults(GParam * const param)
 	{
-	ungetc(temp_i, input);
-	}
+	int i;
+	
+	// multilevel
+	for(i=0; i<NLEVELS; i++) param->d_ml_step[i] = 0;
+
+	// trace deformation and theta term
+	for(i=0; i<NCOLOR; i++) param->d_h[i] = 0.0;
+	param->d_theta = 0.0;
+
+	// twist
+	for (i=0; i<STDIM*(STDIM-1)/2; i++) param->d_k_twist[i] = 0;
+
+	// parallel tempering
+	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
+	param->d_defect_dir   = 0;
+	param->d_N_replica_pt = 1;
+	
+	// gradient flow
+	param->d_ngfsteps     = 0;
+	param->d_gf_meas_each = 1;
+	param->d_gfstep       = 1;
+	
+	// adaptive gradient flow
+	param->d_agf_length    = 0;
+	param->d_agf_meas_each = 1;
+	param->d_agf_step      = 0.1;
+	param->d_agf_delta     = 0.00001;
+	param->d_agf_time_bin  = 0;
+	
+	// cooling
+	param->d_coolsteps  = 0;
+	param->d_coolrepeat = 0;
+	
+	// multicanonical with cold topcharge
+	param->d_topo_cooling    = 0;
+	param->d_topo_coolsteps  = 0;
+	param->d_topo_alpha      = 0;
+	param->d_topo_tuning_thr = 0.1;
+	param->d_topo_tuning_stp = 0.1;
+	param->d_topo_tuning_save_every = 0;
+	param->d_topo_tuning_even = 1;
+	
+	// walltime
+	param->d_walltime = 24.0;
+		
+	// measures
+	param->d_plaquette_meas       = 1;
+	param->d_clover_energy_meas   = 0;
+	param->d_charge_meas          = 0;
+	param->d_chi_prime_meas       = 0;
+	param->d_charge_prime_meas    = 0;
+	param->d_polyakov_meas        = 0;
+	param->d_topcharge_tcorr_meas = 0;
 	}
 
+// read params from input file
+void readinput(char const * const in_file, GParam * const param)
+	{
+	FILE *input;
+	char str[STD_STRING_LENGTH], param_name[STD_STRING_LENGTH];
+	int i, err;
+	
+	// set default values
+	set_defaults(param);
+	
+	// open the input file
+	input=fopen(in_file, "r"); 
+	if(input==NULL)
+		{
+		fprintf(stderr, "Error opening input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	
+	// slide the input file
+	for(;;) 
+		{
+		// check for EOF after skipping white line or comments
+		remove_white_line_and_comments(input);
+		i = getc(input);
+		if(i == EOF) break;
+		ungetc(i, input);
+		
+		// read the name of a parameter in str
+		err=fscanf(input, "%s", str);
+		if(err!=1)
+			{
+			fprintf(stderr, "Error reading input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		
+		// look for the parameter and set its value
+		
+		// lattice params
+		strcpy(param_name, "size");
+		if(strcmp(str, param_name) == 0)
+			{
+			for(i=0; i<STDIM; i++)
+				set_int_param(input, &(param->d_size[i]), param_name, &param_positive_int);
+			continue;
+			}
+		
+		strcpy(param_name, "beta");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_beta), param_name, &param_positive_double);
+			continue;
+			}
+		
+		strcpy(param_name, "htracedef");
+		if(strcmp(str, param_name) == 0)
+			{
+			for(i=0; i<(int)floor(NCOLOR/2.0); i++)
+				set_double_param(input, &(param->d_h[i]), param_name, &param_any_double);
+			continue;
+			}
+		
+		strcpy(param_name, "theta");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_theta), param_name, &param_any_double);
+			continue;
+			}
+		
+		strcpy(param_name, "k_twist");
+		if(strcmp(str, param_name) == 0)
+			{
+			for (i=0; i<STDIM*(STDIM-1)/2; i++)
+				set_int_param(input, &(param->d_k_twist[i]), param_name, &param_any_int);
+			continue;
+			}
+
+		// parallel tempering params
+		strcpy(param_name, "N_replica_pt");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_N_replica_pt), param_name, &param_positive_int);
+			allocate_array_double(&(param->d_pt_bound_cond_coeff), param->d_N_replica_pt, __FILE__, __LINE__);
+			for (i=0; i<param->d_N_replica_pt; i++)
+				set_double_param(input, &(param->d_pt_bound_cond_coeff[i]), param_name, &param_any_double);
+			continue;
+			}
+			
+		strcpy(param_name, "defect_dir");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_defect_dir), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "defect_size");
+		if(strcmp(str, param_name) == 0)
+			{
+			for (i=0; i<STDIM-1; i++)
+				set_int_param(input, &(param->d_L_defect[i]), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "hierarc_upd");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_N_hierarc_levels), param_name, &param_nonnegative_int);
+			if(param->d_N_hierarc_levels > 0)
+				{
+				allocate_array_int(&(param->d_L_rect),       param->d_N_hierarc_levels, __FILE__, __LINE__);
+				allocate_array_int(&(param->d_N_sweep_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
+				}
+			for(i=0; i<param->d_N_hierarc_levels; i++)
+				set_int_param(input, &(param->d_L_rect[i]),       param_name, &param_nonnegative_int);
+			for(i=0; i<param->d_N_hierarc_levels; i++)
+				set_int_param(input, &(param->d_N_sweep_rect[i]), param_name, &param_nonnegative_int);
+			continue;
+			}
+		
+		// simulation params
+		strcpy(param_name, "sample");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_sample), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "thermal");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_thermal), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "overrelax");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_overrelax), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "measevery");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_measevery), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "start");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_start), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "saveconf_back_every");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_saveconf_back_every), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "saveconf_analysis_every");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_saveconf_analysis_every), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "randseed");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_ui_param(input, &(param->d_randseed), param_name, &param_any_ui);
+			continue;
+			}
+
+		strcpy(param_name, "walltime");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_walltime), param_name, &param_any_double);
+			continue;
+			}
+
+		// measure flags
+		strcpy(param_name, "plaquette_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_plaquette_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "clover_energy_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_clover_energy_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "energy_density_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_energy_density_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "charge_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_charge_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "polyakov_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_polyakov_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "chi_prime_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_chi_prime_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "charge_prime_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_charge_prime_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		strcpy(param_name, "topcharge_tcorr_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_topcharge_tcorr_meas), param_name, &param_bool_int);
+			continue;
+			}
+
+		// cooling params
+		strcpy(param_name, "coolsteps");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_coolsteps), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "coolrepeat");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_coolrepeat), param_name, &param_nonnegative_int);
+			continue;
+			}
+		
+		// gradient flow params		
+		strcpy(param_name, "gfstep");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_gfstep), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		strcpy(param_name, "num_gfsteps");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_ngfsteps), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "gf_meas_each");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_gf_meas_each), param_name, &param_positive_int);
+			continue;
+			}
+
+		// adaptive gradient flow params
+		strcpy(param_name, "agf_length");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_agf_length), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		strcpy(param_name, "agf_meas_each");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_agf_meas_each), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		strcpy(param_name, "agf_step");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_agf_step), param_name, &param_positive_double);
+			continue;
+			}
+
+		strcpy(param_name, "agf_delta");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_agf_delta), param_name, &param_positive_double);
+			continue;
+			}
+
+		strcpy(param_name, "agf_time_bin");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_agf_time_bin), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		// multilevel params
+		strcpy(param_name, "multihit");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_multihit), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "ml_step");
+		if(strcmp(str, param_name) == 0)
+			{
+			for(i=0; i<NLEVELS; i++)
+				set_int_param(input, &(param->d_ml_step[i]), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "ml_upd");
+		if(strcmp(str, param_name) == 0)
+			{
+			for(i=0; i<NLEVELS; i++)
+				set_int_param(input, &(param->d_ml_upd[i]), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "ml_level0_repeat");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_ml_level0_repeat), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "dist_poly");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_dist_poly), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "transv_dist");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_trasv_dist), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "ml_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_ml_file, param_name, &param_any_string);
+			continue;
+			}
+
+		// configuration filenames
+		strcpy(param_name, "conf_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_conf_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "twist_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_twist_file, param_name, &param_any_string);
+			continue;
+			}
+
+		// data filenames
+		strcpy(param_name, "data_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_data_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "energy_density_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_energydensity_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "chiprime_data_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_chiprime_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "topcharge_tcorr_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_topcharge_tcorr_file, param_name, &param_any_string);
+			continue;
+			}
+
+		// log, acceptance and tracking filenames
+		strcpy(param_name, "log_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_log_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "swap_acc_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_swap_acc_file, param_name, &param_any_string);
+			continue;
+			}	
+
+		strcpy(param_name, "swap_track_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_swap_tracking_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "multicanonic_acc_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_multicanonic_acc_file, param_name, &param_any_string);
+			continue;
+			}
+		
+		// multicanonical params
+		strcpy(param_name, "topo_potential_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_topo_potential_file, param_name, &param_any_string);
+			continue;
+			}
+
+		strcpy(param_name, "grid_step");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_grid_step), param_name, &param_positive_double);
+			continue;
+			}
+
+		strcpy(param_name, "grid_max");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_grid_max), param_name, &param_positive_double);
+			continue;
+			}
+
+		strcpy(param_name, "topo_cooling");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_topo_cooling), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "topo_coolsteps");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_topo_coolsteps), param_name, &param_nonnegative_int);
+			continue;
+			}
+					
+		strcpy(param_name, "topo_alpha");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_topo_alpha), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		// multicanonical tuning params
+		strcpy(param_name, "topo_tuning_thr");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_topo_tuning_thr), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		strcpy(param_name, "topo_tuning_stp");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_topo_tuning_stp), param_name, &param_positive_double);
+			continue;
+			}
+
+		strcpy(param_name, "topo_tuning_save_every");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_topo_tuning_save_every), param_name, &param_nonnegative_int);
+			continue;
+			}
+
+		strcpy(param_name, "topo_tuning_even");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_topo_tuning_even), param_name, &param_bool_int);
+			continue;
+			}
+
+		// others
+		strcpy(param_name, "epsilon_metro");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_double_param(input, &(param->d_epsilon_metro), param_name, &param_nonnegative_double);
+			continue;
+			}
+
+		strcpy(param_name, "plaq_dir");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_plaq_dir[0]), param_name, &param_any_int);
+			set_int_param(input, &(param->d_plaq_dir[1]), param_name, &param_any_int);
+			continue;
+			}
+		
+		// raise error if parameter is unrecognized
+		fprintf(stderr, "Error: unrecognized option %s in input file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	
+	// close the input file
+	fclose(input);
+		
+	// convert walltime from hours to seconds
+	param->d_walltime *= 3600;
+	
+	// Further checks
+		
+	// multilevel
+	if(param->d_ml_step[0]!=0)
+		{
+		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
+			{
+			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		for(i=1; i<NLEVELS; i++)
+			{
+			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
+				{
+				fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+			}
+		if(param->d_ml_step[NLEVELS-1]==1)
+			{
+			fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		}
+	
+	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
+	// This prevents even-odd parallelization of updates.
+	// TODO: implement parallel sweep on the largest sublattice with even sides and sequential sweep of the rest
+	#ifdef OPENMP_MODE
+	for(i=0; i<STDIM; i++)
+		{
+		if((param->d_size[i] % 2) !=0)
+			{
+			fprintf(stderr, "Error: size[%d] is not even.\n", i);
+			fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		}
+	#endif
+	
+	// sizes
+	err=0;
+	for(i=0; i<STDIM; i++)
+		if(param->d_size[i]==1)
+			{
+			fprintf(stderr, "Error: all sizes have to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+			
+	// parallel tempering
+	if(param->d_defect_dir >= STDIM)
+		{
+		fprintf(stderr, "Error: defect_dir must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);	
+		}
+	if(param->d_L_defect[0]>param->d_size[0])
+		{
+		fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if(param->d_L_defect[1]>param->d_size[2])
+		{
+		fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if(param->d_L_defect[2]>param->d_size[3])
+		{
+		fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	
+	// check on gradflow parameters
+	if(param->d_agf_meas_each <= param->d_agf_time_bin)
+		{
+		fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if(param->d_agf_meas_each < param->d_agf_step)
+		{
+		fprintf(stderr, "Error: agf_meas_each must be greater than agf_step (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	if(param->d_agf_meas_each > 0 && param->d_agf_meas_each <= MIN_VALUE)
+		{
+		fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	
+	// check on topological observables
+	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+		{
+		err  = param->d_charge_meas;
+		err += param->d_charge_prime_meas;
+		err += param->d_chi_prime_meas;
+		err += param->d_topcharge_tcorr_meas;
+		if (err != 0)
+			{
+			fprintf(stderr, "Error: can't measure topological observables with space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		#ifdef MULTICANONICAL_MODE
+		fprintf(stderr, "Error: can't use multicanonical mode with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		#endif
+		}
+
+	init_derived_constants(param);
+	#ifdef MULTICANONICAL_MODE
+	read_topo_potential(param);
+	#endif
+	}
+
+/*
 void readinput(char *in_file, GParam *param)
 	{
 	FILE *input;
@@ -1096,6 +1920,7 @@ void readinput(char *in_file, GParam *param)
 		#endif
 		}
 	}
+*/
 
 // read topo potential from file
 void read_topo_potential(GParam * const param)
@@ -1220,137 +2045,6 @@ void init_derived_constants(GParam *param)
 		param->d_agf_num_meas = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
 	else
 		param->d_agf_num_meas = 0;
-	}
-
-// initialize data file
-void init_data_file(FILE **dataf, FILE **chiprimef, FILE **topchar_tcorr_f, GParam const * const param)
-	{
-	int i;
-
-	if(param->d_start==2)
-		{
-		// open std data file (plaquette, polyakov, topological charge)
-		*dataf=fopen(param->d_data_file, "r");
-		if(*dataf!=NULL) // file exists
-			{
-			fclose(*dataf);
-			*dataf=fopen(param->d_data_file, "a");
-			}
-		else
-			{
- 			*dataf=fopen(param->d_data_file, "w");
-			print_header_datafile(*dataf, param);
-			}
-		// open chi prime data file
-		if (param->d_chi_prime_meas == 1)
-			{
-			*chiprimef=fopen(param->d_chiprime_file, "r");
-			if(*chiprimef!=NULL) // file exists
-				{
-				fclose(*chiprimef);
-				*chiprimef=fopen(param->d_chiprime_file, "a");
-				}
-			else
-				{
- 				*chiprimef=fopen(param->d_chiprime_file, "w");
-				fprintf(*chiprimef, "# %d ", STDIM);
-				for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
-				fprintf(*chiprimef, "\n");
-				}
-			}
-		else (void)chiprimef;
-		
-		// open topocharge_tcorr data file
-		if (param->d_topcharge_tcorr_meas == 1)
-			{
-			*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "r");
-			if(*topchar_tcorr_f!=NULL) // file exists
-				{
-				fclose(*topchar_tcorr_f);
-				*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "a");
-				}
-			else
-				{
- 				*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
-				fprintf(*topchar_tcorr_f, "# %d ", STDIM);
-				for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
-				fprintf(*topchar_tcorr_f, "\n");
-				}
-			}
-		else (void)topchar_tcorr_f;
-		}
-	else
-		{
-		// open std data file
-		*dataf=fopen(param->d_data_file, "w");
-		print_header_datafile(*dataf, param);
-		
-		// open chi prime data file
-		if (param->d_chi_prime_meas == 1)
-			{
-			*chiprimef=fopen(param->d_chiprime_file, "w");
-			fprintf(*chiprimef, "# %d ", STDIM);
-			for(i=0; i<STDIM; i++) fprintf(*chiprimef, "%d ", param->d_size[i]);
-			fprintf(*chiprimef, "\n");
-			}
-		else (void)chiprimef;
-		
-		// open topocharge_tcorr data file
-		if (param->d_topcharge_tcorr_meas == 1)
-			{
-			*topchar_tcorr_f=fopen(param->d_topcharge_tcorr_file, "w");
-			fprintf(*topchar_tcorr_f, "# %d ", STDIM);
-			for(i=0; i<STDIM; i++) fprintf(*topchar_tcorr_f, "%d ", param->d_size[i]);
-			fprintf(*topchar_tcorr_f, "\n");
-			}
-		else (void)topchar_tcorr_f;
-		}
-	fflush(*dataf);
-	if (param->d_chi_prime_meas == 1 ) fflush(*chiprimef);
-	else (void)chiprimef;
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(*topchar_tcorr_f);
-	else (void)topchar_tcorr_f;
-	}
-
-void print_header_datafile(FILE *dataf, GParam const * const param)
-	{
-	int gf_meas_num;
-	double gf_meas_each;
-	
-	fprintf(dataf, "# %d ", STDIM);
-	for(int i=0; i<STDIM; i++) fprintf(dataf, "%d ", param->d_size[i]);
-	fprintf(dataf, "\n");
-	fprintf(dataf, "# upd_index ");
-	if (param->d_plaquette_meas     == 1) fprintf(dataf, "plaqs plaqt ");
-	if (param->d_clover_energy_meas == 1) fprintf(dataf, "clover_energy ");
-	if (param->d_charge_meas        == 1) fprintf(dataf, "charge ");
-	if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "polyre_%d polyim_%d ", i, i);
-	if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "charge_prime_%d ", i);
-	
-	if (param->d_agf_meas_each > 0) 
-		{
-		gf_meas_num = (int)(param->d_agf_length/param->d_agf_meas_each);
-		gf_meas_each = param->d_agf_meas_each;
-		}
-	else 
-		{
-		gf_meas_num = (int)(param->d_ngfsteps/param->d_gf_meas_each);
-		gf_meas_each = param->d_gf_meas_each*param->d_gfstep;
-		}
-	if (gf_meas_num > 0)
-		{
-		fprintf(dataf, "( ");
-		if (param->d_plaquette_meas     == 1) fprintf(dataf, "plaq ");
-		if (param->d_clover_energy_meas == 1) fprintf(dataf, "clover_energy ");
-		if (param->d_charge_meas        == 1) fprintf(dataf, "charge ");
-		if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "polyre_%d polyim_%d ", i, i);
-		if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) fprintf(dataf, "charge_prime_%d ", i);
-		fprintf(dataf, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
-		}
-	#ifdef MULTICANONICAL_MODE
-	fprintf(dataf, " mc_topcharge mc_weight");
-	#endif
-	fprintf(dataf, "\n");
 	}
 
 // free allocated memory for hierarc update parameters
@@ -1524,7 +2218,6 @@ void print_metro_parameters(FILE *fp, GParam const * const param, double acc)
 void print_parameters_local(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-----------------------------------------+\n");
@@ -1546,7 +2239,6 @@ void print_parameters_local(GParam const * const param, Time_Utils const * const
 void print_parameters_local_agf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
@@ -1569,7 +2261,6 @@ void print_parameters_local_agf(GParam const * const param, Time_Utils const * c
 void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------------------+\n");
@@ -1590,7 +2281,6 @@ void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Uti
 void print_parameters_local_pt(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
@@ -1613,7 +2303,6 @@ void print_parameters_local_pt(GParam const * const param, Time_Utils const * co
 void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-----------------------------------------------+\n");
@@ -1637,7 +2326,6 @@ void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const *
 void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+------------------------------------------------+\n");
@@ -1720,7 +2408,6 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 void print_parameters_polycorr_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-------------------------------------------------+\n");
@@ -1748,7 +2435,6 @@ void print_parameters_polycorr_long(GParam * param, Time_Utils const * const tim
 void print_parameters_polycorr(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
@@ -1771,7 +2457,6 @@ void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------+\n");
@@ -1803,7 +2488,6 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-------------------------------------------------+\n");
@@ -1835,7 +2519,6 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
 	int i;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------------------------+\n");
@@ -1866,7 +2549,6 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 void print_parameters_tracedef(GParam const * const param, Time_Utils const * const timers, double acc)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
@@ -1895,7 +2577,6 @@ void print_parameters_tracedef(GParam const * const param, Time_Utils const * co
 void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
@@ -1922,7 +2603,6 @@ void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
 void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
@@ -1949,7 +2629,6 @@ void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
 void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	double diff_sec;
 	
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------------+\n");
@@ -1977,7 +2656,6 @@ void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const ti
 void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const * const timers, int count)
 	{
 	FILE *fp;
-	double diff_sec;
 
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+------------------------------------------------+\n");

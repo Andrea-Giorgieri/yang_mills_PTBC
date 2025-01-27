@@ -294,13 +294,51 @@ void plaquette(Gauge_Conf const * const GC,
 	*plaqt=pt;
 	}
 
+// compute the clover energy density and write to binary file
+void energy_density(Gauge_Conf const * const GC,
+					Geometry const * const geo,
+					GParam const * const param,
+					Meas_Utils * const meas_aux,
+					int const meas_count)
+	{	
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(long r=0; r<param->d_volume; r++)
+		{
+		int i, j;
+		double ris=0;
+		GAUGE_GROUP aux1, aux2;
+		
+		for(i=0; i<STDIM; i++)
+			{
+			for(j=i+1; j<STDIM; j++)
+				{
+				clover(GC, geo, param, r, i, j, &aux1);
+				ta(&aux1);
+				equal(&aux2, &aux1);
+				times_equal(&aux1, &aux2);
+				ris+=-NCOLOR*retr(&aux1)/16.0;
+				}
+			}
+		meas_aux->energy_density[r] = ris;
+		//TODO: try parallel writing with pwrite() if available
+		}
+	
+	FILE *fp = meas_aux->energydensityfilep;
+	fwrite(&(GC->update_index), sizeof(long), 1, fp);
+	fwrite(&meas_count, sizeof(int), 1, fp);
+	fwrite(meas_aux->energy_density, sizeof(double), (size_t)param->d_volume, fp);
+	//for(long r=0; r<param->d_volume; r++)
+	//	fwrite(&(meas_aux->energy_density[lex_to_si(r, param)]), sizeof(double), 1, fp);
+	}
 
 // compute the clover discretization of
 // sum_{\mu\nu}	Tr(F_{\mu\nu}F_{\mu\nu})/2
 void clover_disc_energy(Gauge_Conf const * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								double *energy)
+							Geometry const * const geo,
+							GParam const * const param,
+							double * const energy)
 	{
 	long r;
 	double ris;
@@ -1277,6 +1315,7 @@ void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GPa
 		#endif
 		}
 	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
+	if (param->d_energy_density_meas  == 1) energy_density(GC, geo, param, meas_aux, meas_count+1);
 	if (param->d_charge_meas          == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
 	if (param->d_polyakov_meas        == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
 	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);				
@@ -1295,6 +1334,7 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 	// perform meas
 	if (param->d_plaquette_meas       == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
 	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &clover_energy);
+	if (param->d_energy_density_meas  == 1) energy_density(GC, geo, param, meas_aux, 0);
 	if (param->d_charge_meas          == 1) charge = topcharge(GC, geo, param);
 	if (param->d_polyakov_meas        == 1) for (i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(polyre[i]), &(polyim[i]));
 	if (param->d_chi_prime_meas       == 1) chi_prime = topo_chi_prime(GC, geo, param);
@@ -1302,7 +1342,7 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
 	//action(GC, geo, param, &action1, &action2, &action3, &pot);
 	
-	//print meas (topcharge_tcorr_timeslices already printed by topcharge_timeslices())
+	// print meas (energy_density, topcharge_tcorr_timeslices already printed)
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
 	if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
 	if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
@@ -1314,6 +1354,7 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 	
 	// flush data files
 	fflush(meas_aux->datafilep);
+	if (param->d_energy_density_meas  == 1) fflush(meas_aux->energydensityfilep);
 	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
@@ -2393,98 +2434,161 @@ void perform_measures_tube_conn_long(Gauge_Conf * const GC,
 	}
 
 
-// open data files
-void open_data_file(Meas_Utils *meas_aux, char const * const data, char const * const chiprime,
-						char const * const topchar_tcorr, GParam const * const param)
+void header_datafile(char * const header, GParam const * const param)
 	{
-	int i;
-
-	if(param->d_start==2)
+	int j, gf_meas_num;
+	double gf_meas_each;
+	
+	j = sprintf(header, "# %d ", STDIM);
+	for(int i=0; i<STDIM; i++) j += sprintf(header+j, "%d ", param->d_size[i]);
+	j += sprintf(header+j, "\n# upd_index ");
+	if (param->d_plaquette_meas     == 1) j += sprintf(header+j, "plaqs plaqt ");
+	if (param->d_clover_energy_meas == 1) j += sprintf(header+j, "clover_energy ");
+	if (param->d_charge_meas        == 1) j += sprintf(header+j, "charge ");
+	if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
+	if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
+	
+	if (param->d_agf_meas_each > 0) 
 		{
-		// open std data file (plaquette, polyakov, topological charge)
-		meas_aux->datafilep=fopen(data, "r");
-		if(meas_aux->datafilep!=NULL) // file exists
+		gf_meas_num = (int)(param->d_agf_length/param->d_agf_meas_each);
+		gf_meas_each = param->d_agf_meas_each;
+		}
+	else 
+		{
+		gf_meas_num = (int)(param->d_ngfsteps/param->d_gf_meas_each);
+		gf_meas_each = param->d_gf_meas_each*param->d_gfstep;
+		}
+	if (gf_meas_num > 0)
+		{
+		j += sprintf(header+j, "( ");
+		if (param->d_plaquette_meas     == 1) j += sprintf(header+j, "plaq ");
+		if (param->d_clover_energy_meas == 1) j += sprintf(header+j, "clover_energy ");
+		if (param->d_charge_meas        == 1) j += sprintf(header+j, "charge ");
+		if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
+		if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
+		j += sprintf(header+j, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
+		}
+	#ifdef MULTICANONICAL_MODE
+	j += sprintf(header+j, " mc_topcharge mc_weight");
+	#endif
+	j += sprintf(header+j, "\n");
+	}
+
+
+// open data file
+FILE* open_file_with_header_replica(char const * const name, char const * const header,
+									int const replica_index, GParam const * const param,
+									int const binary_flag)
+	{
+	FILE *fp;
+	char name_aux[STD_STRING_LENGTH];
+	
+	strcpy(name_aux, name);
+	
+	#ifdef REPLICA_MEAS_MODE
+	if (param->d_N_replica_pt > 1)
+		{
+		char aux[STD_STRING_LENGTH];
+		sprintf(aux, "_replica_%d", replica_index);
+		strcat(name_aux, aux);		
+		}
+	#else
+	(void) replica_index;
+	#endif
+	
+	if (param->d_start == 2)
+		{
+		// open file in append mode
+		fp = fopen(name_aux, "r");
+		if(fp != NULL)
 			{
-			fclose(meas_aux->datafilep);
-			meas_aux->datafilep=fopen(data, "a");
+			fclose(fp);
+			fp = fopen(name_aux, "a");
 			}
 		else
 			{
- 			meas_aux->datafilep=fopen(data, "w");
-			print_header_datafile(meas_aux->datafilep, param);
-			}
-		
-		// open chi prime data file
-		if (param->d_chi_prime_meas == 1)
-			{
-			meas_aux->chiprimefilep=fopen(chiprime, "r");
-			if(meas_aux->chiprimefilep!=NULL) // file exists
-				{
-				fclose(meas_aux->chiprimefilep);
-				meas_aux->chiprimefilep=fopen(chiprime, "a");
-				}
-			else
-				{
- 				meas_aux->chiprimefilep=fopen(chiprime, "w");
-				fprintf(meas_aux->chiprimefilep, "# %d ", STDIM);
-				for(i=0; i<STDIM; i++) fprintf(meas_aux->chiprimefilep, "%d ", param->d_size[i]);
-				fprintf(meas_aux->chiprimefilep, "\n");
-				}
-			}
-		
-		// open topocharge_tcorr data file
-		if (param->d_topcharge_tcorr_meas == 1)
-			{
-			meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "r");
-			if(meas_aux->topchar_tcorr_filep!=NULL) // file exists
-				{
-				fclose(meas_aux->topchar_tcorr_filep);
-				meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "a");
-				}
-			else
-				{
- 				meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "w");
-				fprintf(meas_aux->topchar_tcorr_filep, "# %d ", STDIM);
-				for(i=0; i<STDIM; i++) fprintf(meas_aux->topchar_tcorr_filep, "%d ", param->d_size[i]);
-				fprintf(meas_aux->topchar_tcorr_filep, "\n");
-				}
+ 			fp = fopen(name_aux, "w");
+			fprintf(fp, header);
 			}
 		}
 	else
 		{
-		// open std data file
-		meas_aux->datafilep=fopen(data, "w");
-		print_header_datafile(meas_aux->datafilep, param);
-		
-		// open chi prime data file
-		if (param->d_chi_prime_meas == 1)
-			{
-			meas_aux->chiprimefilep=fopen(chiprime, "w");
-			fprintf(meas_aux->chiprimefilep, "# %d ", STDIM);
-			for(i=0; i<STDIM; i++) fprintf(meas_aux->chiprimefilep, "%d ", param->d_size[i]);
-			fprintf(meas_aux->chiprimefilep, "\n");
-			}
-		
-		// open topocharge_tcorr data file
-		if (param->d_topcharge_tcorr_meas == 1)
-			{
-			meas_aux->topchar_tcorr_filep=fopen(topchar_tcorr, "w");
-			fprintf(meas_aux->topchar_tcorr_filep, "# %d ", STDIM);
-			for(i=0; i<STDIM; i++) fprintf(meas_aux->topchar_tcorr_filep, "%d ", param->d_size[i]);
-			fprintf(meas_aux->topchar_tcorr_filep, "\n");
-			}
+		// open file in write mode
+		fp = fopen(name_aux, "w");
+		fprintf(fp, header);
 		}
 	
-	fflush(meas_aux->datafilep);
-	if (param->d_chi_prime_meas == 1 ) fflush(meas_aux->chiprimefilep);
-	if (param->d_topcharge_tcorr_meas == 1 ) fflush(meas_aux->topchar_tcorr_filep);
+	fflush(fp);
+	if(binary_flag == 1)
+		{
+		fclose(fp);
+		fp=fopen(name_aux, "ab");
+		if(fp==NULL)
+			{
+			fprintf(stderr, "Error opening the file %s in binary mode (%s, %d)\n", name_aux, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		}
+	return fp;
+	}
+
+// open data files
+void open_data_files(Meas_Utils * meas_aux, int const replica_index, GParam const * const param)
+	{
+	int i,j;
+	char header[10*STD_STRING_LENGTH];
+	
+	// data file
+	header_datafile(header, param);
+	meas_aux->datafilep = open_file_with_header_replica(param->d_data_file, header, replica_index, param, 0);
+	
+	// header for other files
+	j = sprintf(header, "# %d ", STDIM);
+	for(i=0; i<STDIM; i++) j += sprintf(header+j, "%d ", param->d_size[i]);
+	sprintf(header+j, "\n");
+	
+	// chiprime file
+	if (param->d_chi_prime_meas == 1)
+		meas_aux->chiprimefilep = open_file_with_header_replica(param->d_chiprime_file, header, replica_index, param, 0);		
+	
+	// topcharge_tcorr file
+	if (param->d_topcharge_tcorr_meas == 1)
+		meas_aux->topchar_tcorr_filep = open_file_with_header_replica(param->d_topcharge_tcorr_file, header, replica_index, param, 0);		
+	
+	// energy_density file
+	if (param->d_energy_density_meas == 1)
+		meas_aux->energydensityfilep = open_file_with_header_replica(param->d_energydensity_file, header, replica_index, param, 1);
+	}
+
+// close data files
+void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const * const param)
+	{
+	#ifndef REPLICA_MEAS_MODE
+	if (replica_index != 0) return;
+	#else
+	(void) replica_index; 
+	#endif
+	
+	// data file
+	fclose(meas_aux.datafilep);
+	
+	// chiprime file
+	if (param->d_chi_prime_meas == 1)
+		fclose(meas_aux.chiprimefilep);
+	
+	// topcharge_tcorr file
+	if (param->d_topcharge_tcorr_meas == 1)
+		fclose(meas_aux.topchar_tcorr_filep);
+	
+	// clover_energy_density file
+	if (param->d_energy_density_meas == 1)
+		fclose(meas_aux.energydensityfilep);
 	}
 
 
 void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const replica_index)
 	{
 	int num_meas;
-	char data_filename[STD_STRING_LENGTH], chiprime_filename[STD_STRING_LENGTH], topchar_tcorr_filename[STD_STRING_LENGTH];
 	
 	// max number of measures neeeded using any smoothing method
 	num_meas = param->d_agf_num_meas;
@@ -2500,7 +2604,7 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 			allocate_array_double(&(meas_aux->meanplaq), num_meas, __FILE__, __LINE__);
 		
 		if (param->d_clover_energy_meas == 1)
-			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);	
+			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);
 		
 		if (param->d_charge_meas == 1)
 			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
@@ -2543,27 +2647,12 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 			}
 		}
 	
+	// allocate arrays for density profiles
+	if (param->d_energy_density_meas == 1)
+		allocate_array_double(&(meas_aux->energy_density), param->d_volume, __FILE__, __LINE__);
+	
 	// open data files
-	strcpy(data_filename, param->d_data_file);
-	strcpy(chiprime_filename, param->d_chiprime_file);
-	strcpy(topchar_tcorr_filename, param->d_topcharge_tcorr_file);
-		
-	#ifdef REPLICA_MEAS_MODE
-	if (param->d_N_replica_pt > 1)
-		{
-		char aux[STD_STRING_LENGTH];
-		sprintf(aux, "_replica_%d", replica_index);
-		strcat(data_filename, aux);
-		strcat(chiprime_filename, aux);
-		strcat(topchar_tcorr_filename, aux);		
-		}
-	open_data_file(meas_aux, data_filename, chiprime_filename, topchar_tcorr_filename, param);
-	#else
-	if (replica_index == 0)
-		{
-		open_data_file(meas_aux, data_filename, chiprime_filename, topchar_tcorr_filename, param);
-		}
-	#endif
+	open_data_files(meas_aux, replica_index, param);
 	}
 
 void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const * const param)
@@ -2637,22 +2726,14 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 				}
 			free(meas_aux.lattice_aux[i]);
 			}
-		
-		// close data files
-		#ifdef REPLICA_MEAS_MODE
-		(void) replica_index;
-		fclose(meas_aux.datafilep);
-		if (param->d_chi_prime_meas==1) fclose(meas_aux.chiprimefilep);
-		if (param->d_topcharge_tcorr_meas==1) fclose(meas_aux.topchar_tcorr_filep);
-		#else
-		if (replica_index == 0)
-			{
-			fclose(meas_aux.datafilep);
-			if (param->d_chi_prime_meas==1) fclose(meas_aux.chiprimefilep);
-			if (param->d_topcharge_tcorr_meas==1) fclose(meas_aux.topchar_tcorr_filep);
-			}
-		#endif
 		}
+	
+	// free density arrays
+	if (param->d_energy_density_meas == 1)
+		free(meas_aux.energy_density);
+		
+	// close data files
+	close_data_files(meas_aux, replica_index, param);
 	}
 
 void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const * const param)

@@ -335,7 +335,7 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * 
 	#endif
 	}
 
-void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step, int *stop)
+int init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *file;
@@ -354,7 +354,7 @@ void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 		fclose(file);
 		init_gauge_conf_from_file_with_name(GC, param, name);
 		}
-	else *stop = 1;
+	else return 0;
 	
 	//twist filename at step
 	strcpy(name, param->d_twist_file);
@@ -367,10 +367,11 @@ void init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 		fclose(file);
 		init_twist_cond_from_file_with_name(GC, param, name);
 		}
-	else *stop = 1;
+	else return 0;
+	return 1;
 	}
 
-void read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step, int *stop)
+int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *file;
@@ -389,7 +390,7 @@ void read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 		fclose(file);
 		read_gauge_conf_from_file_with_name(GC, param, name);
 		}
-	else *stop = 1;
+	else return 0;
 	
 	//twist filename at step
 	strcpy(name, param->d_twist_file);
@@ -435,7 +436,8 @@ void read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step,
 						}
 			}
 		}
-	else *stop = 1;
+	else return 0;
+	return 1;
 	}
 
 // used to allocate all replicas in the parallel tempering

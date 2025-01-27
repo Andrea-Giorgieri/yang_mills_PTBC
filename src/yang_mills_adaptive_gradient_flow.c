@@ -26,12 +26,11 @@ void real_main(char *in_file)
 	Meas_Utils meas_aux;
 	Time_Utils timers;
 
-	int stop;
-	long step=0; // just to avoid gcc warning of maybe-uninitialized
+	int stop=0;
+	long step=0, max_step=100000;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
-	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
 
@@ -48,6 +47,7 @@ void real_main(char *in_file)
 	
 	// not to overwrite files of runs with online gradient flow 
 	strcat(param.d_data_file, "_agf");
+	strcat(param.d_energydensity_file, "_agf");
 	strcat(param.d_chiprime_file, "_agf");
 	strcat(param.d_topcharge_tcorr_file, "_agf");
 	strcat(param.d_log_file, "_agf");
@@ -62,23 +62,30 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 	
-	if (param.d_saveconf_analysis_every == 0) stop = 1;
-	else
+	// find and init first conf
+	step = 0;
+	while(init_gauge_conf_step(&GC, &param, step) == 0 && step < max_step) step++;
+	if (step == max_step)
 		{
-		stop = 0;
-		step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
-		init_gauge_conf_step(&GC, &param, step, &stop);
+		fprintf(stderr, "No configuration found up to update index %ld, increase max_step if necessary (%s, %d)\n", step, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
 		}
-	
+	max_step += step;
 	stop_timer(&(timers.init_timer));
 
+	// perform measures and load next conf
 	while(stop == 0)
 		{
 		start_timer(&(timers.step_timer));
 		
+		start_timer(&(timers.meas_timer));
 		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
-		step += param.d_saveconf_analysis_every;
-		read_gauge_conf_step(&GC, &param, step, &stop);
+		stop_timer(&(timers.meas_timer));
+		
+		step++;
+		while(read_gauge_conf_step(&GC, &param, step) == 0 && step < max_step) step++;
+		if (step == max_step) break;
+		max_step += step;
 		
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;

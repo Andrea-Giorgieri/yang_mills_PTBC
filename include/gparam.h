@@ -54,6 +54,7 @@ typedef struct GParam {
 	// for observables to measure
 	int d_plaquette_meas;
 	int d_clover_energy_meas;
+	int d_energy_density_meas;
 	int d_charge_meas;
 	int d_polyakov_meas;
 	int d_chi_prime_meas;
@@ -88,15 +89,17 @@ typedef struct GParam {
 	int d_plaq_dir[2];
 
 	// output file names
-	char d_conf_file[STD_STRING_LENGTH];
-	char d_twist_file[STD_STRING_LENGTH];
-	char d_data_file[STD_STRING_LENGTH];
-	char d_chiprime_file[STD_STRING_LENGTH]; 		// print chi prime measures
-	char d_topcharge_tcorr_file[STD_STRING_LENGTH]; // print topological charge time correlator measures
-	char d_log_file[STD_STRING_LENGTH];
-	char d_ml_file[STD_STRING_LENGTH];
-	char d_swap_acc_file[STD_STRING_LENGTH]; 		// print swap Metropolis acceptance
-	char d_swap_tracking_file[STD_STRING_LENGTH];
+	char d_conf_file[STD_STRING_LENGTH];             // save gauge configuration
+	char d_twist_file[STD_STRING_LENGTH];            // save twist configuration
+	char d_data_file[STD_STRING_LENGTH];             // print measures of simple observables
+	char d_chiprime_file[STD_STRING_LENGTH]; 		 // print chi prime measures
+	char d_topcharge_tcorr_file[STD_STRING_LENGTH];  // print topological charge time correlator measures
+	char d_energydensity_file[STD_STRING_LENGTH];    // print energy density measures
+	char d_log_file[STD_STRING_LENGTH];              // print program details
+	char d_ml_file[STD_STRING_LENGTH];               //
+	char d_swap_acc_file[STD_STRING_LENGTH]; 		 // print swap Metropolis acceptance
+	char d_swap_tracking_file[STD_STRING_LENGTH];    // print swap tracks
+	char d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
 
 	// random seed
 	unsigned int d_randseed;
@@ -112,7 +115,6 @@ typedef struct GParam {
 	
 	// for multicanonic
 	char     d_topo_potential_file[STD_STRING_LENGTH];
-	char     d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
 	double   d_grid_step;
 	double   d_grid_max;
 	double **d_grid;            // d_grid [a][x] = V_a(x) is the topo potential for replica a
@@ -128,13 +130,30 @@ typedef struct GParam {
 	double   d_topo_tuning_stp;        // initial variation of topo potential during tuning
 	} GParam;
 
+// functions to impose conditions on params
+int param_any_ui(unsigned int val, char * msg);
+int param_any_int(int val, char * msg);
+int param_bool_int(int val, char * msg);
+int param_positive_int(int val, char * msg);
+int param_nonnegative_int(int val, char * msg);
+int param_any_double(double val, char * msg);
+int param_positive_double(double val, char * msg);
+int param_nonnegative_double(double val, char * msg);
+int param_any_string(char * val, char * msg);
 
-void readinput(char *in_file, GParam *param);
+// functions to set values of params
+void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*condition)(unsigned int, char *));
+void set_int_param(FILE* fp, int * ptr, char const * const name, int (*condition)(int, char *));
+void set_double_param(FILE* fp, double * ptr, char const * const name, int (*condition)(double, char *));
+void set_string_param(FILE* fp, char * ptr, char const * const name, int (*condition)(char *, char *));
+void set_defaults(GParam * const param);
+
+// read and write parameters
+void readinput(char const * const in_file, GParam * const param);
 void remove_white_line_and_comments(FILE *input);
 void read_topo_potential(GParam *param);
 void write_topo_potential(GParam const * const param, char *filename);
 void init_derived_constants(GParam *param);
-void print_header_datafile(FILE *dataf, GParam const * const param);
 void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tcorr_f, GParam const * const param);
 void free_hierarc_params(GParam *param);
 

@@ -31,6 +31,20 @@ void SwapBytesInt(void *pv)
        }
     }
 
+void SwapBytesLong(void *pv)
+    {
+    char *p = pv;
+    size_t lo, hi;
+    char tmp;
+
+    for(lo=0, hi=sizeof(long)-1; hi>lo; lo++, hi--)
+       {
+       tmp=p[lo];
+       p[lo] = p[hi];
+       p[hi] = tmp;
+       }
+    }
+
 void SwapBytesFloat(void *pv)
     {
     char *p = pv;
@@ -58,6 +72,5 @@ void SwapBytesDouble(void *pv)
        p[hi] = tmp;
        }
     }
-
 
 #endif

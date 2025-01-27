@@ -15,6 +15,9 @@
 #define m(X,Y) ((X)*NCOLOR + (Y))
 #define madj(X,Y) ((X)*(NCOLOR*NCOLOR -1) + (Y))
 
+// function to perform checks on parameters
+#define CHECK_PARAM(X,op,Y,msg) {if (!((X) op (Y))) printf("Error: %s\n", msg);}
+
 #define MIN_VALUE 1.0e-13
 
 #define INT_ALIGN 16

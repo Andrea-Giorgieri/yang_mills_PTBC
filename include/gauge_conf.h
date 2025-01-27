@@ -75,6 +75,7 @@ typedef struct Meas_Utils {
 	// for measurement of localobs
 	double  *meanplaq;
 	double  *clover_energy;
+	double  *energy_density;
 	double  *charge;
 	double **polyre;
 	double **polyim;
@@ -88,6 +89,7 @@ typedef struct Meas_Utils {
 	
 	// pointers to data files
 	FILE *datafilep;
+	FILE *energydensityfilep;
 	FILE *chiprimefilep;
 	FILE *topchar_tcorr_filep;
 	}	Meas_Utils;
@@ -136,15 +138,13 @@ void init_gauge_conf(						Gauge_Conf *GC,
 											Geometry const * const geo,
 											GParam const * const param);
 											
-void init_gauge_conf_step(					Gauge_Conf *GC,
+int init_gauge_conf_step(					Gauge_Conf *GC,
 											GParam const * const param,
-											long step,
-											int *stop);
+											long step);
 
-void read_gauge_conf_step(					Gauge_Conf *GC,
+int read_gauge_conf_step(					Gauge_Conf *GC,
 											GParam const * const param,
-											long step,
-											int *stop);
+											long step);
 											
 void init_gauge_conf_replica(				Gauge_Conf **GC,
 											Geometry const * const geo,
@@ -295,23 +295,23 @@ void plaquette(			Gauge_Conf const * const GC,
 						GParam const * const param,
 						double *plaqs,
 						double *plaqt);
-				
+
+void energy_density(	Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						Meas_Utils * const meas_aux,
+						int const meas_count);
+
 void clover_disc_energy(Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
-						double *energy);
+						double * const energy);
 
 void action(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
 						double *action1, double *action2, double *action3, double *pot);
-/*		
-void polyakov(			Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						double *repoly,
-						double *impoly);
-*/
+
 void polyakov(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
@@ -523,12 +523,22 @@ void perform_measures_tube_conn_long(	Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
 									 
+void header_datafile(					char * const,
+										GParam const * const param);
 
-void open_data_file(			Meas_Utils *meas_aux,
-								char const * const data,
-								char const * const chiprime,
-								char const * const topchar_tcorr,
-								GParam const * const param);
+FILE* open_file_with_header_replica(	char const * const name,
+										char const * const header,
+										int const replica_index,
+										GParam const * const param,
+										int const binary_flag);
+
+void open_data_files(	Meas_Utils *meas_aux,
+						int const replica_index,
+						GParam const * const param);
+
+void close_data_files(	Meas_Utils meas_aux,
+						int const replica_index,
+						GParam const * const param);
 
 void init_meas_utils(			Meas_Utils *meas_aux,
 								GParam const * const param,

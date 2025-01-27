@@ -63,11 +63,7 @@ void real_main(char *in_file)
 	init_meas_utils(&meas_aux, &param, 0);
 	
 	if (param.d_saveconf_analysis_every == 0) stop = 1;
-	else
-		{
-		stop = 0;
-		step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
-		}
+	else step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
 	
 	stop_timer(&(timers.init_timer));
 	
@@ -75,7 +71,7 @@ void real_main(char *in_file)
 		{
 		start_timer(&(timers.step_timer));
 		
-		init_gauge_conf_step(&GC, &param, step, &stop);
+		stop = init_gauge_conf_step(&GC, &param, step);
 		if (stop == 0)
 			{
 			perform_measures_localobs_with_gradflow(&GC, &geo, &param, &meas_aux);

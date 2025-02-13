@@ -18,16 +18,13 @@
 #include"../include/random.h"
 #include"../include/timing.h"
 
-void real_main(char *in_file)
+void real_main(char *in_file, long step, long stop_index)
 	{
 	Gauge_Conf GC;
 	Geometry geo;
 	GParam param;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
-
-	int stop=0;
-	long step=0, max_step=100000;
 	
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -63,18 +60,16 @@ void real_main(char *in_file)
 	init_meas_utils(&meas_aux, &param, 0);
 	
 	// find and init first conf
-	step = 0;
-	while(init_gauge_conf_step(&GC, &param, step) == 0 && step < max_step) step++;
-	if (step == max_step)
+	while(init_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
+	if (step > stop_index)
 		{
-		fprintf(stderr, "No configuration found up to update index %ld, increase max_step if necessary (%s, %d)\n", step, __FILE__, __LINE__);
+		fprintf(stderr, "No configuration found up to update index %ld (%s, %d)\n", stop_index, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	max_step += step;
 	stop_timer(&(timers.init_timer));
 
 	// perform measures and load next conf
-	while(stop == 0)
+	while(step <= stop_index)
 		{
 		start_timer(&(timers.step_timer));
 		
@@ -82,10 +77,7 @@ void real_main(char *in_file)
 		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.meas_timer));
 		
-		step++;
-		while(read_gauge_conf_step(&GC, &param, step) == 0 && step < max_step) step++;
-		if (step == max_step) break;
-		max_step += step;
+		while(read_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
 		
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
@@ -136,13 +128,13 @@ int main(int argc, char **argv)
 	{
 	char in_file[500];
 
-	if(argc != 2)
+	if(argc != 4)
 		{
 		int parallel_tempering = 0;
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 		
-		printf("Usage: %s input_file\n\n", argv[0]);
+		printf("Usage: %s input_file start_index stop_index\n\n", argv[0]);
 		
 		print_compilation_details();
 		print_template_input();
@@ -160,8 +152,13 @@ int main(int argc, char **argv)
 			strcpy(in_file, argv[1]);
 			}
 		}
-
-	real_main(in_file);
+	
+	long start_index = strtol(argv[2], NULL, 10);
+	long stop_index = strtol(argv[3], NULL, 10);
+	if(start_index < 0) fprintf(stderr, "argument 'start_index' must be a non-negative integer\n");
+	if(stop_index < 0) fprintf(stderr, "argument 'stop_index' must be a non-negative integer\n");
+	if(stop_index < start_index) fprintf(stderr, "argument 'stop_index' must not be smaller than argument 'start_index' \n");
+	real_main(in_file, start_index, stop_index);
 
 	return EXIT_SUCCESS;
 	}

@@ -57,9 +57,13 @@ typedef struct GParam {
 	int d_energy_density_meas;
 	int d_charge_meas;
 	int d_polyakov_meas;
+	int d_polyakov_density_meas;
 	int d_chi_prime_meas;
 	int d_charge_prime_meas;
 	int d_topcharge_tcorr_meas;
+	
+	int  d_multipolyakov_order;
+	int *d_multipolyakov_dirs;
 
 	// for cooling in measures
 	int d_coolsteps;
@@ -95,6 +99,7 @@ typedef struct GParam {
 	char d_chiprime_file[STD_STRING_LENGTH]; 		 // print chi prime measures
 	char d_topcharge_tcorr_file[STD_STRING_LENGTH];  // print topological charge time correlator measures
 	char d_energydensity_file[STD_STRING_LENGTH];    // print energy density measures
+	char d_polyakovdensity_file[STD_STRING_LENGTH];  // print polyakov density measures
 	char d_log_file[STD_STRING_LENGTH];              // print program details
 	char d_ml_file[STD_STRING_LENGTH];               //
 	char d_swap_acc_file[STD_STRING_LENGTH]; 		 // print swap Metropolis acceptance
@@ -140,6 +145,9 @@ int param_any_double(double val, char * msg);
 int param_positive_double(double val, char * msg);
 int param_nonnegative_double(double val, char * msg);
 int param_any_string(char * val, char * msg);
+
+// functions to check that a required param was found
+void check_required_string(char * val, char * name, int required);
 
 // functions to set values of params
 void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*condition)(unsigned int, char *));

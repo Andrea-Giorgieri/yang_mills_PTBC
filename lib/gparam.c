@@ -78,6 +78,15 @@ int param_any_string(char * val, char * msg)
 	return 0;
 	}
 
+void check_required_string(char * val, char * name, int required)
+	{
+	if (strcmp(val, "") == 0 && required == 1)
+		{
+		fprintf(stderr, "Error: parameter '%s' is required (%s, %d)\n", name, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	}
+
 
 // functions to set values of params
 void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*condition)(unsigned int, char *))
@@ -224,13 +233,31 @@ void set_defaults(GParam * const param)
 	param->d_walltime = 24.0;
 		
 	// measures
-	param->d_plaquette_meas       = 1;
-	param->d_clover_energy_meas   = 0;
-	param->d_charge_meas          = 0;
-	param->d_chi_prime_meas       = 0;
-	param->d_charge_prime_meas    = 0;
-	param->d_polyakov_meas        = 0;
-	param->d_topcharge_tcorr_meas = 0;
+	param->d_plaquette_meas        = 1;
+	param->d_clover_energy_meas    = 0;
+	param->d_energy_density_meas   = 0;
+	param->d_charge_meas           = 0;
+	param->d_chi_prime_meas        = 0;
+	param->d_charge_prime_meas     = 0;
+	param->d_polyakov_meas         = 0;
+	param->d_polyakov_density_meas = 0;
+	param->d_topcharge_tcorr_meas  = 0;
+	param->d_multipolyakov_order   = 0;
+	
+	// filenames
+	strcpy(param->d_ml_file,               "");
+	strcpy(param->d_conf_file,             "");
+	strcpy(param->d_twist_file,            "");
+	strcpy(param->d_data_file,             "");
+	strcpy(param->d_energydensity_file,    "");
+	strcpy(param->d_polyakovdensity_file,  "");
+	strcpy(param->d_chiprime_file,         "");
+	strcpy(param->d_topcharge_tcorr_file,  "");
+	strcpy(param->d_log_file,              "");
+	strcpy(param->d_swap_acc_file,         "");
+	strcpy(param->d_swap_tracking_file,    "");
+	strcpy(param->d_multicanonic_acc_file, "");
+	strcpy(param->d_topo_potential_file,   "");
 	}
 
 // read params from input file
@@ -451,6 +478,13 @@ void readinput(char const * const in_file, GParam * const param)
 			continue;
 			}
 
+		strcpy(param_name, "polyakov_density_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_polyakov_density_meas), param_name, &param_bool_int);
+			continue;
+			}
+
 		strcpy(param_name, "chi_prime_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -469,6 +503,19 @@ void readinput(char const * const in_file, GParam * const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_topcharge_tcorr_meas), param_name, &param_bool_int);
+			continue;
+			}
+		
+		strcpy(param_name, "multipolyakov_order");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_multipolyakov_order), param_name, &param_nonnegative_int);
+			if(param->d_multipolyakov_order > 0)
+				{
+				allocate_array_int(&(param->d_multipolyakov_dirs), param->d_multipolyakov_order, __FILE__, __LINE__);
+				for (i=0; i< param->d_multipolyakov_order; i++)
+					set_int_param(input, &(param->d_multipolyakov_dirs[i]), param_name, &param_nonnegative_int);
+				}
 			continue;
 			}
 
@@ -627,6 +674,13 @@ void readinput(char const * const in_file, GParam * const param)
 			continue;
 			}
 
+		strcpy(param_name, "polyakov_density_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_polyakovdensity_file, param_name, &param_any_string);
+			continue;
+			}
+
 		strcpy(param_name, "chiprime_data_file");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -774,6 +828,7 @@ void readinput(char const * const in_file, GParam * const param)
 	// multilevel
 	if(param->d_ml_step[0]!=0)
 		{
+		check_required_string(param->d_ml_file, "ml_file", 1);
 		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
 			{
 			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
@@ -866,7 +921,7 @@ void readinput(char const * const in_file, GParam * const param)
 		err += param->d_topcharge_tcorr_meas;
 		if (err != 0)
 			{
-			fprintf(stderr, "Error: can't measure topological observables with space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
+			fprintf(stderr, "Error: can't measure topological observables with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		#ifdef MULTICANONICAL_MODE
@@ -874,1053 +929,34 @@ void readinput(char const * const in_file, GParam * const param)
 		exit(EXIT_FAILURE);
 		#endif
 		}
+	for(i=0; i<param->d_multipolyakov_order; i++)
+		if (param->d_multipolyakov_dirs[i] >= STDIM)
+			{
+			fprintf(stderr, "Error: multipolyakov_dirs must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);	
+			}
+	
+	// check on filenames
+	check_required_string(param->d_conf_file,             "conf_file",  1);
+	check_required_string(param->d_twist_file,            "twist_file", 1);
+	check_required_string(param->d_log_file,              "log_file",   1);
+	check_required_string(param->d_data_file,             "data_file",  1);
+	check_required_string(param->d_energydensity_file,    "energy_density_file",   param->d_energy_density_meas);
+	check_required_string(param->d_polyakovdensity_file,  "polyakov_density_file", param->d_polyakov_density_meas);
+	check_required_string(param->d_chiprime_file,         "chiprime_data_file",    param->d_chi_prime_meas);
+	check_required_string(param->d_topcharge_tcorr_file,  "topcharge_tcorr_file",  param->d_topcharge_tcorr_meas);
+	check_required_string(param->d_swap_acc_file,         "swap_acc_file",         param->d_N_replica_pt > 1);
+	check_required_string(param->d_swap_tracking_file,    "swap_track_file",       param->d_N_replica_pt > 1);
 
 	init_derived_constants(param);
+	
 	#ifdef MULTICANONICAL_MODE
+	check_required_string(param->d_multicanonic_acc_file, "multicanonic_acc_file", 1);
+	check_required_string(param->d_topo_potential_file,   "topo_potential_file",   1);
 	read_topo_potential(param);
 	#endif
 	}
 
-/*
-void readinput(char *in_file, GParam *param)
-	{
-	FILE *input;
-	char str[STD_STRING_LENGTH], temp_str[STD_STRING_LENGTH];
-	double temp_d;
-	int temp_i, i;
-	int err, end=1;
-	unsigned int temp_ui;
-
-	// this is to avoid unnecessary checks in case the multilevel is not used
-	for(i=0; i<NLEVELS; i++)
-		{
-		param->d_ml_step[i]=0;
-		}
-
-	// just to avoid possible mistakes with uninitialized stuff
-	for(i=0; i<NCOLOR; i++)
-		{
-		param->d_h[i]=0.0;
-		}
-	param->d_theta=0.0;
-
-	// to avoid possible mistakes with uninitialized stuff
-	for (i=0; i<STDIM-1; i++)
-		{
-		param->d_L_defect[i]=0;
-		}
-	param->d_defect_dir=0;
-	param->d_N_replica_pt=1;
-	
-	// to avoid possible mistakes with uninitialized stuff 
-	param->d_ngfsteps     = 0;
-	param->d_gf_meas_each = 1;
-	param->d_gfstep       = 1;
-	
-	param->d_agf_length    = 0;
-	param->d_agf_meas_each = 1;
-	param->d_agf_step      = 0.1;
-	param->d_agf_delta     = 0.00001;
-	param->d_agf_time_bin  = 0;
-	
-	param->d_coolsteps  = 0;
-	param->d_coolrepeat = 0;
-	
-	param->d_topo_cooling    = 0;
-	param->d_topo_coolsteps  = 0;
-	param->d_topo_alpha      = 0;
-	param->d_topo_tuning_thr = 0.1;
-	param->d_topo_tuning_stp = 0.1;
-	param->d_topo_tuning_save_every = 0;
-	param->d_topo_tuning_even = 1;
-	
-	param->d_walltime = 24.0*3600;
-	
-	// to avoid possible mistakes with uninitialized twist factors
-	for (i=0; i<STDIM*(STDIM-1)/2; i++)
-		{
-		param->d_k_twist[i] = 0;
-		}
-		
-	// default = compute only plaquette
-	param->d_plaquette_meas       = 1;
-	param->d_clover_energy_meas   = 0;
-	param->d_charge_meas          = 0;
-	param->d_chi_prime_meas       = 0;
-	param->d_charge_prime_meas    = 0;
-	param->d_polyakov_meas        = 0;
-	param->d_topcharge_tcorr_meas = 0;
-
-	input=fopen(in_file, "r"); // open the input file
-	if(input==NULL)
-		{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		while(end==1) // slide the file
-			{
-			remove_white_line_and_comments(input);
-			
-			err=fscanf(input, "%s", str);
-			if(err!=1)
-				{
-				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-				printf("err=%d\n", err);
-				exit(EXIT_FAILURE);
-				}
-
-			if(strncmp(str, "size", 5)==0)
-				{
-				for(i=0; i<STDIM; i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_size[i]=temp_i;
-					}
-				}
-
-			else if(strncmp(str, "beta", 4)==0)
-					{ 
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_beta=temp_d;
-					}
-			
-			else if(strncmp(str, "htracedef", 9)==0)
-					{
-					for(i=0; i<(int)floor(NCOLOR/2.0); i++)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_h[i]=temp_d;
-					}
-					}
-			
-			else if(strncmp(str, "theta", 5)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_theta=temp_d;
-					}
-			
-			else if(strncmp(str, "sample", 6)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_sample=temp_i;
-					}
-			
-			else if(strncmp(str, "thermal", 7)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_thermal=temp_i;
-					}
-			
-			else if(strncmp(str, "overrelax", 9)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_overrelax=temp_i;
-					}
-					
-			else if(strncmp(str, "measevery", 9)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_measevery=temp_i;
-					}
-
-			else if(strncmp(str, "start", 5)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_start=temp_i;
-					}
-					
-			else if(strncmp(str, "saveconf_back_every", 19)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_saveconf_back_every=temp_i;
-					}
-			
-			else if(strncmp(str, "saveconf_analysis_every", 23)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_saveconf_analysis_every=temp_i;
-					}
-
-			else if(strncmp(str, "epsilon_metro", 13)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_epsilon_metro=temp_d;
-					}
-
-			else if(strncmp(str, "coolsteps", 9)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_coolsteps=temp_i;
-					}
-					
-			else if(strncmp(str, "coolrepeat", 10)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_coolrepeat=temp_i;
-					}
-			
-			else if(strncmp(str, "plaquette_meas", 14)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_plaquette_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: plaquette_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "clover_energy_meas", 18)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_clover_energy_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: clover_energy_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "charge_meas", 11)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_charge_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: charge_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "polyakov_meas", 13)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_polyakov_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: polyakov_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "chi_prime_meas", 14)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_chi_prime_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: chi_prime_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "charge_prime_meas", 17)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_charge_prime_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: charge_prime_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "topcharge_tcorr_meas", 20)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if ( (temp_i == 1) || (temp_i == 0 ) ) param->d_topcharge_tcorr_meas=temp_i;
-					else
-					{
-					fprintf(stderr, "Error: topcharge_tcorr_meas must be either 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-
-			else if(strncmp(str, "gfstep", 6)==0) // integration step
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d > 0) param->d_gfstep=temp_d;
-					else 
-					{
-					fprintf(stderr, "Error: gfstep must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-
-			else if(strncmp(str, "num_gfsteps", 11)==0) // number of integration steps
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_i > -1) param->d_ngfsteps=temp_i;
-					else fprintf(stderr, "Error: num_gfsteps must be non negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "gf_meas_each", 12)==0) // number of integration steps
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_i > 0) param->d_gf_meas_each=temp_i;
-					else fprintf(stderr, "Error: gf_meas_each must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-			
-			else if(strncmp(str, "agf_length", 10)==0) // length of adaptive gradflow evolution
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d >= 0) param->d_agf_length=temp_d;
-					else fprintf(stderr, "Error: agf_length must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "agf_meas_each", 13)==0) // time interval of adaptive gradflow measures
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d >= 0) param->d_agf_meas_each=temp_d;
-					else 
-					{
-					fprintf(stderr, "Error: agf_meas_each must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-					
-			else if(strncmp(str, "agf_step", 8)==0) // initial size of integration with adaptive step
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d > 0) param->d_agf_step=temp_d;
-					else fprintf(stderr, "Error: agf_step must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "agf_delta", 9)==0) // error threshold for adaptive gradflow integration 
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d > 0) param->d_agf_delta=temp_d;
-					else fprintf(stderr, "Error: adf_delta must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "agf_time_bin", 12)==0) // error threshold for adaptive gradflow time of measure 
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d >= 0) param->d_agf_time_bin=temp_d;
-					else fprintf(stderr, "Error: adf_time_bin must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-
-			else if(strncmp(str, "multihit", 8)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_multihit=temp_i;
-					}
-					
-			else if(strncmp(str, "ml_step", 7)==0)
-					{
-					for(i=0; i<NLEVELS; i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_ml_step[i]=temp_i;
-					}
-					}
-					
-			else if(strncmp(str, "ml_upd", 6)==0)
-					{
-					for(i=0; i<NLEVELS; i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_ml_upd[i]=temp_i;
-					}
-					}
-					
-			else if(strncmp(str, "ml_level0_repeat", 16)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_ml_level0_repeat=temp_i;
-					}
-					
-			else if(strncmp(str, "dist_poly", 9)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_dist_poly=temp_i;
-					}
-					
-			else if(strncmp(str, "transv_dist", 11)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_trasv_dist=temp_i;
-					}
-					
-			else if(strncmp(str, "plaq_dir", 8)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_plaq_dir[0]=temp_i;
-
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_plaq_dir[1]=temp_i;
-					}
-
-			else if(strncmp(str, "conf_file", 9)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_conf_file, temp_str);
-					}
-					
-			else if(strncmp(str, "twist_file", 10)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_twist_file, temp_str);
-					}
-					
-			else if(strncmp(str, "data_file", 9)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_data_file, temp_str);
-					}
-					
-			else if(strncmp(str, "chiprime_data_file", 18)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_chiprime_file, temp_str);
-					}
-			
-			else if(strncmp(str, "topcharge_tcorr_file", 20)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_topcharge_tcorr_file, temp_str);
-					}
-					
-			else if(strncmp(str, "log_file", 8)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_log_file, temp_str);
-					}
-					
-			else if(strncmp(str, "ml_file", 7)==0)
-					{
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_ml_file, temp_str);
-					}
-
-			else if(strncmp(str, "randseed", 8)==0)
-					{ 
-					err=fscanf(input, "%u", &temp_ui);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_randseed=temp_ui;
-					}
-			
-			else if(strncmp(str, "walltime", 8)==0)
-					{ 
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d > 0) param->d_walltime=temp_d * 3600;
-					else fprintf(stderr, "Error: walltime must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-
-			else if(strncmp(str, "defect_dir", 10)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if( (temp_i==0) || (temp_i==1) || (temp_i==2) || (temp_i==3) )
-					{
-					param->d_defect_dir=temp_i;
-					}
-					else
-					{
-					fprintf(stderr, "Error in reading the file %s, defect_dir must be either 0,1,2 or 3 (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					}
-
-			else if(strncmp(str, "defect_size", 11)==0)
-					{
-					for (i=0; i<STDIM-1; i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_L_defect[i]=temp_i;
-					}
-					}
-					
-			else if(strncmp(str, "N_replica_pt", 12)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_N_replica_pt=temp_i;
-					allocate_array_double(&(param->d_pt_bound_cond_coeff), param->d_N_replica_pt, __FILE__, __LINE__);
-					for(i=0;i<param->d_N_replica_pt;i++)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_pt_bound_cond_coeff[i]=temp_d;
-					}
-					}
-
-			else if(strncmp(str, "k_twist", 7)==0)
-					{
-					for(i=0;i<STDIM*(STDIM-1)/2;i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_k_twist[i]=temp_i;
-					}
-					}
-					
-			else if(strncmp(str, "swap_acc_file", 13)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_swap_acc_file, temp_str);
-					}	
-					
-			else if(strncmp(str, "swap_track_file", 15)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_swap_tracking_file, temp_str);
-					}
-					
-			else if(strncmp(str, "hierarc_upd", 11)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_N_hierarc_levels=temp_i;
-					if(param->d_N_hierarc_levels > 0)
-					{
-					allocate_array_int(&(param->d_L_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
-					for(i=0;i<param->d_N_hierarc_levels;i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_L_rect[i]=temp_i;
-					}
-					allocate_array_int(&(param->d_N_sweep_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
-					for(i=0;i<param->d_N_hierarc_levels;i++)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_N_sweep_rect[i]=temp_i;
-					}
-					} // closes if( num_hierarc_levels > 0 )
-					}
-				
-			else if(strncmp(str, "multicanonic_acc_file", 21)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_multicanonic_acc_file, temp_str);
-					}
-					
-			else if(strncmp(str, "topo_potential_file", 19)==0)
-					{ 
-					err=fscanf(input, "%s", temp_str);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					strcpy(param->d_topo_potential_file, temp_str);
-					}
-				
-			else if(strncmp(str, "grid_step ", 9)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_grid_step=temp_d;
-					}
-			
-			else if(strncmp(str, "grid_max", 8)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_grid_max=temp_d;
-					}
-			
-			else if(strncmp(str, "topo_cooling", 12)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_i == 0 || temp_i == 1) param->d_topo_cooling=temp_i;
-					else fprintf(stderr, "Error: topo_cooling must be 0 (agf) or 1 (cooling) in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "topo_coolsteps", 14)==0)
-					{
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_i >= 0) param->d_topo_coolsteps=temp_i;
-					else fprintf(stderr, "Error: topo_coolsteps must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-					
-			else if(strncmp(str, "topo_alpha", 10)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d >= 0) param->d_topo_alpha=temp_d;
-					else fprintf(stderr, "Error: topo_alpha must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-			
-			else if(strncmp(str, "topo_tuning_thr", 15)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d >= 0) param->d_topo_tuning_thr=temp_d;
-					else fprintf(stderr, "Error: topo_tuning_thr must be non-negative in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-			
-			else if(strncmp(str, "topo_tuning_stp", 15)==0)
-					{
-					err=fscanf(input, "%lf", &temp_d);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_d > 0) param->d_topo_tuning_stp=temp_d;
-					else fprintf(stderr, "Error: topo_tuning_stp must be positive in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-			
-			else if(strncmp(str, "topo_tuning_save_every", 22)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					param->d_topo_tuning_save_every=temp_i;
-					}
-			
-			else if(strncmp(str, "topo_tuning_even", 16)==0)
-					{ 
-					err=fscanf(input, "%d", &temp_i);
-					if(err!=1)
-					{
-					fprintf(stderr, "Error in reading the file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-					}
-					if (temp_i == 0 || temp_i == 1) param->d_topo_tuning_even=temp_i;
-					else fprintf(stderr, "Error: topo_tuning_even must be 0 or 1 in %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-					}
-			
-			else
-				{
-				fprintf(stderr, "Error: unrecognized option %s in the file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-
-			remove_white_line_and_comments(input);
-
-			// check if the read line is the last one
-			temp_i=getc(input);
-			if(temp_i==EOF)
-			{
-			end=0;
-			}
-			else
-			{
-			ungetc(temp_i, input);
-			}
-		}
-
-		fclose(input);
-
-		// VARIOUS CHECKS
-		if(param->d_ml_step[0]!=0)
-		{
-		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
-			{
-			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		for(i=1; i<NLEVELS; i++)
-			{
-			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
-			{
-			fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-			}
-		if(param->d_ml_step[NLEVELS-1]==1)
-			{
-			fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		}
-		
-		// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
-		// This prevents even-odd parallelization of updates.
-		// TODO: implement parallel sweep on the largest sublattice with even sides and sequential sweep of the rest
-		#ifdef OPENMP_MODE
-		for(i=0; i<STDIM; i++)
-			{
-			temp_i = param->d_size[i] % 2;
-			if(temp_i!=0)
-				{
-				fprintf(stderr, "Error: size[%d] is not even.\n", i);
-				fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			}
-		#endif
-
-		err=0;
-		for(i=0; i<STDIM; i++) if(param->d_size[i]==1) err=1;
-		if(err==1) fprintf(stderr, "Error: all sizes has to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
-				
-		// various checks on parallel tempering parameters
-		if(param->d_L_defect[0]>param->d_size[0])
-			{
-			fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(param->d_L_defect[1]>param->d_size[2])
-			{
-			fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(param->d_L_defect[2]>param->d_size[3])
-			{
-			fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(param->d_N_replica_pt<1)
-			{
-			fprintf(stderr, "Error: number of replica of parallel tempering must be greater than 0 (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		
-		// check on gradflow parameters
-		if(param->d_agf_meas_each <= param->d_agf_time_bin)
-			{
-			fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(param->d_agf_meas_each < param->d_agf_step)
-			{
-			fprintf(stderr, "Error: agf_meas_each must be greater than agf_step (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(param->d_agf_meas_each > 0 && param->d_agf_meas_each <= MIN_VALUE)
-			{
-			fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		
-		// check on topological observables
-		if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-			{
-			err  = param->d_charge_meas;
-			err += param->d_charge_prime_meas;
-			err += param->d_chi_prime_meas;
-			err += param->d_topcharge_tcorr_meas;
-			if (err != 0)
-				{
-				fprintf(stderr, "Error: can't measure topological observables with space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			#ifdef MULTICANONICAL_MODE
-			fprintf(stderr, "Error: can't use multicanonical mode with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			#endif
-			}
-
-		init_derived_constants(param);
-		#ifdef MULTICANONICAL_MODE
-		read_topo_potential(param);
-		#endif
-		}
-	}
-*/
 
 // read topo potential from file
 void read_topo_potential(GParam * const param)
@@ -2135,29 +1171,35 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "twist parameters: ");
 	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
 	fprintf(fp,"\n");
-	fprintf(fp, "beta: %.10lf\n", param->d_beta);
+	fprintf(fp, "beta:  %.10lf\n", param->d_beta);
 	#ifdef THETA_MODE
 	fprintf(fp, "theta: %.10lf\n", param->d_theta);
 	#endif
 	fprintf(fp, "\n");
 	
-	fprintf(fp, "sample:	%d\n", param->d_sample);
-	fprintf(fp, "thermal:	%d\n", param->d_thermal);
+	fprintf(fp, "sample:    %d\n", param->d_sample);
+	fprintf(fp, "thermal:   %d\n", param->d_thermal);
 	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
 	fprintf(fp, "measevery: %d\n", param->d_measevery);
 	fprintf(fp, "\n");
 	
-	fprintf(fp, "plaquette_meas: %d\n", param->d_plaquette_meas);
-	fprintf(fp, "clover_energy_meas: %d\n", param->d_clover_energy_meas);
-	fprintf(fp, "charge_meas: %d\n", param->d_charge_meas);
-	fprintf(fp, "polyakov_meas: %d\n", param->d_polyakov_meas);
-	fprintf(fp, "chi_prime_meas: %d\n", param->d_chi_prime_meas);
-	fprintf(fp, "topcharge_tcorr_meas: %d\n", param->d_topcharge_tcorr_meas);
+	fprintf(fp, "plaquette_meas:        %d\n", param->d_plaquette_meas);
+	fprintf(fp, "clover_energy_meas:    %d\n", param->d_clover_energy_meas);
+	fprintf(fp, "energy_density_meas:   %d\n", param->d_energy_density_meas);
+	fprintf(fp, "charge_meas:           %d\n", param->d_charge_meas);
+	fprintf(fp, "polyakov_meas:         %d\n", param->d_polyakov_meas);
+	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
+	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
+	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_topcharge_tcorr_meas);
 	fprintf(fp, "\n");
-
-	fprintf(fp, "start:                     %d\n", param->d_start);
-	fprintf(fp, "saveconf_back_every:       %d\n", param->d_saveconf_back_every);
-	fprintf(fp, "saveconf_analysis_every:   %d\n", param->d_saveconf_analysis_every);
+	
+	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
+	for(i=0; i<param->d_multipolyakov_order; i++) fprintf(fp, "%d ", param->d_multipolyakov_dirs[i]);
+	fprintf(fp, "\n\n");
+	
+	fprintf(fp, "start:                   %d\n", param->d_start);
+	fprintf(fp, "saveconf_back_every:     %d\n", param->d_saveconf_back_every);
+	fprintf(fp, "saveconf_analysis_every: %d\n", param->d_saveconf_analysis_every);
 	fprintf(fp, "\n");
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
@@ -2710,10 +1752,14 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "# Observables to measure\n");
 	fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
 	fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
+	fprintf(fp, "energy_density_meas   0  # 1=YES, 0=NO\n");
 	fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
 	fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
+	fprintf(fp, "polyakov_density_meas 0  # 1=YES, 0=NO\n");
 	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 	fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
+	fprintf(fp,"\n");
+	fprintf(fp, "multipolyakov_order   0  # n  mu_1 mu_2 ... mu_n\n");
 	fprintf(fp,"\n");
 	}
 
@@ -2752,8 +1798,8 @@ void print_template_gradflow_parameters(FILE *fp)
 	{
 	fprintf(fp, "# For gradient flow evolution\n");
 	fprintf(fp, "gfstep      0.01    # integration step for gradient flow\n");
-	fprintf(fp, "num_gfsteps 100     # number of integration steps for gradient flow\n");
-	fprintf(fp, "gf_meas_each 5      # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+	fprintf(fp, "num_gfsteps  100    # number of integration steps for gradient flow\n");
+	fprintf(fp, "gf_meas_each   5    # compute observables every <gfstep_each> integration steps during the gradient flow\n");
 	fprintf(fp, "\n");
 	}
 
@@ -2810,6 +1856,8 @@ void print_template_output_parameters(FILE *fp)
 	fprintf(fp, "conf_file             conf.dat\n");
 	fprintf(fp, "twist_file            twist.dat\n");
 	fprintf(fp, "data_file             dati.dat\n");
+	fprintf(fp, "energy_density_file   energy_density.dat\n");
+	fprintf(fp, "polyakov_density_file polyakov_density.dat\n");
 	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
 	fprintf(fp, "topcharge_tcorr_file  topo_tcorr_cool.dat\n");
 	fprintf(fp, "log_file              log.dat\n");

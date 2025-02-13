@@ -329,8 +329,6 @@ void energy_density(Gauge_Conf const * const GC,
 	fwrite(&(GC->update_index), sizeof(long), 1, fp);
 	fwrite(&meas_count, sizeof(int), 1, fp);
 	fwrite(meas_aux->energy_density, sizeof(double), (size_t)param->d_volume, fp);
-	//for(long r=0; r<param->d_volume; r++)
-	//	fwrite(&(meas_aux->energy_density[lex_to_si(r, param)]), sizeof(double), 1, fp);
 	}
 
 // compute the clover discretization of
@@ -417,24 +415,18 @@ void action(Gauge_Conf const * const GC,
 	}
 
 
-// compute the mean Polyakov loop (the trace of) along direction mu
-void polyakov(Gauge_Conf const * const GC,
+// compute the polyakov loop density and write to binary file
+void polyakov_density(Gauge_Conf const * const GC,
 					Geometry const * const geo,
 					GParam const * const param,
 					int mu,
-					double *repoly,
-					double *impoly)
-	{
-	long rsp;
-	double rep, imp;
-
-	rep=0.0;
-	imp=0.0;
-
+					Meas_Utils * const meas_aux,
+					int const meas_count)
+	{	
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
+	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(rsp=0; rsp<(param->d_volume)/(param->d_size[mu]); rsp++)
+	for(long rsp=0; rsp<param->d_space_vol[mu]; rsp++)
 		{
 		long r;
 		int i;
@@ -449,12 +441,111 @@ void polyakov(Gauge_Conf const * const GC,
 			r=nnp(geo, r, mu);
 			}
 
+		meas_aux->polyre_density[rsp] = retr(&matrix);
+		meas_aux->polyim_density[rsp] = imtr(&matrix);
+		//TODO: try parallel writing with pwrite() if available
+		}
+	
+	FILE *fp = meas_aux->polyakovdensityfilep[mu];
+	fwrite(&(GC->update_index), sizeof(long), 1, fp);
+	fwrite(&meas_count, sizeof(int), 1, fp);
+	fwrite(meas_aux->polyre_density, sizeof(double), (size_t)param->d_space_vol[mu], fp);
+	fwrite(meas_aux->polyim_density, sizeof(double), (size_t)param->d_space_vol[mu], fp);
+	}
+
+
+// compute the mean Polyakov loop (the trace of) winding pwr times along direction mu
+void polyakov(Gauge_Conf const * const GC,
+					Geometry const * const geo,
+					GParam const * const param,
+					int mu,
+					int pwr,
+					double *repoly,
+					double *impoly)
+	{
+	if (pwr < 1) 
+		{
+		fprintf(stderr, "Power of Polyakov loop must be at least 1 (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+
+	long rsp;
+	double rep, imp;
+
+	rep=0.0;
+	imp=0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
+	#endif
+	for(rsp=0; rsp<param->d_space_vol[mu]; rsp++)
+		{
+		long r;
+		int i;
+		GAUGE_GROUP matrix;
+
+		r=sisp_and_mu_to_si(geo, rsp, 0, mu);
+
+		one(&matrix);
+		for(i=0; i<param->d_size[mu]; i++)
+			{
+			times_equal(&matrix, &(GC->lattice[r][mu]));
+			r=nnp(geo, r, mu);
+			}
+		if (pwr > 1)
+			{
+			GAUGE_GROUP matrix2;
+			
+			equal(&matrix2, &matrix);
+			for(int j=1; j<pwr; j++) times_equal(&matrix, &matrix2);
+			}
+
 		rep+=retr(&matrix);
 		imp+=imtr(&matrix);
 		}
 
 	*repoly=rep*(param->d_inv_space_vol[mu]);
 	*impoly=imp*(param->d_inv_space_vol[mu]);
+	}
+
+// compute the mean Polyakov loop (the trace of) winding along multiple directions
+void multipolyakov(Gauge_Conf const * const GC,
+					Geometry const * const geo,
+					GParam const * const param,
+					double *repoly,
+					double *impoly)
+	{
+	long r;
+	double rep, imp;
+
+	rep=0.0;
+	imp=0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : rep) reduction(+ : imp)
+	#endif
+	for(r=0; r<param->d_volume; r++)
+		{
+		int i, j, mu;
+		GAUGE_GROUP matrix;
+
+		one(&matrix);
+		for(j=0; j<param->d_multipolyakov_order; j++)
+			{
+			mu = param->d_multipolyakov_dirs[j];
+			for(i=0; i<param->d_size[mu]; i++)
+				{
+				times_equal(&matrix, &(GC->lattice[r][mu]));
+				r=nnp(geo, r, mu);
+				}
+			}
+
+		rep+=retr(&matrix);
+		imp+=imtr(&matrix);
+		}
+
+	*repoly=rep*(param->d_inv_vol);
+	*impoly=imp*(param->d_inv_vol);
 	}
 
 
@@ -1314,13 +1405,15 @@ void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GPa
 		meas_aux->meanplaq[meas_count]=plaqt;
 		#endif
 		}
-	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
-	if (param->d_energy_density_meas  == 1) energy_density(GC, geo, param, meas_aux, meas_count+1);
-	if (param->d_charge_meas          == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
-	if (param->d_polyakov_meas        == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
-	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);				
-	if (param->d_chi_prime_meas       == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas    == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
+	if (param->d_clover_energy_meas    == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
+	if (param->d_energy_density_meas   == 1) energy_density(GC, geo, param, meas_aux, meas_count+1);
+	if (param->d_charge_meas           == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
+	if (param->d_polyakov_meas         == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
+	if (param->d_multipolyakov_order   >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
+	if (param->d_polyakov_density_meas == 1) for (int i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count+1);
+	if (param->d_topcharge_tcorr_meas  == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);				
+	if (param->d_chi_prime_meas        == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
+	if (param->d_charge_prime_meas     == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	}
 
 
@@ -1328,35 +1421,40 @@ void perform_measures_localobs(Gauge_Conf * const GC, Geometry const * const geo
 								Meas_Utils *meas_aux)
 	{
 	int i;
-	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, polyre[STDIM], polyim[STDIM], charge_prime[STDIM]; // =0.0 to suppress gcc warning
+	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, multipolyre=0.0, multipolyim=0.0; // =0.0 to suppress gcc warning
+	double polyre[STDIM], polyim[STDIM], charge_prime[STDIM];
 	//double action1, action2, action3, pot;
 	
 	// perform meas
-	if (param->d_plaquette_meas       == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
-	if (param->d_clover_energy_meas   == 1) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_energy_density_meas  == 1) energy_density(GC, geo, param, meas_aux, 0);
-	if (param->d_charge_meas          == 1) charge = topcharge(GC, geo, param);
-	if (param->d_polyakov_meas        == 1) for (i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(polyre[i]), &(polyim[i]));
-	if (param->d_chi_prime_meas       == 1) chi_prime = topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas    == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
-	if (param->d_topcharge_tcorr_meas == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
+	if (param->d_plaquette_meas        == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if (param->d_clover_energy_meas    == 1) clover_disc_energy(GC, geo, param, &clover_energy);
+	if (param->d_energy_density_meas   == 1) energy_density(GC, geo, param, meas_aux, 0);
+	if (param->d_charge_meas           == 1) charge = topcharge(GC, geo, param);
+	if (param->d_polyakov_meas         == 1) for (i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(polyre[i]), &(polyim[i]));
+	if (param->d_multipolyakov_order   >= 1) multipolyakov(GC, geo, param, &(multipolyre), &(multipolyim));
+	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, 0);
+	if (param->d_chi_prime_meas        == 1) chi_prime = topo_chi_prime(GC, geo, param);
+	if (param->d_charge_prime_meas     == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
+	if (param->d_topcharge_tcorr_meas  == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
 	//action(GC, geo, param, &action1, &action2, &action3, &pot);
 	
 	// print meas (energy_density, topcharge_tcorr_timeslices already printed)
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
-	if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
-	if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
-	if (param->d_charge_meas        == 1) fprintf(meas_aux->datafilep, "% 18.12e ", charge);
-	if (param->d_polyakov_meas      == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
-	if (param->d_chi_prime_meas     == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
-	if (param->d_charge_prime_meas  == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
+	if (param->d_plaquette_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
+	if (param->d_clover_energy_meas  == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
+	if (param->d_charge_meas         == 1) fprintf(meas_aux->datafilep, "% 18.12e ", charge);
+	if (param->d_polyakov_meas       == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
+	if (param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", multipolyre, multipolyim);
+	if (param->d_chi_prime_meas      == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
+	if (param->d_charge_prime_meas   == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
 	//fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, pot);
 	
 	// flush data files
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_density_meas  == 1) fflush(meas_aux->energydensityfilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if (param->d_energy_density_meas   == 1) fflush(meas_aux->energydensityfilep);
+	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) fflush(meas_aux->polyakovdensityfilep[i]);
+	if (param->d_topcharge_tcorr_meas  == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas        == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
@@ -1367,7 +1465,7 @@ void perform_measures_localobs_notopo(Gauge_Conf * const GC, Geometry const * co
 	
 	if (param->d_plaquette_meas     == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
 	if (param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_polyakov_meas      == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, &(polyre[i]), &(polyim[i]));
+	if (param->d_polyakov_meas      == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(polyre[i]), &(polyim[i]));
 	
 	if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
 	if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
@@ -1696,7 +1794,7 @@ void perform_measures_localobs_with_tracedef(Gauge_Conf * const GC,
 	double plaqs, plaqt, polyre, polyim;
 	
 	plaquette(GC, geo, param, &plaqs, &plaqt);
-	polyakov(GC, geo, param, 0, &polyre, &polyim);
+	polyakov(GC, geo, param, 0, 1, &polyre, &polyim);
 	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e ", plaqs, plaqt, polyre, polyim);
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
@@ -2442,11 +2540,12 @@ void header_datafile(char * const header, GParam const * const param)
 	j = sprintf(header, "# %d ", STDIM);
 	for(int i=0; i<STDIM; i++) j += sprintf(header+j, "%d ", param->d_size[i]);
 	j += sprintf(header+j, "\n# upd_index ");
-	if (param->d_plaquette_meas     == 1) j += sprintf(header+j, "plaqs plaqt ");
-	if (param->d_clover_energy_meas == 1) j += sprintf(header+j, "clover_energy ");
-	if (param->d_charge_meas        == 1) j += sprintf(header+j, "charge ");
-	if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
-	if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
+	if (param->d_plaquette_meas      == 1) j += sprintf(header+j, "plaqs plaqt ");
+	if (param->d_clover_energy_meas  == 1) j += sprintf(header+j, "clover_energy ");
+	if (param->d_charge_meas         == 1) j += sprintf(header+j, "charge ");
+	if (param->d_polyakov_meas       == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
+	if (param->d_multipolyakov_order >= 1) j += sprintf(header+j, "multipolyre multipolyim ");
+	if (param->d_charge_prime_meas   == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
 	
 	if (param->d_agf_meas_each > 0) 
 		{
@@ -2461,11 +2560,12 @@ void header_datafile(char * const header, GParam const * const param)
 	if (gf_meas_num > 0)
 		{
 		j += sprintf(header+j, "( ");
-		if (param->d_plaquette_meas     == 1) j += sprintf(header+j, "plaq ");
-		if (param->d_clover_energy_meas == 1) j += sprintf(header+j, "clover_energy ");
-		if (param->d_charge_meas        == 1) j += sprintf(header+j, "charge ");
-		if (param->d_polyakov_meas      == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
-		if (param->d_charge_prime_meas  == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
+		if (param->d_plaquette_meas      == 1) j += sprintf(header+j, "plaq ");
+		if (param->d_clover_energy_meas  == 1) j += sprintf(header+j, "clover_energy ");
+		if (param->d_charge_meas         == 1) j += sprintf(header+j, "charge ");
+		if (param->d_polyakov_meas       == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
+		if (param->d_multipolyakov_order >= 1) j += sprintf(header+j, "multipolyre multipolyim ");
+		if (param->d_charge_prime_meas   == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
 		j += sprintf(header+j, ") x %d gradflowrepeat each dt = %.10lf", gf_meas_num, gf_meas_each);
 		}
 	#ifdef MULTICANONICAL_MODE
@@ -2558,6 +2658,18 @@ void open_data_files(Meas_Utils * meas_aux, int const replica_index, GParam cons
 	// energy_density file
 	if (param->d_energy_density_meas == 1)
 		meas_aux->energydensityfilep = open_file_with_header_replica(param->d_energydensity_file, header, replica_index, param, 1);
+	
+	// polyakov_density files
+	if (param->d_polyakov_density_meas == 1)
+		{
+		char filename[2*STD_STRING_LENGTH];
+		for(i=0; i<STDIM; i++)
+			{
+			sprintf(filename, "%s_dir%d", param->d_polyakovdensity_file, i);
+			sprintf(header+j, "%d \n", i);
+			meas_aux->polyakovdensityfilep[i] = open_file_with_header_replica(filename, header, replica_index, param, 1);
+			}
+		}
 	}
 
 // close data files
@@ -2583,6 +2695,11 @@ void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const
 	// clover_energy_density file
 	if (param->d_energy_density_meas == 1)
 		fclose(meas_aux.energydensityfilep);
+	
+	// polyakov_density files
+	if (param->d_polyakov_density_meas == 1)
+		for(int i=0; i<STDIM; i++)
+			fclose(meas_aux.polyakovdensityfilep[i]);
 	}
 
 
@@ -2620,6 +2737,12 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 				}
 			}
 		
+		if (param->d_multipolyakov_order >= 1)
+			{
+			allocate_array_double(&(meas_aux->multipolyre), num_meas, __FILE__, __LINE__);
+			allocate_array_double(&(meas_aux->multipolyim), num_meas, __FILE__, __LINE__);
+			}
+		
 		if (param->d_topcharge_tcorr_meas == 1)
 			allocate_array_double(&(meas_aux->sum_q_timeslices), param->d_size[0], __FILE__, __LINE__);
 		
@@ -2634,7 +2757,7 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 			}
 		
 		// allocate auxiliary lattices
-		for (int i=0; i<4; i++)
+		for(int i=0; i<4; i++)
 			{
 			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
 			#ifdef OPENMP_MODE
@@ -2650,6 +2773,14 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 	// allocate arrays for density profiles
 	if (param->d_energy_density_meas == 1)
 		allocate_array_double(&(meas_aux->energy_density), param->d_volume, __FILE__, __LINE__);
+	
+	if (param->d_polyakov_density_meas == 1)
+		{
+		long max_space_vol = 0;
+		for(int i=0; i<STDIM; i++) if (param->d_space_vol[i] > max_space_vol) max_space_vol = param->d_space_vol[i];
+		allocate_array_double(&(meas_aux->polyre_density), max_space_vol, __FILE__, __LINE__);
+		allocate_array_double(&(meas_aux->polyim_density), max_space_vol, __FILE__, __LINE__);
+		}
 	
 	// open data files
 	open_data_files(meas_aux, replica_index, param);
@@ -2701,6 +2832,12 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 			free(meas_aux.polyim);
 			}
 		
+		if (param->d_multipolyakov_order >= 1)
+			{
+			free(meas_aux.multipolyre);
+			free(meas_aux.multipolyim);
+			}
+		
 		if (param->d_topcharge_tcorr_meas == 1 )
 			free(meas_aux.sum_q_timeslices);
 		
@@ -2731,6 +2868,12 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 	// free density arrays
 	if (param->d_energy_density_meas == 1)
 		free(meas_aux.energy_density);
+	
+	if (param->d_polyakov_density_meas == 1)
+		{
+		free(meas_aux.polyre_density);
+		free(meas_aux.polyim_density);
+		}
 		
 	// close data files
 	close_data_files(meas_aux, replica_index, param);
@@ -2759,12 +2902,13 @@ void print_measures_aux(int const num_meas, long const update_index, GParam cons
 	
 	for(int i=0; i<num_meas; i++)
 		{
-		if (param->d_plaquette_meas     == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
-		if (param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
-		if (param->d_charge_meas        == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
-		if (param->d_polyakov_meas      == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
-		if (param->d_chi_prime_meas     == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i+1)*time_step, meas_aux->chi_prime[i]);
-		if (param->d_charge_prime_meas  == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
+		if (param->d_plaquette_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
+		if (param->d_clover_energy_meas  == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
+		if (param->d_charge_meas         == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
+		if (param->d_polyakov_meas       == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
+		if (param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
+		if (param->d_chi_prime_meas      == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i+1)*time_step, meas_aux->chi_prime[i]);
+		if (param->d_charge_prime_meas   == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
 		}
 	}
 

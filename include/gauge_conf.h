@@ -79,6 +79,10 @@ typedef struct Meas_Utils {
 	double  *charge;
 	double **polyre;
 	double **polyim;
+	double  *multipolyre;
+	double  *multipolyim;
+	double  *polyre_density;
+	double  *polyim_density;
 	double  *sum_q_timeslices;
 	double  *chi_prime;
 	double **charge_prime;
@@ -90,6 +94,7 @@ typedef struct Meas_Utils {
 	// pointers to data files
 	FILE *datafilep;
 	FILE *energydensityfilep;
+	FILE *polyakovdensityfilep[STDIM];
 	FILE *chiprimefilep;
 	FILE *topchar_tcorr_filep;
 	}	Meas_Utils;
@@ -312,10 +317,24 @@ void action(			Gauge_Conf const * const GC,
 						GParam const * const param,
 						double *action1, double *action2, double *action3, double *pot);
 
+void polyakov_density(	Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						int mu,
+						Meas_Utils * const meas_aux,
+						int const meas_count);
+
 void polyakov(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
 						int mu,
+						int pwr,
+						double *repoly,
+						double *impoly);
+
+void multipolyakov(		Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
 						double *repoly,
 						double *impoly);
 				

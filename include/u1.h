@@ -462,6 +462,29 @@ inline double imtr_U1(U1 const * const restrict A)
   }
 
 
+// relative distance between matrices
+inline double relative_dist_U1(U1 const *const restrict A, U1 const *const restrict B)
+	{
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
+	#endif
+	
+	double complex tr_AxB, tr_ApB;
+	double aux_AxB, aux_ApB;
+
+	tr_AxB = (A->comp) * conj(B->comp);
+	tr_ApB = (A->comp) + (B->comp);
+	aux_ApB = 1.0 - 0.5*creal(tr_ApB);
+	aux_AxB = 1.0 - creal(tr_AxB);
+	if (aux_ApB <=  2 * MIN_VALUE || aux_AxB <= 2 * MIN_VALUE)
+		{
+		return 0.0;
+		}
+	return sqrt(aux_AxB / aux_ApB);
+	}
+
+
 // unitarize the matrix
 inline void unitarize_U1(U1 * restrict A)
   {

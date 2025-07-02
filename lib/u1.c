@@ -143,6 +143,10 @@ double retr_U1(U1 const * const A);
 double imtr_U1(U1 const * const A);
 
 
+// relative distance between matrices
+double relative_dist_U1(U1 const * const A, U1 const * const B);
+
+
 // unitarize the matrix
 void unitarize_U1(U1 *A);
 
@@ -158,7 +162,7 @@ void taexp_U1(U1 *A);
 // print on screen
 void print_on_screen_U1(U1 const * const A)
   {
-  printf("%.16lf %.16lf\n", creal(A->comp), cimag(A->comp));
+  fprintf(stdout, "% 10.4e % 10.4e\n", creal(A->comp), cimag(A->comp));
   }
 
 
@@ -166,7 +170,7 @@ void print_on_screen_U1(U1 const * const A)
 void print_on_file_U1(FILE *fp, U1 const * const A)
   {
   int err;
-  err=fprintf(fp, "%.16lf %.16lf\n", creal(A->comp), cimag(A->comp));
+  err=fprintf(fp, "% 18.12e % 18.12e\n", creal(A->comp), cimag(A->comp));
   if(err<0)
     {
     fprintf(stderr, "Problem in writing on a file a U1 matrix (%s, %d)\n", __FILE__, __LINE__);

@@ -18,40 +18,106 @@
 #include"../include/tens_prod.h"
 #include"../include/memalign.h"
 
-void equal_lattice(GAUGE_GROUP **lattice1, GAUGE_GROUP const * const * const lattice2,
+void equal_lattice(GAUGE_GROUP * const * const lattice1,
+					GAUGE_GROUP const * const * const lattice2,
 					GParam const * const param)
 	{
-	long s;
+	long s, r;
+	int i;
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s)
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, i)
 	#endif
 	for(s=0; s<STDIM*(param->d_volume); s++)
 		{
-		long r = s % (param->d_volume);
-		int i = (int) ( (s - r) / (param->d_volume) );
+		r = s % (param->d_volume);
+		i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(lattice1[r][i]), &(lattice2[r][i]));
 		}
 	}
 
-double lattice_dist(GAUGE_GROUP const * const * const lattice1,
+void equal_equal_lattice(GAUGE_GROUP * const * const lattice1,
+							GAUGE_GROUP * const * const lattice2,
+							GAUGE_GROUP const * const * const lattice3,
+							GParam const * const param)
+	{
+	long s, r;
+	int i;
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, i)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		i = (int) ( (s - r) / (param->d_volume) );
+		equal(&(lattice1[r][i]), &(lattice3[r][i]));
+		equal(&(lattice2[r][i]), &(lattice3[r][i]));
+		}
+	}
+
+double lattice_total_dist(GAUGE_GROUP const * const * const lattice1,
 					GAUGE_GROUP const * const * const lattice2,
 					GParam const * const param)
 	{
 	double ris = 0.0;
-	long s;
+	long s, r;
+	int i;
+	GAUGE_GROUP aux;
+	
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : ris)
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, i, aux) reduction(+ : ris)
 	#endif
 	for(s=0; s<STDIM*(param->d_volume); s++)
 		{
-		long r = s % (param->d_volume);
-		int i = (int) ( (s - r) / (param->d_volume) );
-		GAUGE_GROUP aux;
+		r = s % (param->d_volume);
+		i = (int) ( (s - r) / (param->d_volume) );
 		equal(&aux, &(lattice1[r][i]));
 		minus_equal(&aux, &(lattice2[r][i]));
 		ris += norm(&aux);
 		}
-	return ris;
+	return ris / ((double)NCOLOR*(double)NCOLOR);
+	}
+
+double lattice_max_dist(GAUGE_GROUP const * const * const lattice1,
+					GAUGE_GROUP const * const * const lattice2,
+					GParam const * const param)
+	{
+	double local_ris[NTHREADS], ris_aux, ris = 0.0;
+	long s, r;
+	int i, thread_num;
+	GAUGE_GROUP aux;
+	
+	for (i=0; i<NTHREADS; i++)
+		{
+		local_ris[i] = 0.0;
+		}
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, i, thread_num, aux, ris_aux)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		i = (int) ( (s - r) / (param->d_volume) );
+		#ifdef OPENMP_MODE
+		thread_num = omp_get_thread_num();
+		#else
+		thread_num = 0;
+		#endif
+		equal(&aux, &(lattice1[r][i]));
+		minus_equal(&aux, &(lattice2[r][i]));
+		ris_aux = norm(&aux);
+		if (ris_aux > local_ris[thread_num])
+			{
+			local_ris[thread_num] = ris_aux;
+			}
+		}
+	for (i=0; i<NTHREADS; i++)
+		{
+		if (local_ris[i] > ris)
+			{
+			ris = local_ris[i];
+			}
+		}
+	return ris / ((double)NCOLOR*(double)NCOLOR);
 	}
 
 void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const param)
@@ -376,7 +442,7 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *file;
 	long r;
-	int x_mu, x_nu, cartcoord[STDIM];
+	int x_mu, x_nu;
 	
 	//gauge conf filename at step
 	strcpy(name, param->d_conf_file);
@@ -423,6 +489,7 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 		#endif 
 		for(r=0; r<param->d_volume; r++)
 			{
+			int cartcoord[STDIM];
 			si_to_cart(cartcoord, r, param);
 			for(int i=0; i<STDIM; i++)
 				for(int j=i+1; j<STDIM; j++)
@@ -434,7 +501,7 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 						GC->Z_copy[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);
 						GC->Z_copy[r][dirs_to_si(j,i)] = conj(GC->Z_copy[r][dirs_to_si(i,j)]);
 						}
-			}
+			}		
 		}
 	else return 0;
 	return 1;

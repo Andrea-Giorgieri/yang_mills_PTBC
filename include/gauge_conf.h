@@ -109,11 +109,20 @@ typedef struct Tune_Utils {
 
 
 // in gauge_conf_def.c
-void equal_lattice(							GAUGE_GROUP **lattice1,
+void equal_lattice(							GAUGE_GROUP * const * const lattice1,
 											GAUGE_GROUP const * const * const lattice2,
 											GParam const * const param);
 
-double lattice_dist(						GAUGE_GROUP const * const * const lattice1,
+void equal_equal_lattice(					GAUGE_GROUP * const * const lattice1,
+											GAUGE_GROUP * const * const lattice2,
+											GAUGE_GROUP const * const * const lattice3,
+											GParam const * const param);
+
+double lattice_total_dist(					GAUGE_GROUP const * const * const lattice1,
+											GAUGE_GROUP const * const * const lattice2,
+											GParam const * const param);
+
+double lattice_max_dist(					GAUGE_GROUP const * const * const lattice1,
 											GAUGE_GROUP const * const * const lattice2,
 											GParam const * const param);
 
@@ -469,17 +478,25 @@ void perform_measures_localobs_with_adaptive_gradflow(			Gauge_Conf * const GC,
 																GParam const * const param,
 																Meas_Utils *meas_aux);
 											
-void perform_measures_localobs_with_adaptive_gradflow_debug(	Gauge_Conf * const GC,
+void perform_measures_localobs_with_adaptive_gradflow_debug1(	Gauge_Conf * const GC,
 																Geometry const * const geo,
 																GParam const * const param,
-																Meas_Utils *meas_aux,
-																FILE *step_filep);
+																Meas_Utils *meas_aux);
 											
 void perform_measures_localobs_with_adaptive_gradflow_debug2(	Gauge_Conf * const GC,
 																Geometry const * const geo,
 																GParam const * const param,
-																Meas_Utils *meas_aux,
-																FILE *step_filep);
+																Meas_Utils *meas_aux);
+
+void perform_measures_localobs_with_adaptive_gradflow_debug3(	Gauge_Conf * const GC,
+																Geometry const * const geo,
+																GParam const * const param,
+																Meas_Utils *meas_aux);
+
+void perform_measures_localobs_with_adaptive_gradflow_debug4(	Gauge_Conf * const GC,
+																Geometry const * const geo,
+																GParam const * const param,
+																Meas_Utils *meas_aux);
 											
 void perform_measures_localobs_with_tracedef(	Gauge_Conf * const GC,
 												Geometry const * const geo,
@@ -778,6 +795,12 @@ void gradflow_RKstep(					Gauge_Conf * const GC,
 										double dt,
 										Meas_Utils *meas_aux);
 
+double gradflow_RKstep_adaptive_aux(	Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const *const param,
+										double dt,
+										Meas_Utils *meas_aux);
+
 void gradflow_RKstep_adaptive(			Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const *const param,
@@ -785,6 +808,25 @@ void gradflow_RKstep_adaptive(			Gauge_Conf * const GC,
 										double *dt,
 										int *accepted,
 										Meas_Utils *meas_aux);
+
+double gradflow_RKstep_adaptive_no_advance(	Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const *const param,
+										double *t,
+										double *dt,
+										double *dt_new,
+										int *accepted,
+										Meas_Utils *meas_aux);
+
+void gradflow_RKstep_adaptive_check(	Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const *const param,
+										double *t,
+										double *dt,
+										int *accepted,
+										Meas_Utils *meas_aux,
+										Gauge_Conf * const GC_reset,
+										Gauge_Conf * const conf_rk3dth);
 
 void gradflow_RKstep_adaptive_debug(	Gauge_Conf * const GC,
 										Geometry const * const geo,
@@ -809,6 +851,7 @@ void ape_smearing(						Gauge_Conf * const GC,
 										GParam const *const param,
 										double alpha,
 										int n);
+
 									
 // in gauge_conf_paral_temp.c
 void swap(					Gauge_Conf * const GC,

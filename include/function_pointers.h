@@ -71,6 +71,7 @@ void (*times_dag12)(GAUGE_GROUP *A,
 void (*rand_matrix)(GAUGE_GROUP *A);
 
 double (*norm)(GAUGE_GROUP const * const A);
+double (*relative_dist)(GAUGE_GROUP const * const A, GAUGE_GROUP const * const B);
 
 double (*retr)(GAUGE_GROUP const * const A);
 double (*imtr)(GAUGE_GROUP const * const A);

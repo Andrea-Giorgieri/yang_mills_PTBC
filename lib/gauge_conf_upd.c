@@ -1694,88 +1694,198 @@ void gradflow_RKstep(Gauge_Conf * const GC,
 					double dt,
 					Meas_Utils *meas_aux)
 	{
-	long r;
+	long s, r;
 	int dir;
+	GAUGE_GROUP staple, aux, link;
 	Gauge_Conf helper;
 
 	// initialize
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
+	equal_lattice(meas_aux->lattice_aux[0], GC->lattice, param);
 	
 	// just to call calcstaples_wilson on aux lattice 0
 	helper.lattice = meas_aux->lattice_aux[0]; 
 	helper.Z = GC->Z;
 
 	// now GC = lattice0 = W_0, lattice1 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
 		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
 
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple   = staple(W_0)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link     = link(W_0)
-			times(&aux, &link, &staple);                              // aux      = force(W_0)
-			times_equal_real(&aux, -dt/4.0);                          // aux      = -1/4*dt*force(W_0) = 1/4*Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);         // lattice1 = 1/4*Z_0
-			taexp(&aux);                                              // aux      = exp(1/4*Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);               // GC       = exp(1/4*Z_0)*W_0 = W_1
-			}
+		calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple   = staple(W_0)
+		equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link     = link(W_0)
+		times(&aux, &link, &staple);                              // aux      = force(W_0)
+		times_equal_real(&aux, -dt/4.0);                          // aux      = -1/4*dt*force(W_0) = 1/4*Z_0
+		equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);         // lattice1 = 1/4*Z_0
+		taexp(&aux);                                              // aux      = exp(1/4*Z_0)
+		times(&(GC->lattice[r][dir]), &aux, &link);               // GC       = exp(1/4*Z_0)*W_0 = W_1
 		}
 
 	// now GC = W_1, lattice0 = W_0, lattice1 = 1/4*Z_0
-	for(dir=0; dir<STDIM; dir++)
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
 		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
 
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);                          // staple   = staple(W_1)
-			equal(&link, &(GC->lattice[r][dir]));                                         // link     = link(W_1)
-			times(&aux, &link, &staple);                                                  // aux      = force(W_1)
-			times_equal_real(&aux, -dt*8.0/9.0);                                          // aux      = -8/9*dt*force(W_1) = 8/9*Z_1
-			minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/9.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                             // lattice1 = 8/9*Z_1 - 17/36*Z_0
-			taexp(&aux);                                                                  // aux      = exp(8/9*Z_1 - 17/36*Z_0)
-			times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                      // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
-			}
+		calcstaples_wilson(GC, geo, param, r, dir, &staple);                          // staple   = staple(W_1)
+		equal(&link, &(GC->lattice[r][dir]));                                         // link     = link(W_1)
+		times(&aux, &link, &staple);                                                  // aux      = force(W_1)
+		times_equal_real(&aux, -dt*8.0/9.0);                                          // aux      = -8/9*dt*force(W_1) = 8/9*Z_1
+		minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/9.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
+		equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                             // lattice1 = 8/9*Z_1 - 17/36*Z_0
+		taexp(&aux);                                                                  // aux      = exp(8/9*Z_1 - 17/36*Z_0)
+		times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                      // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
 		}
 
 	// now GC = W_1, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
-	for(dir=0; dir<STDIM; dir++)
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
 		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
 
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple = staple(W_2)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link   = link(W_2)
-			times(&aux, &link, &staple);                              // aux    = force(W_2)
-			times_equal_real(&aux, -dt*3.0/4.0);                      // aux    = -3/4*dt*force(W_2) = 3/4*Z_2
-			minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));   // aux    = 3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0
-			taexp(&aux);                                              // aux    = exp(3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);               // GC     = exp(3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0)*W_2 = W_3
-			unitarize(&(GC->lattice[r][dir]));
-			}
+		calcstaples_wilson(&helper, geo, param, r, dir, &staple); // staple = staple(W_2)
+		equal(&link, &(meas_aux->lattice_aux[0][r][dir]));        // link   = link(W_2)
+		times(&aux, &link, &staple);                              // aux    = force(W_2)
+		times_equal_real(&aux, -dt*3.0/4.0);                      // aux    = -3/4*dt*force(W_2) = 3/4*Z_2
+		minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));   // aux    = 3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0
+		taexp(&aux);                                              // aux    = exp(3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0)
+		times(&(GC->lattice[r][dir]), &aux, &link);               // GC     = exp(3/4*Z_2 - 8/9*Z_1 + 17/36*Z_0)*W_2 = W_3
+		unitarize(&(GC->lattice[r][dir]));
 		}
 	// now GC = W_3, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
+	}
+
+
+double gradflow_RKstep_adaptive_aux(Gauge_Conf * const GC,
+							Geometry const * const geo,
+							GParam const *const param,
+							double dt,
+							Meas_Utils *meas_aux)
+	{
+	long s, r;
+	int dir, j, thread_num;
+	double dist, max_dist;
+	GAUGE_GROUP staple, aux, aux2, link;
+	Gauge_Conf helper;
+	
+	// initialize
+	equal_equal_lattice(meas_aux->lattice_aux[0], meas_aux->lattice_aux[3], GC->lattice, param);
+	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
+	
+	// just to call calcstaples_wilson on aux lattice 0
+	helper.lattice = meas_aux->lattice_aux[0]; 
+	helper.Z = GC->Z;
+	
+	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+
+		calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple   = staple(W_0)
+		equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link     = link(W_0)
+		times(&aux, &link, &staple);                                // aux      = force(W_0)
+		times_equal_real(&aux, -dt);                                // aux      = -dt*force(W_0) = Z_0
+		equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);           // lattice1 = Z_0
+		times_equal_real(&aux, 1.0/4.0);                            // aux      = 1/4*Z_0
+		taexp(&aux);                                                // aux      = exp(1/4*Z_0)
+		times(&(GC->lattice[r][dir]), &aux, &link);                 // GC       = exp(1/4*Z_0)*W_0 = W_1
+		}
+	
+	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, aux2, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+
+		calcstaples_wilson(GC, geo, param, r, dir, &staple);     // staple = staple(W_1)
+		equal(&link, &(GC->lattice[r][dir]));                    // link   = link(W_1)
+		times(&aux, &link, &staple);                             // aux    = force(W_1)
+		times_equal_real(&aux, -dt);                             // aux    = -dt*force(W_1) = Z_1
+		equal(&aux2, &aux);                                      // aux2   = Z_1
+
+		times_equal_real(&aux2, 2.0);                            // aux2   = 2*Z_1
+		minus_equal(&aux2, &(meas_aux->lattice_aux[1][r][dir])); // aux2   = 2*Z_1-Z_0
+		taexp(&aux2);                                            // aux2   = exp(2*Z_1-Z_0)
+		times(&(meas_aux->lattice_aux[2][r][dir]), &aux2, &(meas_aux->lattice_aux[0][r][dir]));	// lattice2 = exp(2*Z_1-Z_0)*W_0
+
+		times_equal_real(&aux, 8.0/9.0);                                               // aux      = 8/9*Z_1
+		minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/36.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
+		equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                              // lattice1 = 8/9*Z_1 - 17/36*Z_0
+		taexp(&aux);                                                                   // aux      = exp(8/9*Z_1 - 17/36*Z_0)
+		times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                       // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
+		}
+
+	// now GC = W_1, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, staple, aux, link)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+
+		calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple = staple(W_2)
+		equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link   = link(W_2) 
+		times(&aux, &link, &staple);                                // aux    = force(W_2)
+		times_equal_real(&aux, -dt*3.0/4.0);                        // aux    = -3/4*dt*force(W_2) = 3/4*Z_2
+		minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));     // aux    = (3/4)Z_2-(8/9)Z_1+(17/36)Z_0
+		taexp(&aux);                                                // aux    = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)
+		times(&(GC->lattice[r][dir]), &aux, &link);                 // GC     = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)*W_2 = W_3
+		}
+
+	// now GC = W_3, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
+	// error calculation, dist(W_3, W'_2), and final unitarization
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(s, r, dir, thread_num, dist)
+	#endif
+	for(s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+		#ifdef OPENMP_MODE
+		thread_num = omp_get_thread_num();
+		#else
+		thread_num = 0;
+		#endif
+		
+		//rel_dist = relative_dist(&(meas_aux->lattice_aux[2][r][dir]), &(GC->lattice[r][dir]));
+		minus_equal(&(meas_aux->lattice_aux[2][r][dir]), &(GC->lattice[r][dir]));
+		dist = norm(&(meas_aux->lattice_aux[2][r][dir]));
+		if (dist > meas_aux->local_max_dist[thread_num]) meas_aux->local_max_dist[thread_num] = dist;
+		unitarize(&(GC->lattice[r][dir]));
+		
+		//fprintf(stderr, "%ld %10ld %d % 18.12e % 18.12e % 18.12e % 18.12e % 18.12e % 18.12e\n", GC->update_index, r, dir, *t, *dt, dist_aux, rel_dist_aux, dist, rel_dist);
+
+		//if (fabs(dist - dist_aux) > 0.05 * (dist + dist_aux))
+		//	{
+		//	fprintf(stderr, "%ld %10ld %d % 18.12e % 18.12e % 18.12e % 18.12e\n", GC->update_index, r, dir, *t, *dt, dist_aux, dist);
+		//	}
+		}
+	max_dist = MIN_VALUE;
+	for (j=0; j<NTHREADS; j++)
+		{
+		if (meas_aux->local_max_dist[j] > max_dist)
+			{
+			max_dist = meas_aux->local_max_dist[j];
+			}
+		}
+	return max_dist / ((double)NCOLOR*(double)NCOLOR);
 	}
 
 
@@ -1789,126 +1899,10 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 							int *accepted,
 							Meas_Utils *meas_aux)
 	{
-	long r;
-	int dir, j;
 	double max_dist;
-	Gauge_Conf helper;
 	
-	// initialize
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			equal(&(meas_aux->lattice_aux[3][r][dir]), &(GC->lattice[r][dir]));
-			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
-	// just to call calcstaples_wilson on aux lattice 0
-	helper.lattice = meas_aux->lattice_aux[0]; 
-	helper.Z = GC->Z;
-
-	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple   = staple(W_0)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link     = link(W_0)
-			times(&aux, &link, &staple);                                // aux      = force(W_0)
-			times_equal_real(&aux, -(*dt));                             // aux      = -dt*force(W_0) = Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);           // lattice1 = Z_0
-			times_equal_real(&aux, 1.0/4.0);                            // aux      = 1/4*Z_0
-			taexp(&aux);                                                // aux      = exp(1/4*Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC       = exp(1/4*Z_0)*W_0 = W_1
-			}
-		}
-
-	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, aux2, link;
-
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);     // staple = staple(W_1)
-			equal(&link, &(GC->lattice[r][dir]));                    // link   = link(W_1)
-			times(&aux, &link, &staple);                             // aux    = force(W_1)
-			times_equal_real(&aux, -(*dt));                          // aux    = -dt*force(W_1) = Z_1
-			equal(&aux2, &aux);                                      // aux2   = Z_1
-
-			times_equal_real(&aux2, 2.0);                            // aux2   = 2*Z_1
-			minus_equal(&aux2, &(meas_aux->lattice_aux[1][r][dir])); // aux2   = 2*Z_1-Z_0
-			taexp(&aux2);                                            // aux2   = exp(2*Z_1-Z_0)
-			times(&(meas_aux->lattice_aux[2][r][dir]), &aux2, &(meas_aux->lattice_aux[0][r][dir]));	// lattice2 = exp(2*Z_1-Z_0)*W_0
-
-			times_equal_real(&aux, 8.0/9.0);                                               // aux      = 8/9*Z_1
-			minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/36.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                              // lattice1 = 8/9*Z_1 - 17/36*Z_0
-			taexp(&aux);                                                                   // aux      = exp(8/9*Z_1 - 17/36*Z_0)
-			times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                       // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
-			}
-		}
-
-	// now GC = W_1, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple = staple(W_2)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link   = link(W_2) 
-			times(&aux, &link, &staple);                                // aux    = force(W_2)
-			times_equal_real(&aux, -(*dt)*3.0/4.0);						// aux    = -3/4*dt*force(W_2) = 3/4*Z_2
-			minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));     // aux    = (3/4)Z_2-(8/9)Z_1+(17/36)Z_0
-			taexp(&aux);                                                // aux    = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC     = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)*W_2 = W_3
-			}
-		}
-
-	// now GC = W_3, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	// error calculation, dist(W_3, W'_2), and final unitarization
-	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		int i, thread_num;
-		double dist;
-		thread_num = 0;
-		#ifdef OPENMP_MODE
-		thread_num = omp_get_thread_num();
-		#endif
-		for(i=0; i<STDIM; i++)
-			{
-			// Note: unitarize() after dist calculation, otherwise the integration
-			//       error can be greatly over-estimated for some configurations
-			minus_equal(&(meas_aux->lattice_aux[2][r][i]), &(GC->lattice[r][i]));
-			dist = norm(&(meas_aux->lattice_aux[2][r][i]))/((double)NCOLOR*(double)NCOLOR);
-			unitarize(&(GC->lattice[r][i]));
-			if (dist > meas_aux->local_max_dist[thread_num]) meas_aux->local_max_dist[thread_num] = dist;
-			}
-		}
-	max_dist = MIN_VALUE;
-	for (j=0; j<NTHREADS; j++)
-		{
-		if (meas_aux->local_max_dist[j] > max_dist) max_dist = meas_aux->local_max_dist[j];
-		}
+	// integration, distance calculation and unitarization
+	max_dist = gradflow_RKstep_adaptive_aux(GC, geo, param, *dt, meas_aux);
 	
 	// accept-reject step: if the integration step is accepted advance t, else reset gauge conf
 	if (max_dist < param->d_agf_delta) 
@@ -1919,21 +1913,89 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 	else
 		{
 		*accepted = 0;
-		for(dir=0; dir<STDIM; dir++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_volume; r++)
-				{
-				equal(&(GC->lattice[r][dir]), &(meas_aux->lattice_aux[3][r][dir]));
-				}
-			}
+		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
 		}
+	
+	//TODO: remove, debug only
+	//fprintf(stdout, "%ld %d %.12g %.12g %.12g\n", GC->update_index, *accepted, *t, *dt, max_dist);
+	//fflush(stdout);
 
 	// calculation of new integration step
-	*dt = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
+	*dt *= 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
+	if (*dt > 0.1) *dt = 0.1;
 	}
+
+double gradflow_RKstep_adaptive_no_advance(Gauge_Conf * const GC,
+							Geometry const * const geo,
+							GParam const *const param,
+							double *t,
+							double *dt,
+							double *dt_new,
+							int *accepted,
+							Meas_Utils *meas_aux)
+	{
+	double max_dist;
+	
+	// integration, distance calculation and unitarization
+	max_dist = gradflow_RKstep_adaptive_aux(GC, geo, param, *dt, meas_aux);
+	
+	// no accept-reject step
+	if (max_dist < param->d_agf_delta) 
+		{
+		*accepted = 1;
+		}
+	else
+		{
+		*accepted = 0;
+		}
+	
+	//TODO: remove, debug only
+	//fprintf(stdout, "%ld %d %.12g %.12g %.12g\n", GC->update_index, *accepted, *t, *dt, max_dist);
+	//fflush(stdout);
+
+	// calculation of new integration step
+	*dt_new = *dt * 0.95 * pow(param->d_agf_delta/max_dist, 1.0/3.0);
+	
+	return max_dist;
+	}
+
+
+void gradflow_RKstep_adaptive_check(Gauge_Conf * const GC,
+							Geometry const * const geo,
+							GParam const *const param,
+							double *t,
+							double *dt,
+							int *accepted,
+							Meas_Utils *meas_aux,
+							Gauge_Conf * const GC_reset,
+							Gauge_Conf * const conf_rk3dth)
+			{
+			double max_dist, dt_new, dth;
+			double dist_rk2dt_rk3dt, dist_rk2dth_rk3dth_1, dist_rk2dth_rk3dth_2, dist_rk3dth_rk3dt;
+
+			//dth = *(dt)/2;
+			equal_lattice(GC_reset->lattice, GC->lattice, param);
+			//dist_rk2dth_rk3dth_1 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
+			//dist_rk2dth_rk3dth_2 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
+			//equal_lattice(conf_rk3dth->lattice, GC->lattice, param);
+			//equal_lattice(GC->lattice, GC_reset->lattice, param);
+			dist_rk2dt_rk3dt = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, dt, &dt_new, accepted, meas_aux);
+			//dist_rk3dth_rk3dt = lattice_max_dist(GC->lattice, conf_rk3dth->lattice, param);
+			
+			fprintf(stdout, "%ld %d %18.12e %18.12e %18.12e\n", GC->update_index, *accepted, *t, *dt, dist_rk2dt_rk3dt);
+			//fprintf(stdout, "%ld %d %18.12g %18.12g %18.12g %18.12g %18.12g %18.12g\n", GC->update_index, *accepted, *t, *dt, dist_rk2dt_rk3dt, dist_rk2dth_rk3dth_1, dist_rk2dth_rk3dth_2, dist_rk3dth_rk3dt);
+			fflush(stdout);
+			
+			//if (*accepted == 1)
+			//	{
+			//	*t += *dt;
+			//	}
+			//else
+			//	{
+			//	equal_lattice(GC->lattice, GC_reset->lattice, param);
+			//	}
+			//*dt = dt_new;
+			}
 
 
 void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
@@ -1945,124 +2007,10 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
 									double *total_error,
 									Meas_Utils *meas_aux)
 	{
-	long r;
-	int dir, j;
 	double max_dist;
-	Gauge_Conf helper;
 	
-	// initialize
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			equal(&(meas_aux->lattice_aux[3][r][dir]), &(GC->lattice[r][dir]));
-			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
-	// just to call calcstaples_wilson on aux lattice 0
-	helper.lattice = meas_aux->lattice_aux[0]; 
-	helper.Z = GC->Z;
-
-	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple   = staple(W_0)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link     = link(W_0)
-			times(&aux, &link, &staple);                                // aux      = force(W_0)
-			times_equal_real(&aux, -(*dt));                             // aux      = -dt*force(W_0) = Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);           // lattice1 = Z_0
-			times_equal_real(&aux, 1.0/4.0);                            // aux      = 1/4*Z_0
-			taexp(&aux);                                                // aux      = exp(1/4*Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC       = exp(1/4*Z_0)*W_0 = W_1
-			}
-		}
-
-	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, aux2, link;
-
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);     // staple = staple(W_1)
-			equal(&link, &(GC->lattice[r][dir]));                    // link   = link(W_1)
-			times(&aux, &link, &staple);                             // aux    = force(W_1)
-			times_equal_real(&aux, -(*dt));                          // aux    = -dt*force(W_1) = Z_1
-			equal(&aux2, &aux);                                      // aux2   = Z_1
-
-			times_equal_real(&aux2, 2.0);                            // aux2   = 2*Z_1
-			minus_equal(&aux2, &(meas_aux->lattice_aux[1][r][dir])); // aux2   = 2*Z_1-Z_0
-			taexp(&aux2);                                            // aux2   = exp(2*Z_1-Z_0)
-			times(&(meas_aux->lattice_aux[2][r][dir]), &aux2, &(meas_aux->lattice_aux[0][r][dir]));	// lattice2 = exp(2*Z_1-Z_0)*W_0
-
-			times_equal_real(&aux, 8.0/9.0);                                               // aux      = 8/9*Z_1
-			minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/36.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                              // lattice1 = 8/9*Z_1 - 17/36*Z_0
-			taexp(&aux);                                                                   // aux      = exp(8/9*Z_1 - 17/36*Z_0)
-			times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                       // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
-			}
-		}
-
-	// now GC = W_1, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple = staple(W_2)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link   = link(W_2) 
-			times(&aux, &link, &staple);                                // aux    = force(W_2)
-			times_equal_real(&aux, -(*dt)*3.0/4.0);						// aux    = -3/4*dt*force(W_2) = 3/4*Z_2
-			minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));     // aux    = (3/4)Z_2-(8/9)Z_1+(17/36)Z_0
-			taexp(&aux);                                                // aux    = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC     = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)*W_2 = W_3
-			}
-		}
-
-	// now GC = W_3, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	// error calculation: dist(W_3, W'_2)
-	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		int i, thread_num;
-		double dist;
-		thread_num = 0;
-		#ifdef OPENMP_MODE
-		thread_num = omp_get_thread_num();
-		#endif
-		for(i=0; i<STDIM; i++)
-			{
-			minus_equal(&(meas_aux->lattice_aux[2][r][i]), &(GC->lattice[r][i]));
-			dist = norm(&(meas_aux->lattice_aux[2][r][i]))/((double)NCOLOR*(double)NCOLOR);
-			unitarize(&(GC->lattice[r][dir]));
-			if (dist > meas_aux->local_max_dist[thread_num]) meas_aux->local_max_dist[thread_num] = dist;
-			}
-		}
-	max_dist = MIN_VALUE;
-	for (j=0; j<NTHREADS; j++)
-		{
-		if (meas_aux->local_max_dist[j] > max_dist) max_dist = meas_aux->local_max_dist[j];
-		}
+	// integration, distance calculation and unitarization
+	max_dist = gradflow_RKstep_adaptive_aux(GC, geo, param, *dt, meas_aux);
 	*total_error = max_dist;
 	
 	//if the integration step is accepted, advance t and reset dt. Else, reset gauge conf and decrease dt
@@ -2076,17 +2024,8 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
 	else 
 		{
 		*accepted = 0;
-		for(dir=0; dir<STDIM; dir++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_volume; r++)
-				{
-				equal(&(GC->lattice[r][dir]), &(meas_aux->lattice_aux[3][r][dir]));
-				}
-			}
-		*dt = *dt-param->d_agf_meas_each;
+		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
+		*dt -= param->d_agf_meas_each;
 		}
 	}
 
@@ -2100,124 +2039,10 @@ void gradflow_RKstep_adaptive_debug2(Gauge_Conf * const GC,
 									double *total_error,
 									Meas_Utils *meas_aux)
 	{
-	long r;
-	int dir, j;
 	double max_dist;
-	Gauge_Conf helper;
 	
-	// initialize
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			equal(&(meas_aux->lattice_aux[3][r][dir]), &(GC->lattice[r][dir]));
-			equal(&(meas_aux->lattice_aux[0][r][dir]), &(GC->lattice[r][dir]));
-			}
-		}
-	// just to call calcstaples_wilson on aux lattice 0
-	helper.lattice = meas_aux->lattice_aux[0]; 
-	helper.Z = GC->Z;
-
-	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple   = staple(W_0)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link     = link(W_0)
-			times(&aux, &link, &staple);                                // aux      = force(W_0)
-			times_equal_real(&aux, -(*dt));                             // aux      = -dt*force(W_0) = Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);           // lattice1 = Z_0
-			times_equal_real(&aux, 1.0/4.0);                            // aux      = 1/4*Z_0
-			taexp(&aux);                                                // aux      = exp(1/4*Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC       = exp(1/4*Z_0)*W_0 = W_1
-			}
-		}
-
-	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, aux2, link;
-
-			calcstaples_wilson(GC, geo, param, r, dir, &staple);     // staple = staple(W_1)
-			equal(&link, &(GC->lattice[r][dir]));                    // link   = link(W_1)
-			times(&aux, &link, &staple);                             // aux    = force(W_1)
-			times_equal_real(&aux, -(*dt));                          // aux    = -dt*force(W_1) = Z_1
-			equal(&aux2, &aux);                                      // aux2   = Z_1
-
-			times_equal_real(&aux2, 2.0);                            // aux2   = 2*Z_1
-			minus_equal(&aux2, &(meas_aux->lattice_aux[1][r][dir])); // aux2   = 2*Z_1-Z_0
-			taexp(&aux2);                                            // aux2   = exp(2*Z_1-Z_0)
-			times(&(meas_aux->lattice_aux[2][r][dir]), &aux2, &(meas_aux->lattice_aux[0][r][dir]));	// lattice2 = exp(2*Z_1-Z_0)*W_0
-
-			times_equal_real(&aux, 8.0/9.0);                                               // aux      = 8/9*Z_1
-			minus_equal_times_real(&aux, &(meas_aux->lattice_aux[1][r][dir]), 17.0/36.0);  // aux      = 8/9*Z_1 - 17/36*Z_0
-			equal(&(meas_aux->lattice_aux[1][r][dir]), &aux);                              // lattice1 = 8/9*Z_1 - 17/36*Z_0
-			taexp(&aux);                                                                   // aux      = exp(8/9*Z_1 - 17/36*Z_0)
-			times(&(meas_aux->lattice_aux[0][r][dir]), &aux, &link);                       // lattice0 = exp(8/9*Z_1 - 17/36*Z_0)*W_1 = W_2
-			}
-		}
-
-	// now GC = W_1, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	for(dir=0; dir<STDIM; dir++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif
-		for(r=0; r<param->d_volume; r++)
-			{
-			GAUGE_GROUP staple, aux, link;
-
-			calcstaples_wilson(&helper, geo, param, r, dir, &staple);   // staple = staple(W_2)
-			equal(&link, &(meas_aux->lattice_aux[0][r][dir]));          // link   = link(W_2) 
-			times(&aux, &link, &staple);                                // aux    = force(W_2)
-			times_equal_real(&aux, -(*dt)*3.0/4.0);						// aux    = -3/4*dt*force(W_2) = 3/4*Z_2
-			minus_equal(&aux, &(meas_aux->lattice_aux[1][r][dir]));     // aux    = (3/4)Z_2-(8/9)Z_1+(17/36)Z_0
-			taexp(&aux);                                                // aux    = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)
-			times(&(GC->lattice[r][dir]), &aux, &link);                 // GC     = exp((3/4)Z_2-(8/9)Z_1+(17/36)Z_0)*W_2 = W_3
-			}
-		}
-
-	// now GC = W_3, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
-	// error calculation: dist(W_3, W'_2)
-	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		int i, thread_num;
-		double dist;
-		thread_num = 0;
-		#ifdef OPENMP_MODE
-		thread_num = omp_get_thread_num();
-		#endif
-		for(i=0; i<STDIM; i++)
-			{
-			minus_equal(&(meas_aux->lattice_aux[2][r][i]), &(GC->lattice[r][i]));
-			dist = norm(&(meas_aux->lattice_aux[2][r][i]))/((double)NCOLOR*(double)NCOLOR);
-			unitarize(&(GC->lattice[r][dir]));
-			if (dist > meas_aux->local_max_dist[thread_num]) meas_aux->local_max_dist[thread_num] = dist;
-			}
-		}
-	max_dist = MIN_VALUE;
-	for (j=0; j<NTHREADS; j++)
-		{
-		if (meas_aux->local_max_dist[j] > max_dist) max_dist = meas_aux->local_max_dist[j];
-		}
+	// integration, distance calculation and unitarization
+	max_dist = gradflow_RKstep_adaptive_aux(GC, geo, param, *dt, meas_aux);
 	*total_error = max_dist;
 	
 	//if the integration step is accepted, nothing. Else, reset gauge conf
@@ -2229,16 +2054,7 @@ void gradflow_RKstep_adaptive_debug2(Gauge_Conf * const GC,
 	else
 		{
 		*accepted = 0;
-		for(dir=0; dir<STDIM; dir++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_volume; r++)
-				{
-				equal(&(GC->lattice[r][dir]), &(meas_aux->lattice_aux[3][r][dir]));
-				}
-			}
+		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
 		//*dt = *dt-param->d_agf_meas_each;
 		}
 	}
@@ -2307,5 +2123,6 @@ void ape_smearing(Gauge_Conf * const GC,
 	if(n>0 && n%2==0) equal_gauge_conf(GC, &helper1, param); // GC=helper1
 	free_gauge_conf(&helper1, param);
 	}
+
 
 #endif

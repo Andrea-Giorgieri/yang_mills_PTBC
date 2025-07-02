@@ -1593,7 +1593,7 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf * const GC,
 				meas_count = meas_count + 1;
 				}
 
-			// adapt step to the time of next if this would be skipped
+			// adapt step to the time of next measure if this would be skipped
 			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
 				{
 				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
@@ -1621,144 +1621,359 @@ void perform_measures_localobs_with_adaptive_gradflow(Gauge_Conf * const GC,
 	}
 
 
-void perform_measures_localobs_with_adaptive_gradflow_debug(Gauge_Conf * const GC,
+// Compare different definitions of the local integration error
+void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											Meas_Utils *meas_aux,
-											FILE *step_filep)
+											Meas_Utils *meas_aux)
 	{
-	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
-	int gradflowrepeat;
-	
 	// meas no gradflow
 	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
-	gradflowrepeat = (int)floor((param->d_agf_length+MIN_VALUE)/param->d_agf_meas_each);
-	if (gradflowrepeat > 0)
+	if (param->d_agf_num_meas > 0)
 		{
 		int meas_count, accepted;
-		double gftime, gftime_step, total_error;
+		double gftime, gftime_step;
+		Gauge_Conf helper1, helper2;
+		
+		// allocate memory
+		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
+		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
 
 		// gradflow starts
 		gftime = 0.0;
 		gftime_step = param->d_agf_step;
 		meas_count = 0;
-		total_error = 0.0;
-		fprintf(step_filep, "%ld % 18.12e % 18.12e % 18.12e\n", GC->update_index, gftime, gftime_step, total_error);
-		while(meas_count < gradflowrepeat)
+		while(meas_count < param->d_agf_num_meas)
 			{
-			gradflow_RKstep_adaptive_debug(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
-			fprintf(step_filep, "%ld % 18.12e % 18.12e % 18.12e\n", GC->update_index, gftime, gftime_step, total_error);
-			// step accepted, perform measures
-			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE)
+			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
+
+			// if step accepted, perform measures
+			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+				{
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
+				meas_count = meas_count + 1;
+				}
+
+			// adapt step to the time of next if this would be skipped
+			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+				{
+				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				}
+			}
+
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
+		
+		// print meas gradflow
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		
+		// free memory
+		free_gauge_conf(&helper1, param);
+		free_gauge_conf(&helper2, param);
+		}
+	
+	// cold topcharge used to evaluate the multicanonical potential
+	#ifdef MULTICANONICAL_MODE
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
+	#endif
+	
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	}
+	
+
+// Test the local error of the adaptive integration along a fixed-step integration
+void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											Meas_Utils *meas_aux)
+	{
+	// meas no gradflow
+	perform_measures_localobs(GC, geo, param, meas_aux);
+	
+	// meas gradflow
+	if (param->d_agf_num_meas > 0)
+		{
+		int meas_count, accepted;
+		double gftime, gftime_step, gftime_step_max, gftime_step_min;
+		Gauge_Conf helper1, helper2;
+		
+		// allocate memory
+		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
+		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
+
+		// gradflow starts
+		gftime = 0.0;
+		meas_count = 0;
+		gftime_step_max = 0.40;
+		gftime_step_min = 0.01;
+		while(meas_count < param->d_agf_num_meas)
+			{
+			gftime_step = gftime_step_max;
+			while(gftime_step > gftime_step_min)
+				{
+				gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
+				equal_lattice(GC->lattice, helper1.lattice, param);
+				gftime_step *= 0.8;
+				}
+			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step_min, &accepted, meas_aux, &helper1, &helper2);
+			gftime += gftime_step_min;
+
+			// perform measures
+			if (gftime - param->d_agf_meas_each*(meas_count+1) > param->d_agf_meas_each / 10000.0 )
 				{
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
 			}
-		//fprintf(step_filep, "\n");
-		restore_gauge_conf(GC, param);
+			
+			if (gftime_step_min < gftime / 50.0)
+				{
+				gftime_step_min = gftime / 50.0;
+				}
 
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
+		
 		// print meas gradflow
-		print_measures_aux(gradflowrepeat, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		
+		// free memory
+		free_gauge_conf(&helper1, param);
+		free_gauge_conf(&helper2, param);
 		}
 	
+	// cold topcharge used to evaluate the multicanonical potential
+	#ifdef MULTICANONICAL_MODE
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
+	#endif
+	
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	fflush(step_filep);
 	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
-	
-	#else
-	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
-	fprintf(meas_aux->datafilep, "\n");
-	fflush(meas_aux->datafilep);
-	#endif
 	}
 
 
-void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const GC,
+// Test the local error of the adaptive integration along an adaptive-step integration
+void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf * const GC,
 											Geometry const * const geo,
 											GParam const * const param,
-											Meas_Utils *meas_aux,
-											FILE *step_filep)
-	{
-	#if( (STDIM==4 && NCOLOR>1) || (STDIM==2 && NCOLOR==1) )
+											Meas_Utils *meas_aux)
+		{
 	// meas no gradflow
 	perform_measures_localobs(GC, geo, param, meas_aux);
 	
 	// meas gradflow
-	if (param->d_agf_length > 0.0)
+	if (param->d_agf_num_meas > 0)
 		{
-		Gauge_Conf conf_accepted, conf_accepted_old;
-		int accepted;
-		double gftime, gftime_step, total_error, gftime_step_accepted;		
+		int meas_count, accepted, accepted_flag;
+		double gftime, gftime_step, gftime_step_max, gftime_step_min, gftime_step_accepted;
+		Gauge_Conf helper1, helper2, accepted_conf;
 		
 		// allocate memory
-		init_gauge_conf_from_gauge_conf(&conf_accepted, GC, param);
-		init_gauge_conf_from_gauge_conf(&conf_accepted_old, GC, param);
+		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
+		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
+		init_gauge_conf_from_gauge_conf(&accepted_conf, GC, param);
 
 		// gradflow starts
 		gftime = 0.0;
-		gftime_step = param->d_agf_step;
-		total_error = 0.0;
-		fprintf(step_filep, "%ld % 18.12e % 18.12e % 18.12e\n", GC->update_index, gftime, gftime_step, total_error);
-		fflush(step_filep);
-		while(gftime < param->d_agf_length)
+		meas_count = 0;
+		gftime_step_max = 0.4;
+		gftime_step_min = 0.01;
+		while(meas_count < param->d_agf_num_meas)
 			{
-			gradflow_RKstep_adaptive_debug2(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
-			fprintf(step_filep, "%ld % 18.12e % 18.12e % 18.12e\n", GC->update_index, gftime, gftime_step, total_error);
-			if (accepted == 1) //&& fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE)
+			accepted_flag = 0;
+			gftime_step = gftime_step_max;
+			while(gftime_step > gftime_step_min)
 				{
-				// save adaptive gradflow status
-				equal_gauge_conf(&conf_accepted, GC, param);
-				equal_gauge_conf(&conf_accepted_old, GC, param);
-				gftime_step_accepted = gftime_step;
-				
-				// keep reducing gftime_step without advancing
-				while (gftime_step > 1.01*param->d_agf_meas_each)
+				gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
+				if (accepted == 1 && accepted_flag == 0)
 					{
-					gftime_step = gftime_step-param->d_agf_meas_each;
-					equal_gauge_conf(GC, &conf_accepted_old, param);
-					gradflow_RKstep_adaptive_debug(GC, geo, param, &gftime, &gftime_step, &accepted, &total_error, meas_aux);
-					fprintf(step_filep, "%ld % 18.12e % 18.12e % 18.12e\n", GC->update_index, gftime, gftime_step, total_error);
+					equal_lattice(accepted_conf.lattice, GC->lattice, param);
+					gftime_step_accepted = gftime_step;
+					accepted_flag = 1;
 					}
-				
-				// restore adaptive gradflow status
-				gftime = gftime + gftime_step_accepted;
-				gftime_step = param->d_agf_step;
-				equal_gauge_conf(GC, &conf_accepted, param);
-				
-				// meas gradflow
-				fprintf(meas_aux->datafilep, "% 18.12e ", gftime);
-				perform_measures_aux(GC, geo, param, 0, meas_aux);
+				equal_lattice(GC->lattice, helper1.lattice, param);
+				gftime_step *= 0.8;
+				}
+			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step_min, &accepted, meas_aux, &helper1, &helper2);
+			if (accepted_flag == 1)
+				{
+				equal_lattice(GC->lattice, accepted_conf.lattice, param);
 				}
 			else
 				{
-				if (gftime_step < 1.01*param->d_agf_meas_each) gftime_step = gftime_step/2.0;
-				else gftime_step = gftime_step-param->d_agf_meas_each;
+				gftime_step_accepted = gftime_step_min;
+				}
+			gftime += gftime_step_accepted;
+
+			// perform measures
+			if (gftime - param->d_agf_meas_each*(meas_count+1) > param->d_agf_meas_each / 10000. )
+				{
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
+				meas_count = meas_count + 1;
+				}
+			
+			if (gftime_step_min < gftime / 50.0)
+				{
+				gftime_step_min = gftime / 50.0;
 				}
 			}
+
+		// restore gauge conf before gradflow from GC->lattice_copy
 		restore_gauge_conf(GC, param);
+		
+		// print meas gradflow
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		
 		// free memory
-		free_gauge_conf(&conf_accepted, param);
-		free_gauge_conf(&conf_accepted_old, param);
+		free_gauge_conf(&helper1, param);
+		free_gauge_conf(&helper2, param);
 		}
 	
+	// cold topcharge used to evaluate the multicanonical potential
+	#ifdef MULTICANONICAL_MODE
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
+	#endif
+	
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	fflush(step_filep);
 	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
-	
-	#else
-	perform_measures_localobs_notopo(GC, geo, param, meas_aux);
-	fprintf(meas_aux->datafilep, "\n");
-	fflush(meas_aux->datafilep);
-	#endif
 	}
 
+
+// Compare the total error of the adaptive integration with a fixed-step integration
+void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const GC,
+											Geometry const * const geo,
+											GParam const * const param,
+											Meas_Utils *meas_aux)
+		{
+	// meas no gradflow
+	perform_measures_localobs(GC, geo, param, meas_aux);
+	
+	// meas gradflow
+	if (param->d_agf_num_meas > 0)
+		{
+		int meas_count, accepted;
+		double gftime, gftime_step, max_dist;
+		GAUGE_GROUP ***helper_confs;
+		
+		// allocate memory
+		allocate_array_GAUGE_GROUP_pointer_pointer(&helper_confs, param->d_agf_num_meas, __FILE__, __LINE__);
+		for(int i=0; i<param->d_agf_num_meas; i++)
+			{
+			allocate_array_GAUGE_GROUP_pointer(&(helper_confs[i]), param->d_volume, __FILE__, __LINE__);
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r=0; r<(param->d_volume); r++)
+				{
+				allocate_array_GAUGE_GROUP(&(helper_confs[i][r]), STDIM, __FILE__, __LINE__);
+				}
+			}
+
+		// adaptive step integration
+		gftime_step = param->d_agf_step;
+		gftime = 0.0;
+		meas_count = 0;
+		while(meas_count < param->d_agf_num_meas)
+			{
+			gradflow_RKstep_adaptive(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux);
+
+			// if step accepted, save conf
+			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+				{
+				equal_lattice(helper_confs[meas_count], GC->lattice, param);
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
+				meas_count = meas_count + 1;
+				}
+
+			// adapt step to the time of next measure if this would be skipped
+			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+				{
+				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				}
+			}
+
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
+		
+		// print meas gradflow
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		
+		// fixed step integration
+		gftime_step = 0.01;
+		gftime = 0.0;
+		meas_count = 0;
+		while(meas_count < param->d_agf_num_meas)
+			{
+			gradflow_RKstep(GC, geo, param, gftime_step, meas_aux);
+			gftime += gftime_step;
+			gftime_step = 0.01;
+
+			// save conf
+			if (fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+				{
+				max_dist = lattice_max_dist(GC->lattice, helper_confs[meas_count], param);
+				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
+				meas_count = meas_count + 1;
+				
+				fprintf(stderr, "%ld %.12g %.12g\n", GC->update_index, gftime, max_dist);
+				fflush(stderr);
+				}
+
+			// adapt step to the time of next measure if this would be skipped
+			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+				{
+				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				}
+			}
+		
+		// restore gauge conf before gradflow from GC->lattice_copy
+		restore_gauge_conf(GC, param);
+		
+		// print meas gradflow
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		
+		// free memory
+		for(int i=0; i<param->d_agf_num_meas; i++)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r=0; r<(param->d_volume); r++)
+				{
+				free(helper_confs[i][r]);
+				}
+			free(helper_confs[i]);
+			}
+		free(helper_confs);
+		}
+	
+	// cold topcharge used to evaluate the multicanonical potential
+	#ifdef MULTICANONICAL_MODE
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
+	#endif
+	
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	}
 
 // perform local observables in the case of trace deformation, it computes all the order parameters
 void perform_measures_localobs_with_tracedef(Gauge_Conf * const GC,

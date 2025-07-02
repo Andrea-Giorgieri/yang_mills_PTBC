@@ -45,6 +45,7 @@ void (*times_dag12)(GAUGE_GROUP *A, GAUGE_GROUP const * const B, GAUGE_GROUP con
 void (*rand_matrix)(GAUGE_GROUP *A) = &rand_matrix_U1;
 
 double (*norm)(GAUGE_GROUP const * const A) = &norm_U1;
+double (*relative_dist)(GAUGE_GROUP const * const A, GAUGE_GROUP const * const B) = &relative_dist_U1;
 
 double (*retr)(GAUGE_GROUP const * const A) = &retr_U1;
 double (*imtr)(GAUGE_GROUP const * const A) = &imtr_U1;
@@ -99,6 +100,7 @@ void (*times_dag12)(GAUGE_GROUP *A, GAUGE_GROUP const * const B, GAUGE_GROUP con
 void (*rand_matrix)(GAUGE_GROUP *A) = &rand_matrix_Su2;
 
 double (*norm)(GAUGE_GROUP const * const A) = &norm_Su2;
+double (*relative_dist)(GAUGE_GROUP const * const A, GAUGE_GROUP const * const B) = &relative_dist_Su2;
 
 double (*retr)(GAUGE_GROUP const * const A) = &retr_Su2;
 double (*imtr)(GAUGE_GROUP const * const A) = &imtr_Su2;
@@ -153,6 +155,7 @@ void (*times_dag12)(GAUGE_GROUP *A, GAUGE_GROUP const * const B, GAUGE_GROUP con
 void (*rand_matrix)(GAUGE_GROUP *A) = &rand_matrix_SuN;
 
 double (*norm)(GAUGE_GROUP const * const A) = &norm_SuN;
+double (*relative_dist)(GAUGE_GROUP const * const A, GAUGE_GROUP const * const B) = &relative_dist_SuN;
 
 double (*retr)(GAUGE_GROUP const * const A) = &retr_SuN;
 double (*imtr)(GAUGE_GROUP const * const A) = &imtr_SuN;

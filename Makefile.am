@@ -1,4 +1,5 @@
 bin_PROGRAMS = conf_check \
+            conf_txt_to_bin \
             debug_rng \
             debug_su2 \
             debug_su2_adj \
@@ -49,7 +50,7 @@ dSFMT = ./include/dSFMT-common.h \
         ./lib/dSFMT.c
 
 endian = ./include/endianness.h  \
-         ./lib/endianness.c 
+         ./lib/endianness.c
 
 funcpoint = ./include/function_pointers.h \
             ./lib/function_pointers.c
@@ -70,19 +71,19 @@ gparam = ./include/gparam.h \
 
 random = ./include/myrngparam.h \
          ./include/random.h \
-         ./lib/random.c 
+         ./lib/random.c
 
 su2 = ./include/su2.h \
       ./include/su2_upd.h \
       ./lib/su2.c \
-      ./lib/su2_upd.c 
+      ./lib/su2_upd.c
 
 sun = ./include/sun_aux.h \
       ./include/sun.h \
       ./include/sun_upd.h \
       ./lib/sun_aux.c \
       ./lib/sun.c \
-      ./lib/sun_upd.c 
+      ./lib/sun_upd.c
 
 tens_prod = ./include/tens_prod.h \
             ./include/tens_prod_adj.h \
@@ -104,6 +105,22 @@ conf_check_SOURCES=./src/conf_check.c \
                    $(random) \
                    $(su2) \
                    $(sun) \
+                   $(u1)
+
+conf_txt_to_bin_SOURCES=./src/conf_txt_to_bin.c \
+                   $(timing) \
+                   $(align) \
+                   $(dSFMT) \
+                   $(endian) \
+                   $(funcpoint) \
+                   $(gauge_conf) \
+                   $(geometry) \
+                   $(gparam) \
+                   ./include/macro.h \
+                   $(random) \
+                   $(su2) \
+                   $(sun) \
+                   $(tens_prod) \
                    $(u1)
 
 debug_rng_SOURCES=./src/debug_rng.c \
@@ -129,7 +146,7 @@ debug_su2_adj_SOURCES=./src/debug_su2_adj.c \
                       $(gparam) \
                       ./include/macro.h \
                       $(random) \
-                      $(su2) 
+                      $(su2)
 
 debug_sun_SOURCES=./src/debug_sun.c \
                   $(timing) \
@@ -214,7 +231,7 @@ yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
                              $(su2) \
                              $(sun) \
                              $(tens_prod) \
-                             $(u1) 
+                             $(u1)
 
 yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
                                   $(timing) \
@@ -230,7 +247,7 @@ yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
                                   $(su2) \
                                   $(sun) \
                                   $(tens_prod) \
-                                  $(u1) 
+                                  $(u1)
 
 yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
                                 $(timing) \
@@ -246,7 +263,7 @@ yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
                                 $(su2) \
                                 $(sun) \
                                 $(tens_prod) \
-                                $(u1) 
+                                $(u1)
 
 yang_mills_t0_SOURCES=./src/yang_mills_t0.c \
                        $(timing) \
@@ -262,7 +279,7 @@ yang_mills_t0_SOURCES=./src/yang_mills_t0.c \
                        $(su2) \
                        $(sun) \
                        $(tens_prod) \
-                       $(u1) 
+                       $(u1)
 
 yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
                              $(timing) \
@@ -278,7 +295,7 @@ yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
                              $(su2) \
                              $(sun) \
                              $(tens_prod) \
-                             $(u1) 
+                             $(u1)
 
 yang_mills_tube_conn_long_SOURCES=./src/yang_mills_tube_conn_long.c \
                                   $(timing) \
@@ -294,8 +311,8 @@ yang_mills_tube_conn_long_SOURCES=./src/yang_mills_tube_conn_long.c \
                                   $(su2) \
                                   $(sun) \
                                   $(tens_prod) \
-                                  $(u1) 
-     
+                                  $(u1)
+
 yang_mills_tube_disc_SOURCES=./src/yang_mills_tube_disc.c \
                              $(timing) \
                              $(align) \
@@ -310,7 +327,7 @@ yang_mills_tube_disc_SOURCES=./src/yang_mills_tube_disc.c \
                              $(su2) \
                              $(sun) \
                              $(tens_prod) \
-                             $(u1) 
+                             $(u1)
 
 yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(timing) \
@@ -326,7 +343,7 @@ yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(su2) \
                             $(sun) \
                             $(tens_prod) \
-                            $(u1) 
+                            $(u1)
 
 yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
                           $(timing) \
@@ -359,7 +376,7 @@ yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
                           $(sun) \
                           $(tens_prod) \
                           $(u1)
-                  
+
 yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(timing) \
                           $(align) \

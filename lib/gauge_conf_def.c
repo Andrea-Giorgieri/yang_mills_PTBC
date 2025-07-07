@@ -18,6 +18,83 @@
 #include"../include/tens_prod.h"
 #include"../include/memalign.h"
 
+
+void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const * const param)
+	{
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
+	for(long r=0; r<(param->d_volume); r++) 
+		{
+		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
+		}
+	}
+
+void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const * const param)
+	{
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
+	for(long r=0; r<(param->d_volume); r++) 
+		{
+		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
+		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
+		}
+	}
+
+void allocate_C(Gauge_Conf *GC, GParam const * const param)
+	{
+	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
+	for(long r=0; r<(param->d_volume); r++) 
+		{
+		allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
+		}
+	}
+
+void allocate_Z_with_copy(Gauge_Conf *GC, GParam const * const param)
+	{
+	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
+	allocate_array_double_complex_pointer(&(GC->Z_copy), param->d_volume, __FILE__, __LINE__);
+	for(long r=0; r<(param->d_volume); r++) 
+		{
+		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
+		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes, __FILE__, __LINE__);
+		}
+	}
+
+void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu)
+	{
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(long r=0; r<param->d_volume; r++)
+		{
+		int cartcoord[STDIM];
+		si_to_cart(cartcoord, r, param);
+		for(int i = 0; i < STDIM; i++)
+			{
+			for(int j = i + 1; j < STDIM; j++)
+				{
+				//for clockwise and anti-clockwise plaquette
+				int si_ij = dirs_to_si(i, j);  
+				int si_ji = dirs_to_si(j, i);
+				
+				// initialize to 1, then overwrite
+				GC->Z[r][si_ij] = 1.0 + I * 0.0;
+				GC->Z[r][si_ji] = 1.0 + I * 0.0;
+				GC->Z_copy[r][si_ij] = 1.0 + I * 0.0;
+				GC->Z_copy[r][si_ji] = 1.0 + I * 0.0;
+				if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
+					{
+					GC->Z[r][si_ij] = cexp(I*PI2_N*(param->d_k_twist[si_ij]));
+					GC->Z[r][si_ji] = conj(GC->Z[r][si_ij]);
+					GC->Z_copy[r][si_ij] = cexp(I*PI2_N*(param->d_k_twist[si_ij]));
+					GC->Z_copy[r][si_ji] = conj(GC->Z_copy[r][si_ij]);
+					}
+				}
+			}
+		}
+	}
+
 void equal_lattice(GAUGE_GROUP * const * const lattice1,
 					GAUGE_GROUP const * const * const lattice2,
 					GParam const * const param)
@@ -162,9 +239,6 @@ void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		int i = (int) ( (s - r) / (param->d_volume) );
 		unitarize(&(GC->lattice[r][i]));
 		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
-		//#ifdef MULTICANONICAL_MODE
-		//equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
-		//#endif
 		}
 	}
 
@@ -179,9 +253,6 @@ void restore_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		long r = s % (param->d_volume);
 		int i = (int) ( (s - r) / (param->d_volume) );
 		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
-		//#ifdef MULTICANONICAL_MODE
-		//equal(&(GC->lattice_cold[r][i]), &(GC->lattice_copy[r][i]));
-		//#endif
 		}
 	}
 
@@ -258,29 +329,24 @@ void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level
 
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
-	long s, r, j;
+	long r, j;
 	
-	// allocate the local lattice and auxiliary lattice
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
-	for(r=0; r<(param->d_volume); r++) 
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
-		}
+	GC->update_index = 0;
+	allocate_lattice_with_copy(GC, param);
 	
 	#ifdef THETA_MODE
 	alloc_clover_array(GC, param);
 	#endif
 	
-	// initialize lattice
-	if(param->d_start==0) // ordered start
+	// initialize lattice:
+	// 0 = PBC ordered start
+	// 1 = random start
+	// 2 = from stored conf
+	// 3 = TBC ordered start (only for one twisted plane)
+	if(param->d_start == 0)
 		{
 		GAUGE_GROUP aux1, aux2;
 		one(&aux1);
-		
-		GC->update_index=0;
-		
 		for(r=0; r<(param->d_volume); r++)
 			{
 			for(j=0; j<STDIM; j++)
@@ -293,12 +359,9 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				}
 			}
 		}
-	if(param->d_start==1)	// random start
+	if(param->d_start == 1)
 		{
-		GAUGE_GROUP aux1;
-		
-		GC->update_index=0;
-		
+		GAUGE_GROUP aux1;	
 		for(r=0; r<(param->d_volume); r++)
 			{
 			for(j=0; j<STDIM; j++)
@@ -308,13 +371,11 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				}
 			}
 		}
-	
-	if(param->d_start==2) // initialize from stored conf
+	if(param->d_start == 2)
 		{
 		read_gauge_conf_from_file_with_name(GC, param, filename);
 		}
-	
-	if(param->d_start==3) // cold twisted start (only for one twist parameter)
+	if(param->d_start == 3)
 		{
 		int i, j, k_mu_nu, mu, nu, twisted_bc, cartcoord[STDIM];
 		double complex zf;
@@ -324,10 +385,13 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 		mu = 0;
 		nu = 0;
 		
-		if ((NCOLOR%2)==0) zf = cexp(I*PI/(double)NCOLOR);
-		else zf = 1.0 + 0.0*I;
+		if ((NCOLOR%2) == 0)
+			zf = cexp(I*PI/(double)NCOLOR);
+		else
+			zf = 1.0 + 0.0*I;
 		
-		twisted_bc = 0;	// check if twist is non trivial and save parameters (only last occurence)
+		// check if twist is non trivial and save parameters (only last occurence)
+		twisted_bc = 0;
 		for(i=0; i<STDIM; i++)
 			for(j=i+1; j<STDIM; j++)
 				if (param->d_k_twist[dirs_to_si(i,j)] != 0)
@@ -342,28 +406,31 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 			{
 			// P matrix
 			zero(&Pmatrix);
-			for(i=0; i<(NCOLOR-1); i++) Pmatrix.comp[m(i+1,i)] = conj(zf);
+			for(i=0; i<(NCOLOR-1); i++)
+				Pmatrix.comp[m(i+1,i)] = conj(zf);
 			Pmatrix.comp[m(0,2)] = conj(zf);
 			unitarize(&Pmatrix);
 		
 			// Q matrix
 			one(&aux);
 			zero(&Qmatrix);
-			for(i=0; i<NCOLOR; i++) Qmatrix.comp[m(i,i)] = zf*cexp(PI2*I*(i+1)/(double)NCOLOR);
-			for(i=0; i<k_mu_nu; i++) times_equal(&aux,&Qmatrix);
+			for(i=0; i<NCOLOR; i++)
+				Qmatrix.comp[m(i,i)] = zf*cexp(I*PI2_N*(i+1));
+			for(i=0; i<k_mu_nu; i++)
+				times_equal(&aux,&Qmatrix);
 			equal(&Qmatrix,&aux);
 			unitarize(&Qmatrix);
 			}
 		
-		GC->update_index=0;
+		// set all links to one, then overwrite links on the twisted plane
 		for(r=0; r<(param->d_volume); r++)
 			{
 			si_to_cart(cartcoord, r, param);
-			for(i=0; i<STDIM; i++)	// set all links to one
+			for(i=0; i<STDIM; i++)
 				{
 				one(&(GC->lattice[r][i])); 		
 				}
-			if (twisted_bc == 1)	//overwrite links on the twisted plane
+			if (twisted_bc == 1)
 				{
 				if (cartcoord[mu] == 0) 
 					{
@@ -376,16 +443,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				}
 			}
 		}
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s)
-	#endif
-	for(s=0; s<STDIM*(param->d_volume); s++)
-		{
-		long r = s % (param->d_volume);
-		int i = (int) ( (s - r) / (param->d_volume) );
-		equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
-		}
+	equal_lattice(GC->lattice_copy, GC->lattice, param);
 	}
 
 void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param)
@@ -440,8 +498,7 @@ int init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	FILE *file;
-	long r;
+	FILE *fp;
 	int x_mu, x_nu;
 	
 	//gauge conf filename at step
@@ -451,9 +508,9 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	strcat(name, aux);
 	
 	//check if conf file exists and read conf if it does
-	if ((file = fopen(name, "r")))
+	if((fp = fopen(name, "r")))
 		{
-		fclose(file);
+		fclose(fp);
 		read_gauge_conf_from_file_with_name(GC, param, name);
 		}
 	else return 0;
@@ -464,44 +521,13 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	strcat(name, aux);
 	
 	//check if twist file exists and initialize cond if it does
-	if ((file = fopen(name, "r")))
+	if((fp = fopen(name, "r")))
 		{
-		fclose(file);
-		
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif 
-		for(r=0; r<param->d_volume; r++)
-			for(int j=0; j<param->d_n_planes; j++) 
-				{
-				GC->Z[r][j]=1.0+0.0*I;
-				GC->Z_copy[r][j]=1.0+0.0*I;
-				}
-
+		fclose(fp);
 		x_mu = 0;
 		x_nu = 0;
-
 		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, name);
-
-		// assign Z on positions x_mu, x_nu
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
-		#endif 
-		for(r=0; r<param->d_volume; r++)
-			{
-			int cartcoord[STDIM];
-			si_to_cart(cartcoord, r, param);
-			for(int i=0; i<STDIM; i++)
-				for(int j=i+1; j<STDIM; j++)
-					if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
-						{
-						GC->Z[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);	//for clockwise plaquette
-						GC->Z[r][dirs_to_si(j,i)] = conj(GC->Z[r][dirs_to_si(i,j)]);								//for anticlockwise plaquette
-						
-						GC->Z_copy[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);
-						GC->Z_copy[r][dirs_to_si(j,i)] = conj(GC->Z_copy[r][dirs_to_si(i,j)]);
-						}
-			}		
+		initialize_Z_with_copy(GC, param, x_mu, x_nu);
 		}
 	else return 0;
 	return 1;
@@ -511,7 +537,7 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam const * const param)
 	{
 	int i;
-	(void) geo; 		// to avoid compiler warning of unused variable
+	(void) geo;  // to avoid compiler warning of unused variable
 
 	// allocate the vector to store replicas
 	allocate_array_Gauge_Conf(GC, param->d_N_replica_pt, __FILE__, __LINE__);
@@ -557,11 +583,9 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
 	
 	//allocation of C[r][j]
-	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
-	for(r=0; r<(param->d_volume); r++) allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
-	
+	allocate_C(GC, param);
+
 	// initialization of C[r][j]
-	
 	// start initializing them to 1
 	for(r=0; r<param->d_volume; r++)
 		for(j=0; j<STDIM; j++)
@@ -570,21 +594,22 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 			}
 	
 	// if there is more than 1 replica, initialize c(r) != 1 on the defect and along direction <defect_dir>
-	if (param->d_N_replica_pt > 1)
+	if(param->d_N_replica_pt > 1)
 		{
 		j=param->d_defect_dir;
 		for(r=0; r<param->d_volume; r++)
 			{
 			// check if r is on the defect or not
 			si_to_cart(cartcoord, r, param);
-			if( (cartcoord[param->d_defect_dir]==((param->d_size[param->d_defect_dir])-1)) &&
-				(cartcoord[perp_dir[param->d_defect_dir][0]]<(param->d_L_defect[0])) &&
-				(cartcoord[perp_dir[param->d_defect_dir][1]]<(param->d_L_defect[1])) &&
-				(cartcoord[perp_dir[param->d_defect_dir][2]]<(param->d_L_defect[2])) ) is_on_defect=TRUE;
-			else is_on_defect=FALSE;
+			if( (cartcoord[param->d_defect_dir] == ((param->d_size[param->d_defect_dir])-1)) &&
+				(cartcoord[perp_dir[param->d_defect_dir][0]] < (param->d_L_defect[0])) &&
+				(cartcoord[perp_dir[param->d_defect_dir][1]] < (param->d_L_defect[1])) &&
+				(cartcoord[perp_dir[param->d_defect_dir][2]] < (param->d_L_defect[2])) ) is_on_defect = TRUE;
+			else is_on_defect = FALSE;
 			
 			// if r is on defect assign bound cond
-			if (is_on_defect==TRUE) {GC->C[r][j]=param->d_pt_bound_cond_coeff[GC->replica_index];}
+			if(is_on_defect == TRUE)
+				GC->C[r][j] = param->d_pt_bound_cond_coeff[GC->replica_index];
 			}
 		}
 	}
@@ -592,52 +617,23 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 // initialization of the twist factors
 void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
-	long r;
-	int i, j, x_mu, x_nu;
-	int cartcoord[STDIM];
+	int x_mu, x_nu;
 	
 	//allocation of Z[r][j]
-	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
-	allocate_array_double_complex_pointer(&(GC->Z_copy), param->d_volume, __FILE__, __LINE__);
-	for(r=0; r<(param->d_volume); r++) 
-		{
-		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
-		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes, __FILE__, __LINE__);
-		}
-	
-	// initialization of Z[r][j]
-	
-	// start initializing them to 1
-	for(r=0; r<param->d_volume; r++)
-		for(j=0; j<param->d_n_planes; j++) 
-			{
-			GC->Z[r][j]=1.0+0.0*I;
-			GC->Z_copy[r][j]=1.0+0.0*I;
-			}
+	allocate_Z_with_copy(GC, param);
 
+	// default twist position
 	x_mu = 0;
 	x_nu = 0;
 	
-	if(param->d_start==2) // initialize from stored conf
+	// update twist position if starting from stored conf
+	if(param->d_start == 2)
 		{
 		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, filename);
 		}
 	
 	// assign Z on positions x_mu, x_nu, 
-	for(r=0; r<param->d_volume; r++)
-		{
-		si_to_cart(cartcoord, r, param);
-		for(i=0; i<STDIM; i++)
-			for(j=i+1; j<STDIM; j++)
-				if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
-					{
-					GC->Z[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);	//for clockwise plaquette
-					GC->Z[r][dirs_to_si(j,i)] = conj(GC->Z[r][dirs_to_si(i,j)]);								//for anticlockwise plaquette
-					
-					GC->Z_copy[r][dirs_to_si(i,j)] = cexp(I*PI2*(param->d_k_twist[dirs_to_si(i,j)])/(double)NCOLOR);
-					GC->Z_copy[r][dirs_to_si(j,i)] = conj(GC->Z_copy[r][dirs_to_si(i,j)]);
-					}
-		}
+	initialize_Z_with_copy(GC, param, x_mu, x_nu);
 	}
 
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
@@ -1061,76 +1057,36 @@ void write_conf_on_file_back(Gauge_Conf const * const GC, GParam const * const p
 // allocate GC and initialize with GC2, including the twist factors
 void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC2, GParam const * const param) 
 	{
-	long r;
-	int j;
-
-	// allocate the lattice and Z[r][j]
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
+	allocate_lattice_with_copy(GC, param);
 	#ifdef MULTICANONICAL_MODE
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
+	allocate_lattice_cold_with_copy(GC, param);
 	#endif
-	
 
-	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
-	allocate_array_double_complex_pointer(&(GC->Z_copy), param->d_volume, __FILE__, __LINE__);
+	allocate_Z_with_copy(GC, param);
+
 	#ifdef THETA_MODE
 	alloc_clover_array(GC, param);
 	#endif
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r, j)
+	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
-		#ifdef MULTICANONICAL_MODE
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
-		#endif
-		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
-		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes, __FILE__, __LINE__);
-		
-		// initialize GC and Z[r][j]
-		for(j=0; j<STDIM; j++)
+	for(long r = 0; r < (param->d_volume); r++)
+		{	
+		for(int j = 0; j < STDIM; j++)
 			{
 			equal(&(GC->lattice[r][j]), &(GC2->lattice[r][j]) );
 			equal(&(GC->lattice_copy[r][j]), &(GC2->lattice_copy[r][j]) );
 			}
-		for(j=0; j<param->d_n_planes; j++)
+		for(int j = 0; j < param->d_n_planes; j++)
 			{
-			GC->Z[r][j]=GC2->Z[r][j];
-			GC->Z_copy[r][j]=GC2->Z_copy[r][j];
+			GC->Z[r][j] = GC2->Z[r][j];
+			GC->Z_copy[r][j] = GC2->Z_copy[r][j];
 			}
 		}
 	
-	GC->update_index=GC2->update_index;
-	GC->replica_index=GC2->replica_index;
-	}
-
-void init_twist_cond_from_twist_cond(double complex **Z, double complex const * const * const Z2, GParam const * const param) 
-	{
-	long r;
-	int j;
-
-	// allocate Z[r][j]
-	allocate_array_double_complex_pointer(&Z, param->d_volume, __FILE__, __LINE__);
-	
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r, j)
-	#endif
-	for(r=0; r<(param->d_volume); r++)
-		{
-		allocate_array_double_complex(&(Z[r]), param->d_n_planes, __FILE__, __LINE__);
-		
-		// initialize Z[r][j]
-		for(j=0; j<param->d_n_planes; j++)
-			{
-			Z[r][j]=Z2[r][j];
-			}
-		}
+	GC->update_index = GC2->update_index;
+	GC->replica_index = GC2->replica_index;
 	}
 
 
@@ -1183,8 +1139,7 @@ void compute_md5sum_conf(char *res, Gauge_Conf const * const GC, GParam const * 
 
 
 // allocate the ml_polycorr arrays and related stuff
-void alloc_polycorr_stuff(Gauge_Conf *GC,
-								GParam const * const param)
+void alloc_polycorr_stuff(Gauge_Conf *GC, GParam const * const param)
 	{
 	int i, j;
 	
@@ -1248,34 +1203,33 @@ void write_polycorr_on_file(Gauge_Conf const * const GC,
 
 	fp=fopen(param->d_ml_file, "w"); // open the configuration file
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	else
-	{
-	fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
-	}
+		{
+		fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
+		}
 	fclose(fp);
 
 	fp=fopen(param->d_ml_file, "ab"); // open the configuration file in binary mode
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
-	else
-	{
-	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
-		for(i=0; i<(param->d_space_vol[0]); i++)
-			{
-			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
-			}
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
 		}
-
-	fclose(fp);
-	}
+	else
+		{
+		for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
+			{
+			for(i=0; i<(param->d_space_vol[0]); i++)
+				{
+				print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
+				}
+			}
+		fclose(fp);
+		}
 	}
 
 
@@ -1296,52 +1250,50 @@ void read_polycorr_from_file(Gauge_Conf const * const GC,
 
 	fp=fopen(param->d_ml_file, "r"); // open the multilevel file
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	else
-	{
-	i=fscanf(fp, "%ld %d %s\n", &loc_space_vol, iteration, md5sum_old);
-	if(i!=3)
 		{
-		fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		i=fscanf(fp, "%ld %d %s\n", &loc_space_vol, iteration, md5sum_old);
+		if(i!=3)
+			{
+			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		if(loc_space_vol != param->d_space_vol[0])
+			{
+			fprintf(stderr, "Error: space_vol in the multilevel file %s is different from the one in the input (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+			exit(EXIT_FAILURE);
+			}
+		fclose(fp);
 		}
-	if(loc_space_vol != param->d_space_vol[0])
-		{
-		fprintf(stderr, "Error: space_vol in the multilevel file %s is different from the one in the input (%s, %d)\n",
-				param->d_ml_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	}
-	fclose(fp);
 
 	fp=fopen(param->d_ml_file, "rb"); // open the multilevel file in binary mode
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	else
-	{
-	// read again the header: loc_space_vol, iteration, hash
-	i=0;
-	while(i!='\n')
+		{
+		// read again the header: loc_space_vol, iteration, hash
+		i=0;
+		while(i!='\n')
 			{
 			i=fgetc(fp);
 			}
 
-	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
-		{
-		for(i=0; i<(param->d_space_vol[0]); i++)
+		for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 			{
-			read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
+			for(i=0; i<(param->d_space_vol[0]); i++)
+				{
+				read_from_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
+				}
 			}
+		fclose(fp);
 		}
-
-	fclose(fp);
-	}
 
 	#ifdef HASH_MODE
 	// compute the new md5sum and check for consistency
@@ -1427,13 +1379,13 @@ void free_polycorradj(Gauge_Conf *GC,
 	int i, j;
 
 	for(i=0; i<NLEVELS; i++)
-	{
-	for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
 		{
-		free(GC->ml_polycorradj[i][j]);
+		for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
+			{
+			free(GC->ml_polycorradj[i][j]);
+			}
+		free(GC->ml_polycorradj[i]);
 		}
-	free(GC->ml_polycorradj[i]);
-	}
 	free(GC->ml_polycorradj);
 	}
 
@@ -1486,15 +1438,14 @@ void free_tube_conn_stuff(Gauge_Conf *GC,
 	int i, j;
 
 	for(i=0; i<NLEVELS; i++)
-	{
-	for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
 		{
-		free(GC->ml_polycorr[i][j]);
+		for(j=0; j<(param->d_size[0]/param->d_ml_step[i]); j++)
+			{
+			free(GC->ml_polycorr[i][j]);
+			}
+		free(GC->ml_polycorr[i]);
 		}
-	free(GC->ml_polycorr[i]);
-	}
 	free(GC->ml_polycorr);
-
 	free(GC->loc_plaqconn);
 	}
 
@@ -1519,42 +1470,40 @@ void write_tube_conn_stuff_on_file(Gauge_Conf const * const GC,
 
 	fp=fopen(param->d_ml_file, "w"); // open the configuration file
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
+		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
 	else
-	{
-	fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
-	}
-	fclose(fp);
-
+		{
+		fprintf(fp, "%ld %d %s\n", param->d_space_vol[0], iteration, md5sum);
+		fclose(fp);
+		}
 	fp=fopen(param->d_ml_file, "ab"); // open the configuration file in binary mode
 	if(fp==NULL)
-	{
-	fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
-	}
-	else
-	{
-	for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
 		{
+		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_ml_file, __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+	else
+		{
+		for(j=0; j<param->d_size[0]/param->d_ml_step[0]; j++)
+			{
+			for(i=0; i<(param->d_space_vol[0]); i++)
+				{
+				print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
+				}
+			}
 		for(i=0; i<(param->d_space_vol[0]); i++)
 			{
-			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polycorr[0][j][i]));
+			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaq[0][i]));
 			}
+		for(i=0; i<(param->d_space_vol[0]); i++)
+			{
+			print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaqconn[0][i]));
+			}
+		fclose(fp);
 		}
-	for(i=0; i<(param->d_space_vol[0]); i++)
-		{
-		print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaq[0][i]));
-		}
-	for(i=0; i<(param->d_space_vol[0]); i++)
-		{
-		print_on_binary_file_bigen_TensProd(fp, &(GC->ml_polyplaqconn[0][i]));
-		}
-
-	fclose(fp);
-	}
 	}
 
 

@@ -109,6 +109,16 @@ typedef struct Tune_Utils {
 
 
 // in gauge_conf_def.c
+void allocate_lattice_with_copy(		Gauge_Conf *GC, GParam const * const param);
+
+void allocate_lattice_cold_with_copy(	Gauge_Conf *GC, GParam const * const param);
+
+void allocate_C(						Gauge_Conf *GC, GParam const * const param);
+
+void allocate_Z_with_copy(				Gauge_Conf *GC, GParam const * const param);
+
+void initialize_Z_with_copy(			Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu);
+
 void equal_lattice(							GAUGE_GROUP * const * const lattice1,
 											GAUGE_GROUP const * const * const lattice2,
 											GParam const * const param);
@@ -210,10 +220,6 @@ void write_replica_on_file_back(		Gauge_Conf const * const GC,
 										
 void init_gauge_conf_from_gauge_conf(	Gauge_Conf *GC,
 										Gauge_Conf const * const GC2,
-										GParam const * const param);
-
-void init_twist_cond_from_twist_cond(	double complex **Z, 
-										double complex const * const * const Z2,
 										GParam const * const param);
 										
 void compute_md5sum_conf(		char *res,		// the lenght is 2*MD5_DIGEST_LENGTH

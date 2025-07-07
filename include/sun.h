@@ -750,7 +750,7 @@ inline double relative_dist_SuN(SuN const *const restrict A, SuN const *const re
 	double complex tr_AxB, tr_ApB;
 	double aux_AxB, aux_ApB, check;
 	
-	// debugging flags: = = False, 1 = True
+	// debugging flags: 0 = False, 1 = True
 	int assume_SuN = 1;  // Use more efficient expression assuming A and B are exactly in SU(N)
 	
 	if(assume_SuN == 1)

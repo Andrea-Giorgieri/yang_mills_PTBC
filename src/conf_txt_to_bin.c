@@ -88,15 +88,15 @@ void set_param_for_writing_conf(int const * const sizes, int twist_mu, int twist
 								char const * const twist_file_out, GParam * const param)
 	{
 	int i, j;
-	
+
 	set_defaults(param);
-	
+
 	for(i=0; i<STDIM; i++) param->d_size[i] = sizes[i];
-	
+
 	param->d_k_twist[dirs_to_si(twist_mu, twist_nu)] = twist_k;
 	strcpy(param->d_conf_file, conf_file_out);
 	strcpy(param->d_twist_file, twist_file_out);
-	
+
 	param->d_volume=1;
 	for(i=0; i<STDIM; i++) param->d_space_vol[i] = 1;
 	for(i=0; i<STDIM; i++)
@@ -112,7 +112,7 @@ void parse_line(char * line, int *cartcoord, int *mu, int *i, int *j, double *re
 	{
 	int k, step;
 	char *line_ptr;
-	
+
 	line_ptr = line;
 	if(sscanf(line_ptr, "%*d %*d%n", &step) != 0)
 		{
@@ -180,23 +180,23 @@ void init_gauge_conf_from_txt(char const * const conf_file_in, Gauge_Conf * cons
 	int mu, i, j, cartcoord[STDIM];
 	long r, num_lines;
 	double re, im;
-	
+
 	FILE *fp = fopen(conf_file_in, "r");
 	if(fp == NULL)
 		{
 		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", conf_file_in, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r)
 	#endif
-	for(r = 0; r < (param->d_volume); r++) 
+	for(r = 0; r < (param->d_volume); r++)
 		{
 		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
 		}
-	
+
 	num_lines = 0;
 	while(fscanf(fp, "%[^\n]\n", line) != EOF)
 		{
@@ -208,14 +208,14 @@ void init_gauge_conf_from_txt(char const * const conf_file_in, Gauge_Conf * cons
 		num_lines++;
 		}
 	fclose(fp);
-	
+
 	r = STDIM * NCOLOR * NCOLOR * param->d_volume;
 	if(num_lines != r)
 		{
 		fprintf(stderr, "Expected %ld lines, got %ld (%s, %d)\n", num_lines, r, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	GC->conf_label = 0;
 	GC->replica_index = 0;
 	GC->update_index = 0;
@@ -226,12 +226,11 @@ void init_twist_cond_from_txt(Gauge_Conf * const GC, GParam const * const param)
 	{
 	long r;
 	int i, j, x_mu, x_nu;
-	int cartcoord[STDIM];
 
 	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r, j)
-	#endif 
+	#endif
 	for(r=0; r<(param->d_volume); r++)
 		{
 		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
@@ -242,9 +241,10 @@ void init_twist_cond_from_txt(Gauge_Conf * const GC, GParam const * const param)
 	x_nu = 0;
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(r, i, j)
-	#endif 
+	#endif
 	for(r=0; r<param->d_volume; r++)
 		{
+		int cartcoord[STDIM];
 		si_to_cart(cartcoord, r, param);
 		for(i=0; i<STDIM; i++)
 			for(j=i+1; j<STDIM; j++)
@@ -261,7 +261,7 @@ void free_gauge_conf_from_txt(Gauge_Conf *GC, GParam const * const param)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
-	#endif 
+	#endif
 	for(long r=0; r<param->d_volume; r++)
 		{
 		free(GC->lattice[r]);
@@ -303,9 +303,9 @@ int main (int argc, char **argv)
 
 	write_conf_on_file(&GC, &param);
 	fprintf(stdout, "Done writing output conf\n");
-	
+
 	//print_on_file(stderr, &(GC.lattice[511][0]));
-	
+
 	free_gauge_conf_from_txt(&GC, &param);
 
 	return EXIT_SUCCESS;

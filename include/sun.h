@@ -745,14 +745,14 @@ inline double relative_dist_SuN(SuN const *const restrict A, SuN const *const re
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
-	
+
 	int i, j;
 	double complex tr_AxB, tr_ApB;
 	double aux_AxB, aux_ApB, check;
-	
+
 	// debugging flags: 0 = False, 1 = True
 	int assume_SuN = 1;  // Use more efficient expression assuming A and B are exactly in SU(N)
-	
+
 	if(assume_SuN == 1)
 		{
 		tr_AxB = 0.0 + 0.0 * I;
@@ -801,7 +801,7 @@ inline double relative_dist_SuN(SuN const *const restrict A, SuN const *const re
 		}
 	return sqrt(2.0 * aux_AxB / aux_ApB);
 	}
-	
+
 
 // LU decomposition with partial pivoting
 void LU_SuN(SuN const *const A, SuN *ris, int *sign);
@@ -908,7 +908,7 @@ inline void taexp_SuN(SuN *restrict A)
 	// now aux is the traceless antihermitian part of the initial matrix
 	// and we use
 	// exp(x)=1+x(1+x/2(1+x/3*(1+x/4*(1+x/5*....
-	
+
 	equal_SuN(&ris, &aux);
 	times_equal_real_SuN(&ris, 1.0 / 5.0);
 	plus_equal_SuN(&ris, &uno);

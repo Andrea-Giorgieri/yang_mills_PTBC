@@ -66,7 +66,7 @@ void init_time_utils(Time_Utils * const timers, double walltime)
 	init_timer(&(timers->step_timer), name);
 	strcpy(name, "Total");
 	init_timer(&(timers->prog_timer), name);
-	
+
 	timers->wall_time = walltime;
 	}
 

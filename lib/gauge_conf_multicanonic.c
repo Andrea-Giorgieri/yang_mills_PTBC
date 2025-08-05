@@ -26,7 +26,7 @@ void init_multicanonic_gauge_conf(Gauge_Conf * const GC, Geometry const * const 
 		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[s]), STDIM, __FILE__, __LINE__);
 		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[s]), STDIM, __FILE__, __LINE__);
 		}
-	
+
 	// TODO: debug cold topcharge multicanonic
 	// initialize lattice_cold = lattice_copy_cold = lattice
 	#ifdef OPENMP_MODE
@@ -39,7 +39,7 @@ void init_multicanonic_gauge_conf(Gauge_Conf * const GC, Geometry const * const 
 		equal(&(GC->lattice_cold[r][i]), &(GC->lattice[r][i]));
 		equal(&(GC->lattice_copy_cold[r][i]), &(GC->lattice[r][i]));
 		}
-	
+
 	// cool lattice_cold
 	switch (param->d_topo_cooling)
 		{
@@ -70,12 +70,12 @@ void init_multicanonic_acc_utils(Acc_Utils *acc_counters, GParam const * const p
 	// init acc arrays
 	allocate_array_long(&(acc_counters->num_accepted_metro_multicanonic), param->d_N_replica_pt, __FILE__, __LINE__);
 	allocate_array_long(&(acc_counters->num_metro_multicanonic), param->d_N_replica_pt, __FILE__, __LINE__);
-	for(i=0;i<(param->d_N_replica_pt);i++) 
+	for(i=0;i<(param->d_N_replica_pt);i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i]=0;
 		acc_counters->num_metro_multicanonic[i]=0;
 		}
-		
+
 	// init acc file
 	acc_counters->multicanonic_acc_filep=fopen(param->d_multicanonic_acc_file, "r");
 	if((acc_counters->multicanonic_acc_filep)!=NULL) // file exists
@@ -149,20 +149,20 @@ void free_tune_utils(Tune_Utils * tune_utils)
 
 
 void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune_Utils * const tune_utils)
-	{		
+	{
 	int i_grid, flag, a;
 	double x, x0, s, t, aux_d;
-	
+
 	for (a=0; a<param->d_N_replica_pt; a++)
 		{
 		// get stored_topcharge x
 		x = GC[a].stored_topcharge;
 		if(param->d_topo_alpha > MIN_VALUE) x = round(param->d_topo_alpha*x);
 		s = tune_utils->tuning_stp[a];
-		
+
 		// find index of nearest grid point to x
 		i_grid = (int)(floor((x+param->d_grid_max)/param->d_grid_step));
-		
+
 		// change potential with linear weights: t = (x-x0)/x_step;  V_a(x0) += s*(1-t); V_a(x0+x_step) += s*(t)
 		if(i_grid >= 0 && i_grid < param->d_n_grid-1)
 			{
@@ -173,11 +173,11 @@ void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune
 			}
 		if(i_grid < 0) param->d_grid[a][0] += s;
 		if(i_grid >= param->d_n_grid-1) param->d_grid[a][param->d_n_grid-1] += s;
-		
+
 		// also change V_a(-x) to force an even potential (V_a(0) updated twice is intended)
 		if (param->d_topo_tuning_even == 1)
 			{
-			i_grid = (int)(floor((-x+param->d_grid_max)/param->d_grid_step));		
+			i_grid = (int)(floor((-x+param->d_grid_max)/param->d_grid_step));
 			if(i_grid >= 0 && i_grid < param->d_n_grid-1)
 				{
 				x0 = i_grid * param->d_grid_step - param->d_grid_max;
@@ -188,7 +188,7 @@ void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune
 			if(i_grid < 0) param->d_grid[a][0] += s;
 			if(i_grid >= param->d_n_grid-1) param->d_grid[a][param->d_n_grid-1] += s;
 			}
-		
+
 		// update counters and flags
 		tune_utils->sweep_counter[a] = tune_utils->sweep_counter[a] + (1-tune_utils->sweep_check[a]);
 		flag = tune_utils->sweep_flag[a];
@@ -198,7 +198,7 @@ void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune
 			tune_utils->sweep_check[a] = 1;
 			}
 		}
-	
+
 	// translate potentials so that V_0(0) = 0
 	i_grid = (int)(floor((param->d_grid_max)/param->d_grid_step));
 	aux_d = param->d_grid[0][i_grid];
@@ -212,12 +212,12 @@ int update_tuning_stp(Tune_Utils * const tune_utils, GParam const * const param)
 	{
 	double mean_dV, max_mean_dV, aux_d;
 	int a;
-	
+
 	// check that all replicas swept topo_potential, return 0 if not
 	for (a=0; a<param->d_N_replica_pt; a++)
 		if (tune_utils->sweep_check[a] == 0)
 			return 0;
-	
+
 	// update tuning_stp and reset counters and flags
 	max_mean_dV = 0;
 	for (a=0; a<param->d_N_replica_pt; a++)
@@ -227,11 +227,11 @@ int update_tuning_stp(Tune_Utils * const tune_utils, GParam const * const param)
 		aux_d = 1.0-mean_dV/(2.0*1.5);
 		if (aux_d < 0.5) aux_d = 0.5;
 		tune_utils->tuning_stp[a] = tune_utils->tuning_stp[a] * aux_d;
-		
+
 		tune_utils->sweep_counter[a] = 0;
 		tune_utils->sweep_check[a] = 0;
 		}
-	
+
 	// return -1 if tuning is completed, else return 1
 	if (max_mean_dV < param->d_topo_tuning_thr)	return -1;
 	else return 1;
@@ -250,13 +250,13 @@ void print_tuning_stp(long upd_index, Tune_Utils const * const tune_utils, GPara
 
 // compute topo potential V_a(x)
 double compute_topo_potential(int const a, double x, GParam const * const param)
-	{		
+	{
 	int i_grid;
 	double x0, m, q;
 
 	//alpha-rounding of topcharge
 	if(param->d_topo_alpha > MIN_VALUE)  x = round(param->d_topo_alpha*x);
-	
+
 	// find index of nearest grid point to x
 	i_grid = (int)(floor((x+param->d_grid_max)/param->d_grid_step));
 
@@ -266,7 +266,7 @@ double compute_topo_potential(int const a, double x, GParam const * const param)
 		x0 = i_grid * param->d_grid_step - param->d_grid_max;
 		m = (param->d_grid[a][i_grid+1] - param->d_grid[a][i_grid]) / param->d_grid_step; // dV/dx|(x0) = [ V(x0+step) - V(x0) ] / step
 		q = param->d_grid[a][i_grid]-m*x0; // V(x0) - [dV/dx|(x0)] x0
-		return q + m * x; // V(x0) + [dV/dx|(x0)] (x-x0) 
+		return q + m * x; // V(x0) + [dV/dx|(x0)] (x-x0)
 		}
 	else // if x outside the barriers just saturate to extreme values
 		{
@@ -281,19 +281,19 @@ void compute_topo_potential_debug(char *filename, double x_min, double x_max, do
 	{
 	double V, x;
 	FILE *fp;
-	
+
 	fp=fopen(filename, "w");
 	if( fp==NULL )
 		{
 		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-		}	
+		}
 
 	for (x = x_min; x <= x_max; x += x_stp)
 		{
 		// write x
 		fprintf(fp, "% 12.6e ", x);
-		
+
 		// write V_a(x)
 		for(int a=0; a<param->d_N_replica_pt; a++)
 			{
@@ -315,29 +315,29 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 							long r)
 	{
 	double ris;
-	
+
 	#if (STDIM==4 && NCOLOR>1)
 	GAUGE_GROUP aux1, aux2, aux3;
 	double real1, real2, loc_charge;
 	const double chnorm=1.0/(128.0*PI*PI);
 	int i, dir[4][3], sign;
-	
+
 	dir[0][0] = 0;
 	dir[0][1] = 0;
 	dir[0][2] = 0;
-	
+
 	dir[1][0] = 1;
 	dir[1][1] = 2;
 	dir[1][2] = 3;
-	
+
 	dir[2][0] = 2;
 	dir[2][1] = 1;
 	dir[2][2] = 1;
-	
+
 	dir[3][0] = 3;
 	dir[3][1] = 3;
 	dir[3][2] = 2;
-	
+
 	sign=-1;
 	loc_charge=0.0;
 	for(i=0; i<3; i++)
@@ -345,50 +345,50 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 		// GC1 contribution (with +)
 		clover(GC1, geo, param, r, dir[0][i], dir[1][i], &aux1);
 		clover(GC1, geo, param, r, dir[2][i], dir[3][i], &aux2);
-		
+
 		times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
 		real1=retr(&aux3)*NCOLOR;
-		
+
 		times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
 		real2=retr(&aux3)*NCOLOR;
-		
+
 		loc_charge+=((double) sign*(real1-real2));
-	
+
 		// GC2 contribution (with -)
 		clover(GC2, geo, param, r, dir[0][i], dir[1][i], &aux1);
 		clover(GC2, geo, param, r, dir[2][i], dir[3][i], &aux2);
-		
+
 		times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
 		real1=retr(&aux3)*NCOLOR;
-		
+
 		times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
 		real2=retr(&aux3)*NCOLOR;
-		
+
 		loc_charge-=((double) sign*(real1-real2));
-		
+
 		sign=-sign;
 		}
 	ris = (loc_charge*chnorm);
-	
+
 	// TODO: debug, remove
 	//fprintf(stderr, "%ld % f ", r, ris);
 	#endif
-	
+
 	#if (STDIM==2 && NCOLOR==1)
 	GAUGE_GROUP u1matrix;
 	double angle;
-	
+
 	// GC1 contribution (with +)
 	plaquettep_matrix(GC1, geo, param, r, 0, 1, &u1matrix);
 	angle = atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
-	
+
 	// GC2 contribution (with -)
 	plaquettep_matrix(GC2, geo, param, r, 0, 1, &u1matrix);
 	angle -= atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
-	
+
 	ris = angle;
 	#endif
-	
+
 	return ris;
 	}
 
@@ -404,11 +404,11 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const * const GC,
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	Gauge_Conf helper;
 	double ris;
 	long n;
-	
+
 	helper.lattice = GC->lattice_copy;
 	helper.Z = GC->Z_copy;
 	ris=0.0;
@@ -453,13 +453,13 @@ double multicanonic_topcharge_cooling(Gauge_Conf * const GC,
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	if(param->d_topo_coolsteps>0)
 		{
 		Gauge_Conf helper;
-		
+
 		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const *)GC->lattice, param);
-		
+
 		// TODO: unitarize before cooling?
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
@@ -475,7 +475,7 @@ double multicanonic_topcharge_cooling(Gauge_Conf * const GC,
 
 // compute the difference of the topological charge after some cooling only on a rectangle
 // in the cooling procedure the action at theta=0 is minimized
-double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC, 
+double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const * const param,
 										int const hierarc_level,
@@ -490,15 +490,15 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 	if(param->d_topo_coolsteps>0)
 		{
 		Gauge_Conf helper;
-		
+
 		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const *)GC->lattice, param);
-		
+
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
-		
+
 		helper.lattice_copy = GC->lattice_copy_cold;
 		helper.Z_copy = GC->Z_copy;
-		
+
 		//hierarchical_cooling(&helper, geo, param, rect_aux->cooling_rect[hierarc_level]);
 		cooling(&helper, geo, param, param->d_topo_coolsteps);
 		return multicanonic_delta_topcharge_rectangle(&helper, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
@@ -522,19 +522,19 @@ double topcharge_agf_multicanonic(Gauge_Conf * const GC,
 		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	if (param->d_topo_agf_time > 0.0)	//if using gradient flow
 		{
 		int accepted;
 		double gftime, gftime_step, charge;
-		
+
 		// gradflow starts
 		gftime = 0.0;
 		gftime_step = param->d_agf_step;
 		while(gftime < param->d_topo_agf_time)
 			{
 			gradflow_RKstep_adaptive(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux);
-			
+
 			// adapt step to the time of the measure
 			if ((gftime + gftime_step - param->d_topo_agf_time) > param->d_agf_time_bin + MIN_VALUE)
 				{
@@ -543,8 +543,8 @@ double topcharge_agf_multicanonic(Gauge_Conf * const GC,
 			}
 		charge = topcharge(GC, geo, param);
 		restore_gauge_conf(GC, param);
-		
-		return charge; 
+
+		return charge;
 		}
 	else	// no gradient flow
 		{
@@ -557,7 +557,7 @@ double topcharge_agf_multicanonic(Gauge_Conf * const GC,
 double metropolis_prob_multicanonic(int const a, double const Q_new, double const Q_old, GParam const * const param)
 	{
 	double V_old, V_new;
-	
+
 	V_old = compute_topo_potential(a, Q_old, param);
 	V_new = compute_topo_potential(a, Q_new, param);
 	return exp(V_old-V_new);
@@ -568,10 +568,10 @@ double metropolis_prob_multicanonic(int const a, double const Q_new, double cons
 double delta_topo_potential_swap(Gauge_Conf const * const GC, int const a, int const b, GParam const * const param)
 	{
 	double V_noswap, V_swap, Q_a, Q_b;
-	
+
 	Q_a = GC[a].stored_topcharge;
 	Q_b = GC[b].stored_topcharge;
-	
+
 	// before swap V_a(Q_a) + V_b(Q_b) , after swap V_a(Q_b) + V_b(Q_a)
 	V_noswap = compute_topo_potential(a, Q_a, param) + compute_topo_potential(b, Q_b, param);
 	V_swap   = compute_topo_potential(a, Q_b, param) + compute_topo_potential(b, Q_a, param);
@@ -586,7 +586,7 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const
 	{
 	// perform multicanonic Metropolis test
 	double Q_old, Q_new, p;
-	
+
 	Q_old = GC->stored_topcharge;
 	switch (param->d_topo_cooling)
 		{
@@ -600,9 +600,9 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const
 			fprintf(stderr, "Undefined cooling method %d! (%s, %d)\n", param->d_topo_cooling, __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 		}
-	
+
 	p = metropolis_prob_multicanonic(GC->replica_index, Q_new, Q_old, param);
-	
+
 	// Metropolis test: p < 1 --> acc=1 with probability p, else --> acc=1
 	int acc = 1;
 	if(p < 1)
@@ -610,7 +610,7 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf * const GC, Geometry const
 		double random_number=casuale();
 		if(random_number > p) acc = 0;
 		}
-	
+
 	// if Metropolis is accepted, store the new topological charge
 	if (acc == 1) GC->stored_topcharge = Q_new;
 	return acc;
@@ -623,7 +623,7 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf * const GC, Geometry const
 	// perform multicanonic Metropolis test
 	double Q_old, Q_new, p;
 	//double Q_new_debug;
-	
+
 	Q_old = GC->stored_topcharge;
 	switch (param->d_topo_cooling)
 		{
@@ -641,9 +641,9 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf * const GC, Geometry const
 		}
 	// TODO: debug, remove
 	//fprintf(stdout, "%ld %d %f %f\n", GC->update_index, hierarc_level, Q_new, Q_new_debug);
-	
+
 	p = metropolis_prob_multicanonic(GC->replica_index, Q_new, Q_old, param);
-	
+
 	// Metropolis test: p < 1 --> acc=1 with probability p, else --> acc=1
 	int acc = 1;
 	if(p < 1)
@@ -651,7 +651,7 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf * const GC, Geometry const
 		double random_number=casuale();
 		if(random_number > p) acc = 0;
 		}
-	
+
 	// if Metropolis is accepted, store the new topological charge
 	if (acc == 1) GC->stored_topcharge = Q_new;
 	return acc;
@@ -691,64 +691,64 @@ void compute_topostaple_alone(Gauge_Conf const * const GC, Geometry const * cons
 		exit(EXIT_FAILURE);
 		}
 	#endif
-	
+
 	if(STDIM!=4)
 		{
 		fprintf(stderr, "Error: topological charge can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	GAUGE_GROUP link1, link2, link3, link12, stap, aux, clover_insertion;
 	const double coeff = 1.0/(128.0*PI*PI);
 	long k;
 	int j, l;
 	int i0, j0;
 	int sood1[4][4], sood2[4][4]; // Signed Ordered Orthogonal Directions (SOOD)
-	
+
 	zero(topo_stap); // topo_stap=0
-	
+
 	// the clover topological charge is written as
 	// -1/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood1[\mu][\nu] sood2[\mu][\nu]} )
 	// where Q_{\mu\nu} here stands for the clover on plane (\mu \nu)
 	// the independent permutations are 3, here we use: 0123 0231 0312
-	
+
 	sood1[0][1] = 2;
 	sood2[0][1] = 3;
 	sood1[1][0] = 3;
 	sood2[1][0] = 2;
-	
+
 	sood1[0][2] = 3;
 	sood2[0][2] = 1;
 	sood1[2][0] = 1;
 	sood2[2][0] = 3;
-	
+
 	sood1[0][3] = 1;
 	sood2[0][3] = 2;
 	sood1[3][0] = 2;
 	sood2[3][0] = 1;
-	
+
 	sood1[1][2] = 0;
 	sood2[1][2] = 3;
 	sood1[2][1] = 3;
 	sood2[2][1] = 0;
-	
+
 	sood1[1][3] = 2;
 	sood2[1][3] = 0;
 	sood1[3][1] = 0;
 	sood2[3][1] = 2;
-	
+
 	sood1[2][3] = 0;
 	sood2[2][3] = 1;
 	sood1[3][2] = 1;
 	sood2[3][2] = 0;
-	
+
 	for(l=i+1; l< i + STDIM; l++)
 		{
 		j = (l % STDIM);
-		
+
 		i0=sood1[i][j];
 		j0=sood2[i][j];
-		
+
 //
 //		 i  ^
 //			|	(1)
@@ -761,35 +761,35 @@ void compute_topostaple_alone(Gauge_Conf const * const GC, Geometry const * cons
 //		(a) +-----<-----+--> j
 //          r    (3)    (d)
 //
-			
+
 		// non-topo staple
 		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));	// link1 = (1)
 		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));	// link2 = (2)
 		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
-		
+
 		times_dag2(&link12, &link1, &link2);	// link12=link1*link2^{dag}
 		times_dag2(&stap, &link12, &link3);		// stap=link12*link3^{dag}
-		
+
 		//twist (clockwise plaquette) modification
 		times_equal_complex(&stap, GC->Z[r][dirs_to_si(i,j)]);	// Z_\mu\nu(x) * staple
-		
+
 		// clover insertion in (a)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, r, i0, j0);
 		times(&aux, &stap, &clover_insertion); // stap*clover
 		plus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (b)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, r, i), i0, j0);
 		times(&aux, &clover_insertion, &stap);	// clover*stap
 		plus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (c)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, nnp(geo, r, i), j), i0, j0);
 		times(&aux, &link1, &clover_insertion);	// link1*clover
 		times_equal_dag(&aux, &link2);		 // *=link2^{dag}
 		times_equal_dag(&aux, &link3);		 // *=link3^{dag}
 		plus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (d)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, r, j), i0, j0);
 		times(&aux, &link12, &clover_insertion);	// link1*link2*quadri
@@ -808,36 +808,36 @@ void compute_topostaple_alone(Gauge_Conf const * const GC, Geometry const * cons
 //		(c) +------>----+--->j
 //			k     (3)   r
 //
-		
+
 		k=nnm(geo, r, j); // k = r - j
-		
+
 		// non-topo staple
 		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));	// link1 = (1)
 		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
 		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
-		
+
 		times_dag12(&link12, &link1, &link2); 	// link12=link1^{dag}*link2^{dag}
 		times(&stap, &link12, &link3); 			// stap=link12*link3
-		
+
 		//twist (anticlockwise plaquette) modification
 		times_equal_complex(&stap, GC->Z[k][dirs_to_si(j,i)]); // Z_\mu\nu(x-\nu) * staple
-		
+
 		// clover insertion in (a)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, r, i), i0, j0);
 		times(&aux, &clover_insertion, &stap); 	// clover*stap
 		minus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (b)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, r, i0, j0);
 		times(&aux, &stap, &clover_insertion); 	// stap*clover
 		minus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (c)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, k, i0, j0);
 		times(&aux, &link12, &clover_insertion); 	// link1^{dag}*link2^{dag}*clover
 		times_equal(&aux, &link3); 					// *=link3
 		minus_equal(topo_stap, &aux);
-		
+
 		// clover insertion in (d)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, k, i), i0, j0);
 		times_dag1(&aux, &link1, &clover_insertion); 	// link1^{dag}*clover
@@ -854,18 +854,18 @@ double delta_Q_upd(Gauge_Conf const * const GC, Geometry const * const geo, GPar
 	// compute delta_Q
 	GAUGE_GROUP q, topo_stap;
 	double delta_Q = 0.0;
-	
+
 	// compute topo staple and store it in topo_stap
 	compute_topostaple_alone(GC, geo, param, r, i, &topo_stap);
-	
+
 	// compute contribution of new link
-	times(&q, &topo_stap, &(GC->lattice[r][i])); 	// q = (topo_stap * new_link) 
+	times(&q, &topo_stap, &(GC->lattice[r][i])); 	// q = (topo_stap * new_link)
 	delta_Q += retr(&q)*((double) NCOLOR); 			// delta_Q += [ retr(topo_stap * new_link) / NCOLOR ] * NCOLOR (retr automatically adds a 1/NCOLOR factor)
-	
+
 	// compute contribution of old_link
 	times(&q, &topo_stap, &old_link); // q = (topo_stap * old_link)
 	delta_Q -= retr(&q)*((double) NCOLOR); // delta_Q -= [ retr(topo_stap * old_link) / NCOLOR ] * NCOLOR
-	
+
 	return delta_Q;
 	}
 
@@ -873,18 +873,18 @@ double delta_Q_upd(Gauge_Conf const * const GC, Geometry const * const geo, GPar
 // perform a single step of parallel tempering with hierarchic update with a multicanonical approach
 void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 												 Rectangle const * const most_update, Rectangle const * const clover_rectangle,
-												 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)												 
+												 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
 	{
 	// first hierarc level is 0
 	int start_hierarc=0;
-	
+
 	// set multicanonic Metropolis acceptance counters to zero to compute mean acc over single updating step
 	for(int i=0;i<param->d_N_replica_pt; i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i] = 0;
 		acc_counters->num_metro_multicanonic[i] = 0;
 		}
-	
+
 	// Parallel tempering updating step: full update + hierarchical update + swaps and translations after every sweep for every replica
 	multicanonic_update_with_defect(GC, geo, param, acc_counters); // full update of all replicas
 	if(param->d_N_replica_pt>1)
@@ -895,10 +895,10 @@ void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf * const
 			multicanonic_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle,
 					swap_rectangle, acc_counters); // hierarchic update
 		}
-	
+
 	// increase update index of all replicas
 	for(int i=0;i<param->d_N_replica_pt; i++) GC[i].update_index++;
-	
+
 	// print mean multicanonic acceptance over a single updating step
 	print_multicanonic_acceptance(GC, param, acc_counters);
 	}
@@ -906,18 +906,18 @@ void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf * const
 // perform a single step of parallel tempering with hierarchic update with a multicanonical approach using gradflowed charge
 void multicanonic_agf_parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 												 Rectangle const * const most_update, Rectangle const * const clover_rectangle,
-												 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)												 
+												 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
 	{
 	// first hierarc level is 0
 	int start_hierarc=0;
-	
+
 	// set multicanonic Metropolis acceptance counters to zero to compute mean acc over single updating step
 	for(int i=0;i<param->d_N_replica_pt; i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i] = 0;
 		acc_counters->num_metro_multicanonic[i] = 0;
 		}
-	
+
 	// Parallel tempering updating step: full update + hierarchical update + swaps and translations after every sweep for every replica
 	multicanonic_agf_update_with_defect(GC, geo, param, acc_counters); // full update of all replicas
 	if(param->d_N_replica_pt>1)
@@ -928,10 +928,10 @@ void multicanonic_agf_parallel_tempering_with_hierarchical_update(Gauge_Conf * c
 			multicanonic_agf_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle,
 					swap_rectangle, acc_counters); // hierarchic update
 		}
-	
+
 	// increase update index of all replicas
 	for(int i=0;i<param->d_N_replica_pt; i++) GC[i].update_index++;
-	
+
 	// print mean multicanonic acceptance over a single updating step
 	print_multicanonic_acceptance(GC, param, acc_counters);
 	}
@@ -943,7 +943,7 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 	int j, dir;
 	int num_replica = param->d_N_replica_pt; // just an auxiliary variable
 	long *sum_acc, *count_metro;
-	
+
 	for(j=0; j<STDIM; j++)
 		{
 		if(param->d_size[j]==1)
@@ -952,7 +952,7 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// init aux variables to compute mean multicanonic acc
 	allocate_array_long(&sum_acc, num_replica, __FILE__, __LINE__);
 	allocate_array_long(&count_metro, num_replica, __FILE__, __LINE__);
@@ -961,10 +961,10 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 		sum_acc[j]=0;
 		count_metro[j]=0;
 		}
-	
+
 	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
 	num_odd  = (param->d_volume - (param->d_volume % 2)) / 2;
-	
+
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
 		{
@@ -985,10 +985,10 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 			sum_acc[i] += acc_metro;
 			count_metro[i]++;
 			}
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-		#endif 
+		#endif
 		for(s=0; s<((param->d_N_replica_pt)*num_odd); s++)
 			{
 			// s = i * num_odd + aux ; aux = r - num_even
@@ -1001,19 +1001,19 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 			count_metro[i]++;
 			}
 		}
-	
+
 	// overrelax
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
-		
+
 		for(j=0; j<param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-			#endif 
+			#endif
 			for(s=0; s<((param->d_N_replica_pt)*num_even); s++)
 				{
 				// s = i * num_even + r
@@ -1027,7 +1027,7 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-			#endif 
+			#endif
 			for(s=0; s<((param->d_N_replica_pt)*num_odd); s++)
 				{
 				// s = i * num_odd + aux ; aux = r - num_even
@@ -1041,22 +1041,22 @@ void multicanonic_update_with_defect(Gauge_Conf * const GC, Geometry const * con
 				}
 			}
 		}
-			
+
 	// add number of accepted and number of proposed Metropolis multicanonic tests
 	for(int i=0; i<param->d_N_replica_pt; i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i] += sum_acc[i];
 		acc_counters->num_metro_multicanonic[i] += count_metro[i];
 		}
-		
+
 	// free aux arrays
 	free(sum_acc);
 	free(count_metro);
-	
+
 	// final unitarization
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
-	#endif 
+	#endif
 	for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)); s++)
 		{
 		// s = i * volume + r
@@ -1074,7 +1074,7 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 	{
 	long s, acc;
 	int j, dir;
-	
+
 	for(j=0; j<STDIM; j++)
 		{
 		if(param->d_size[j]==1)
@@ -1083,14 +1083,14 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s)
 		#endif
@@ -1101,10 +1101,10 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 			int i = (int) ( (s-r) / ( (param->d_volume)/2 ) ); // replica index
 			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
 			}
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s)
-		#endif 
+		#endif
 		for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
 			{
 			// s = i * volume/2 + aux ; aux = r - volume/2
@@ -1114,19 +1114,19 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
 			}
 		}
-	
+
 	// overrelax
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
-		
+
 		for(j=0; j<param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-			#endif 
+			#endif
 			for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
 				{
 				// s = i * volume/2 + r
@@ -1137,7 +1137,7 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-			#endif 
+			#endif
 			for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)/2); s++)
 				{
 				// s = i * volume/2 + aux ; aux = r - volume/2
@@ -1148,11 +1148,11 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 				}
 			}
 		}
-	
+
 	// final unitarization
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
-	#endif 
+	#endif
 	for(s=0; s<((param->d_N_replica_pt)*(param->d_volume)); s++)
 		{
 		// s = i * volume + r
@@ -1163,7 +1163,7 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 			unitarize(&(GC[i].lattice[r][dir]));
 			}
 		}
-	
+
 	// multicanonic Metropolis tests and add number of accepted and number of proposed ones
 	for(j=0; j<param->d_N_replica_pt; j++)
 		{
@@ -1181,7 +1181,7 @@ int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry con
 	double Q_old = GC->stored_topcharge;
 	double Q_new = Q_old + delta_Q_upd(GC, geo, param, r, i, old_link);
 	double p = metropolis_prob_multicanonic(GC->replica_index, Q_new, Q_old, param);
-	
+
 	// Metropolis test: p < 1 --> acc=1 with probability p, else --> acc=1
 	int acc = 1;
 	if(p < 1)
@@ -1189,10 +1189,10 @@ int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry con
 		double random_number=casuale();
 		if(random_number > p) acc = 0;
 		}
-	
+
 	if (acc == 0) GC->lattice[r][i] = old_link; // if Metropolis is refused go back to original link
 	else GC->stored_topcharge = Q_new; 			// if Metropolis is accepted store the new topological charge of the conf
-	
+
 	return acc;
 	}
 
@@ -1202,45 +1202,45 @@ int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry con
 void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 												Rectangle const * const most_update, Rectangle const * const clover_rectangle, Acc_Utils *acc_counters)
 	{
-	
+
 	long s, num_even, num_odd;
 	int j, dir;
 	int num_replica = param->d_N_replica_pt; // just an auxiliary variable
 	long *sum_acc, *count_metro;
-	
+
 	// init aux variables to compute mean multicanonic acc
 	allocate_array_long(&sum_acc, num_replica, __FILE__, __LINE__);
 	allocate_array_long(&count_metro, num_replica, __FILE__, __LINE__);
-	
+
 	for(int i=0; i<param->d_N_replica_pt; i++)
 		{
 		sum_acc[i]=0;
 		count_metro[i]=0;
 		}
-	
+
 	#ifndef THETA_MODE
 	(void) clover_rectangle; // to avoid compiler warning of unused variable
-	#endif	
-	
+	#endif
+
 	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
 		If there's at least one even dimension: d_vol_rect/2 even sites and d_vol_rect/2 odd sites.
 		Otherwise: (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites. */
-	
+
 	long is_even = ( most_update->d_vol_rect ) % 2;
-	
+
 	num_even = ( most_update->d_vol_rect + is_even ) / 2;	// number of even sites
 	num_odd	= ( most_update->d_vol_rect - is_even ) / 2;	// number of odd sites
-	
+
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica_rect(GC, geo, param, dir, clover_rectangle);
 		#endif
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-		#endif 
+		#endif
 		for(s=0; s<(num_even*(param->d_N_replica_pt)); s++)
 			{
 			// s = i * num_even + n
@@ -1252,10 +1252,10 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 			sum_acc[i] += acc_metro;
 			count_metro[i]++;
 			}
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-		#endif 
+		#endif
 		for(s=0; s<(num_odd*(param->d_N_replica_pt)); s++)
 			{
 			// s = i * num_odd + aux; aux = n - num_even
@@ -1267,21 +1267,21 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 			acc_metro = multicanonic_heatbath_with_defect(&(GC[i]), geo, param, r, dir);
 			sum_acc[i] += acc_metro;
 			count_metro[i]++;
-			} 
+			}
 		}
-	
+
 	// overrelax
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica_rect(GC, geo, param, dir, clover_rectangle);
 		#endif
-		
+
 		for(j=0; j<param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-			#endif 
+			#endif
 			for(s=0; s<(num_even*(param->d_N_replica_pt)); s++)
 				{
 				// s = i * num_even + n
@@ -1293,14 +1293,14 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 				sum_acc[i] += acc_metro;
 				count_metro[i]++;
 				}
-			
+
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
-			#endif 
+			#endif
 			for(s=0; s<(num_odd*(param->d_N_replica_pt)); s++)
 				{
 				// s = i * num_odd + aux; aux = n - num_even
-				long aux = s % num_odd; 
+				long aux = s % num_odd;
 				long n = aux + num_even;				// site index on rectangle
 				long r = most_update->rect_sites[n];	// site index on lattice
 				int i = (int) ( (s-aux) / num_odd );	// replica index
@@ -1311,22 +1311,22 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 				}
 			}
 		}
-	
+
 	// add number of accepted and number of proposed Metropolis multicanonic tests
 	for(int i=0; i<param->d_N_replica_pt; i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i] += sum_acc[i];
 		acc_counters->num_metro_multicanonic[i] += count_metro[i];
 		}
-	
+
 	// free aux arrays
 	free(sum_acc);
 	free(count_metro);
-	
+
 	// final unitarization
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
-	#endif 
+	#endif
 	for(s=0; s<((most_update->d_vol_rect)*(param->d_N_replica_pt)); s++)
 		{
 		for(dir=0; dir<STDIM; dir++)
@@ -1336,13 +1336,13 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 			long r = most_update->rect_sites[n];					// site index on lattice
 			int i = (int) ( (s-n) / (most_update->d_vol_rect) );	// replica index
 			unitarize(&(GC[i].lattice[r][dir]));
-			} 
+			}
 		}
 	}
 
 // perform a hierarchical update on all rectangles
 void multicanonic_hierarchical_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-														 int const hierarc_level, 
+														 int const hierarc_level,
 														 Rectangle const * const most_update,
 														 Rectangle const * const clover_rectangle,
 														 Rectangle const * const swap_rectangle,
@@ -1351,7 +1351,7 @@ void multicanonic_hierarchical_update_rectangle_with_defect(Gauge_Conf * const G
 	int j;
 	if(hierarc_level==((param->d_N_hierarc_levels)-1))
 		{
-		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++) 
+		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
 			{
 			multicanonic_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
@@ -1362,7 +1362,7 @@ void multicanonic_hierarchical_update_rectangle_with_defect(Gauge_Conf * const G
 		{
 		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
 			{
-			multicanonic_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);	
+			multicanonic_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
 			conf_translation(&(GC[0]), geo, param);
 			multicanonic_hierarchical_update_rectangle_with_defect(GC,geo,param,(hierarc_level+1),most_update,clover_rectangle, swap_rectangle,acc_counters);
@@ -1378,30 +1378,30 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 	{
 	long s, acc, num_even, num_odd;
 	int j, dir;
-	
+
 	#ifndef THETA_MODE
 	(void) clover_rectangle; // to avoid compiler warning of unused variable
-	#endif	
-	
+	#endif
+
 	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
 		If there's at least one even dimension: d_vol_rect/2 even sites and d_vol_rect/2 odd sites.
 		Otherwise: (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites. */
-	
+
 	long is_even = ( most_update->d_vol_rect ) % 2;
-	
+
 	num_even = ( most_update->d_vol_rect + is_even ) / 2;	// number of even sites
 	num_odd	= ( most_update->d_vol_rect - is_even ) / 2;	// number of odd sites
-	
+
 	// heatbath
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica_rect(GC, geo, param, dir, clover_rectangle);
 		#endif
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s)
-		#endif 
+		#endif
 		for(s=0; s<(num_even*(param->d_N_replica_pt)); s++)
 			{
 			// s = i * num_even + n
@@ -1410,10 +1410,10 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 			int i = (int) ( (s-n) / num_even );		// replica index
 			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
 			}
-		
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) private(s)
-		#endif 
+		#endif
 		for(s=0; s<(num_odd*(param->d_N_replica_pt)); s++)
 			{
 			// s = i * num_odd + aux; aux = n - num_even
@@ -1422,21 +1422,21 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 			long r = most_update->rect_sites[n];	// site index on lattice
 			int i = (int) ( (s-aux) / num_odd );	// replica index
 			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
-			} 
+			}
 		}
-	
+
 	// overrelax
 	for(dir=0; dir<STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica_rect(GC, geo, param, dir, clover_rectangle);
 		#endif
-		
+
 		for(j=0; j<param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-			#endif 
+			#endif
 			for(s=0; s<(num_even*(param->d_N_replica_pt)); s++)
 				{
 				// s = i * num_even + n
@@ -1445,14 +1445,14 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 				int i = (int) ( (s-n) / num_even );		// replica index
 				overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
 				}
-			
+
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(s)
-			#endif 
+			#endif
 			for(s=0; s<(num_odd*(param->d_N_replica_pt)); s++)
 				{
 				// s = i * num_odd + aux; aux = n - num_even
-				long aux = s % num_odd; 
+				long aux = s % num_odd;
 				long n = aux + num_even;				// site index on rectangle
 				long r = most_update->rect_sites[n];	// site index on lattice
 				int i = (int) ( (s-aux) / num_odd );	// replica index
@@ -1464,7 +1464,7 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 	// final unitarization
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
-	#endif 
+	#endif
 	for(s=0; s<((most_update->d_vol_rect)*(param->d_N_replica_pt)); s++)
 		{
 		for(dir=0; dir<STDIM; dir++)
@@ -1474,7 +1474,7 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 			long r = most_update->rect_sites[n];					// site index on lattice
 			int i = (int) ( (s-n) / (most_update->d_vol_rect) );	// replica index
 			unitarize(&(GC[i].lattice[r][dir]));
-			} 
+			}
 		}
 
 	// multicanonic Metropolis tests and add number of accepted and number of proposed ones
@@ -1492,7 +1492,7 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf * const GC, Geomet
 
 // perform a hierarchical update on all rectangles using gradflowed charge
 void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-														 int const hierarc_level, 
+														 int const hierarc_level,
 														 Rectangle const * const most_update,
 														 Rectangle const * const clover_rectangle,
 														 Rectangle const * const swap_rectangle,
@@ -1501,7 +1501,7 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf * con
 	int j;
 	if(hierarc_level==((param->d_N_hierarc_levels)-1))
 		{
-		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++) 
+		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
 			{
 			multicanonic_agf_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
@@ -1512,7 +1512,7 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf * con
 		{
 		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
 			{
-			multicanonic_agf_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);	
+			multicanonic_agf_update_rectangle_with_defect(GC,geo,param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt>1) swap(GC, geo, param, swap_rectangle, acc_counters);
 			conf_translation(&(GC[0]), geo, param);
 			multicanonic_agf_hierarchical_update_rectangle_with_defect(GC,geo,param,(hierarc_level+1),most_update,clover_rectangle, swap_rectangle,acc_counters);
@@ -1540,21 +1540,21 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf * const GC,
 		}
 	#endif
 	(void) param; // just to avoid warnings
-	
+
 	GAUGE_GROUP stap;
-	
+
 	#ifndef THETA_MODE
 	calcstaples_wilson_with_defect(GC, geo, param, r, i, &stap);
 	#else
 	calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap);
 	#endif
-	
+
 	// store old link before update
 	GAUGE_GROUP old_link = GC->lattice[r][i];
-	
+
 	// perform usual single-link over-relaxation update
 	single_overrelaxation(&(GC->lattice[r][i]), &stap);
-	
+
 	// accept/reject new link with multicanonic Metropolis step
 	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, old_link);
 	return acc;
@@ -1576,21 +1576,21 @@ int multicanonic_heatbath_with_defect(Gauge_Conf * const GC, Geometry const * co
 		exit(EXIT_FAILURE);
 		}
 	#endif
-	
+
 	GAUGE_GROUP stap;
-	
+
 	#ifndef THETA_MODE
 	calcstaples_wilson_with_defect(GC, geo, param, r, i, &stap);
 	#else
 	calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap);
 	#endif
-	
+
 	// store old link before update
 	GAUGE_GROUP old_link = GC->lattice[r][i];
-	
+
 	// perform usual single-link over-heat-bath update
 	single_heatbath(&(GC->lattice[r][i]), &stap, param);
-	
+
 	// accept/reject new link with multicanonic Metropolis step
 	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, old_link);
 	return acc;

@@ -39,7 +39,7 @@ automake
 #./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=skylake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
 
 # optimized configuration for Leonardo (optimized compilation with Intel compiler on Intel Icelake processors)
-module load intel-oneapi-compilers
+module load intel-oneapi-compilers/2023.2.1
 ./configure N_c=${NCOLORS} ST_dim=${STDIM} Num_levels=${NLEVELS} Num_threads=${NTHREADS} CC=icc CFLAGS='-O3 -axCORE-AVX512 -mtune=icelake -ip -ipo' LIBS="-ldl -lz -lc" ${flag_openmp} ${flag_theta} ${flag_multican} ${flag_meas_replica}
 
 # optimized compilation with gcc

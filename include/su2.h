@@ -552,7 +552,7 @@ inline double relative_dist_Su2(Su2 const *const restrict A, Su2 const *const re
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
-	
+
 	double aux_AxB, aux_ApB, check;
 
 	aux_ApB = 1.0 - 0.5*(A->comp[0] + B->comp[0]);

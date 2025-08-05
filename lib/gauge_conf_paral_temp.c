@@ -29,10 +29,10 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 
 	// for each value of defect_dir, determine the three orthogonal directions to it
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-	
+
 	// N_replica_pt - 1 is the total number of swaps
 	num_swaps = ((param->d_N_replica_pt)-1);
-	
+
 	// set all probabilities to 0
 	for(k=0; k<num_swaps; k++)
 		aux_p[k]=0.0;
@@ -40,16 +40,16 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 	is_even = num_swaps % 2;                   // check if num_swaps is even or not
 	num_even = (long) ((num_swaps+is_even)/2); // number or swaps for even replica
 	num_odd  = (long) ((num_swaps-is_even)/2); // number of swaps for odd replica
-	
+
 	// to be sure detailed balance is satisfied, choose randomly whether to swap first odd or even copies
-	
-	if( casuale() < 0.5 ) // first swap all even copies, then all odd copies 
+
+	if( casuale() < 0.5 ) // first swap all even copies, then all odd copies
 		{
 		is_even_first=0;
 		num_swaps_1=num_even;
 		num_swaps_2=num_odd;
 		}
-	else // first swap all odd copies, then all even copies 
+	else // first swap all odd copies, then all even copies
 		{
 		is_even_first=1;
 		num_swaps_1=num_odd;
@@ -59,8 +59,8 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 	// swaps are done for all couples (i,j) where i=defect_dir and j !=i => three couples
 	i=param->d_defect_dir;
 
-	// first group of swaps	
-	
+	// first group of swaps
+
 	// compute action differences (multicanonical contribution in the next loop)
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,aux_i,j)
@@ -72,15 +72,15 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		int l = (int) ( (s-n) / (swap_rectangle->d_vol_rect) );
 		int a = 2*l+is_even_first; // labels of replica
 		int b = a+1;
-		
+
 		for(aux_i=0; aux_i<STDIM-1; aux_i++)
 			{
 			j = perp_dir[param->d_defect_dir][aux_i];
 			// contribution to action difference between replicas a and b of site r on plane (i,j)
 			aux_p[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
-			}		
+			}
 		}
-	
+
 	// do the swaps
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(k)
@@ -89,7 +89,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		{
 		int a=2*((int)k)+is_even_first;
 		int b=a+1;
-		
+
 		// multicanonical contribution to the action difference
 		#ifdef MULTICANONICAL_MODE
 		acc_counters->metro_swap_prob[a] += delta_topo_potential_swap(GC, a, b, param);
@@ -100,9 +100,9 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 
 
 	// second group of swaps
-	
+
 	is_even_first=1-is_even_first; // used to pass from swapping even copies to odd copies and viceversa
-	
+
 	// compute action differences
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,aux_i,j)
@@ -110,7 +110,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 	for(s=0;s<((num_swaps_2)*(swap_rectangle->d_vol_rect));s++)
 		{
 		long n = s%(swap_rectangle->d_vol_rect);
-		long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect (having swapped also twist factors) 
+		long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect (having swapped also twist factors)
 		int l = (int) ( (s-n) / (swap_rectangle->d_vol_rect) );
 		int a = 2*l+is_even_first; // labels of replica
 		int b = a+1;
@@ -121,7 +121,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 			aux_p[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
 			}
 		}
-	
+
 	// do the swaps
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(k)
@@ -130,7 +130,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		{
 		int a=2*((int)k)+is_even_first;
 		int b=a+1;
-		
+
 		// multicanonical contribution to the action difference
 		#ifdef MULTICANONICAL_MODE
 		aux_p[a] += delta_topo_potential_swap(GC, a, b, param);
@@ -155,7 +155,7 @@ double delta_action_swap(Gauge_Conf const * const GC, Geometry const * const geo
 
 	// (swapped action - unswapped action) = beta * delta_K * delta_plaq (twist factors swapped, otherwise delta_K -> K_a*Z_a-K_b*Z_b )
 	delta = param->d_beta * (K_a - K_b) * (re_tr_plaq_a - re_tr_plaq_b);
-	
+
 	return delta;
 	}
 
@@ -167,10 +167,10 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 	int aux_i, i, j, num_swaps, a, b;
 	long n;
 	double metro_swap_prob = 0.0;
-	
+
 	// for each value of defect_dir, determine the three orthogonal directions to it
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-	
+
 	// N_replica_pt - 1 is the total number of swaps
 	num_swaps = ((param->d_N_replica_pt)-1);
 
@@ -194,7 +194,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 				metro_swap_prob += delta_action_swap(GC, geo, param, r, i, j, a, b);
 				}
 			}
-	
+
 		// do the swap
 		metro_swap_prob=exp(-metro_swap_prob); // metropolis swap probability
 		metropolis_single_swap(GC,a,b,metro_swap_prob,acc_counters);
@@ -219,7 +219,7 @@ void metropolis_single_swap(Gauge_Conf * const GC, int const a, int const b, dou
 			acc=0;
 			}
 		}
-	
+
 	// if Metropolis is accepted, swap replicas, including the twist factors and the stored charges for multicanonic
 	if(acc==1)
 		{
@@ -229,44 +229,44 @@ void metropolis_single_swap(Gauge_Conf * const GC, int const a, int const b, dou
 		aux = GC[a].lattice;
 		GC[a].lattice = GC[b].lattice;
 		GC[b].lattice = aux;
-		
+
 		aux_Z = GC[a].Z;
 		GC[a].Z = GC[b].Z;
 		GC[b].Z = aux_Z;
-		
+
 		// swap of auxiliary configurations
 		aux = GC[a].lattice_copy;
 		GC[a].lattice_copy = GC[b].lattice_copy;
 		GC[b].lattice_copy = aux;
-		
+
 		aux_Z = GC[a].Z_copy;
 		GC[a].Z_copy = GC[b].Z_copy;
 		GC[b].Z_copy = aux_Z;
-		
+
 		// swap of multicanonic utils
 		#ifdef MULTICANONICAL_MODE
 		double aux_charge;
 		aux_charge = GC[a].stored_topcharge;
 		GC[a].stored_topcharge = GC[b].stored_topcharge;
 		GC[b].stored_topcharge = aux_charge;
-		
+
 		aux = GC[a].lattice_cold;
 		GC[a].lattice_cold = GC[b].lattice_cold;
 		GC[b].lattice_cold = aux;
-		
+
 		aux = GC[a].lattice_copy_cold;
 		GC[a].lattice_copy_cold = GC[b].lattice_copy_cold;
 		GC[b].lattice_copy_cold = aux;
 		#endif
-		
+
 		// swap of labels
 		int aux_label;
 		aux_label = GC[a].conf_label;
 		GC[a].conf_label = GC[b].conf_label;
 		GC[b].conf_label = aux_label;
-		
+
 		// increase counter of successfull swaps for replicas (a, a+1)
-		acc_counters->num_accepted_swap[a]++; 
+		acc_counters->num_accepted_swap[a]++;
 		}
 	}
 
@@ -277,7 +277,7 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 	double aux_d;
 	int dir,i;
 	long s;
-  
+
 	// extract random direction
 	aux_d=STDIM*casuale();
 	for(i=0;i<STDIM;i++)
@@ -294,7 +294,7 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 		// s = j * volume + r
 		long r = s % (param->d_volume);
 		int j = (int) ( (s-r)/(param->d_volume) );
-		if(j<STDIM) 
+		if(j<STDIM)
 			{
 			equal(&(GC->lattice[r][j]), &(GC->lattice_copy[nnm(geo,r,dir)][j]));
 			#ifdef MULTICANONICAL_MODE
@@ -303,7 +303,7 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 			}
 		GC->Z[r][j] = GC->Z_copy[nnm(geo,r,dir)][j];
 		}
-	
+
 	// swap tanslated cold lattice with previous cold lattice
 	#ifdef MULTICANONICAL_MODE
 	GAUGE_GROUP **aux;
@@ -321,14 +321,14 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 		// s = j * volume + r
 		long r = s % (param->d_volume);
 		int j = (int) ( (s-r)/(param->d_volume) );
-		if(j<STDIM) 
+		if(j<STDIM)
 			{
 			equal(&(GC->lattice_copy[r][j]), &(GC->lattice[r][j]));
 			}
 		GC->Z_copy[r][j] = GC->Z[r][j];
 		}
 	}
-	
+
 void init_acc_utils(Acc_Utils *acc_counters, GParam const * const param)
 	{
 	if(param->d_N_replica_pt==1)
@@ -342,7 +342,7 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const * const param)
 		allocate_array_long(&(acc_counters->num_accepted_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
 		allocate_array_long(&(acc_counters->num_swap), param->d_N_replica_pt-1, __FILE__, __LINE__);
 		allocate_array_double(&(acc_counters->metro_swap_prob), param->d_N_replica_pt-1, __FILE__, __LINE__);
-		for(int i=0; i<(param->d_N_replica_pt-1); i++) 
+		for(int i=0; i<(param->d_N_replica_pt-1); i++)
 			{
 			acc_counters->num_accepted_swap[i]=0;
 			acc_counters->num_swap[i]=0;
@@ -369,7 +369,7 @@ void free_acc_utils(Acc_Utils *acc_counters, GParam const * const param)
 	free_multicanonic_acc_utils(acc_counters);
 	#endif
 	}
-  
+
 void print_acceptances(Acc_Utils const * const acc_counters, GParam const * const param)
 	{
 	if(param->d_N_replica_pt==1)
@@ -378,10 +378,10 @@ void print_acceptances(Acc_Utils const * const acc_counters, GParam const * cons
 		}
 	else
 		{
-		FILE *fp;	
+		FILE *fp;
 		double acc,err_acc;
 		int r;
-  
+
 		fp=fopen(param->d_swap_acc_file, "w");
 		fprintf(fp, "#from    to         c_1      c_2    acc(%%) err_acc(%%)    accepted    tried\n");
 		for(r=0; r<((param->d_N_replica_pt)-1); r++)
@@ -398,7 +398,7 @@ void print_acceptances(Acc_Utils const * const acc_counters, GParam const * cons
 				}
 			fprintf(fp,"%5d %5d %11.6f %8.6f %9.3f %10.3f %11ld %8ld\n", r, r+1, param->d_pt_bound_cond_coeff[r], param->d_pt_bound_cond_coeff[r+1], acc*100.0, err_acc*100.0, acc_counters->num_accepted_swap[r], acc_counters->num_swap[r]);
 			}
-		fclose(fp);	  
+		fclose(fp);
 		}
 	}
 

@@ -346,11 +346,11 @@ int scheck_SuN(SuN const *const restrict A)
 // sunitarize
 void unitarize_SuN(SuN *restrict A)
 	{
-	double check;             
+	double check;
 	SuN F;                    // F = A^{dag}, force to unitarize A by cooling
 	SuN G, G_old;             // current and previous guess for unitarized A
 	SuN H, H_copy, H_square;  // helpers to check convergence of unitarization
-	
+
 	// check if A needs re-unitarization: check_SuN(A) passes (=0) if
 	// |A * A^{dag} - 1| < MIN_VALUE and |det(A) - 1| < MIN_VALUE
 	if(scheck_SuN(A) == 1)
@@ -377,7 +377,7 @@ void unitarize_SuN(SuN *restrict A)
 			times_SuN(&H_square, &H, &H_copy);
 			check = sqrt(fabs(retr_SuN(&H_square)) / (double)NCOLOR);
 			}
-		
+
 		// replace A with G (U if C was applyed)
 		equal_SuN(A, &G);
 		}

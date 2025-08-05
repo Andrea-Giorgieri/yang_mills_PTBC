@@ -26,16 +26,16 @@ void real_main(char *in_file)
 	Acc_Utils acc_counters;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
-	
+
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
-	
+
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
-	
+
 	// read input file
 	readinput(in_file, &param);
 
@@ -43,22 +43,22 @@ void real_main(char *in_file)
 	init_time_utils(&timers, param.d_walltime);
 	start_timer(&(timers.prog_timer));
 	start_timer(&(timers.init_timer));
-	
+
 	// initialize random generator
 	initrand(param.d_randseed);
-	
+
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf(&GC, &geo, &param);
-	
+
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
-	
+
 	stop_timer(&(timers.init_timer));
-	
+
 	// Monte Carlo begin
 	if(param.d_sample == 0) // no update is done, only measures are performed on read configuration
 		{
@@ -69,7 +69,7 @@ void real_main(char *in_file)
 	for(count=0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
-		
+
 		// update conf
 		update(&GC, &geo, &param, &acc_counters);
 
@@ -78,7 +78,7 @@ void real_main(char *in_file)
 			{
 			perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
 			}
-		
+
 		// save configuration for backup
 		if(param.d_saveconf_back_every != 0)
 			{
@@ -102,7 +102,7 @@ void real_main(char *in_file)
 				sprintf(aux, "%ld", GC.update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&GC, &param, name);
-				
+
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
@@ -112,13 +112,13 @@ void real_main(char *in_file)
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
 		}
-	
+
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
-	
+
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
-	
+
 	// save configuration
 	if (param.d_saveconf_back_every!=0)
 		{
@@ -127,10 +127,10 @@ void real_main(char *in_file)
 
 	// print simulation details
 	print_parameters_local_agf(&param, &timers);
-	
+
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 	}
@@ -139,9 +139,9 @@ void real_main(char *in_file)
 void print_template_input(void)
 	{
 	FILE *fp;
-	
+
 	fp=fopen("template_input.example", "w");
-	
+
 	if(fp==NULL)
 		{
 		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
@@ -161,18 +161,18 @@ void print_template_input(void)
 int main (int argc, char **argv)
 	{
 	char in_file[STD_STRING_LENGTH];
-	
+
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
-		
+
 		printf("Usage: %s input_file\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else

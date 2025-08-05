@@ -25,17 +25,17 @@ void real_main(char *in_file)
 	GParam param;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
-	
+
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
 	double acc, acc_local;
-	
+
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
-	
+
 	// read input file
 	readinput(in_file, &param);
 
@@ -43,38 +43,38 @@ void real_main(char *in_file)
 	init_time_utils(&timers, param.d_walltime);
 	start_timer(&(timers.prog_timer));
 	start_timer(&(timers.init_timer));
-	
+
 	// initialize random generator
 	initrand(param.d_randseed);
-	
+
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
-	
+
 	// acceptance of the metropolis update
 	acc=0.0;
-	
+
 	stop_timer(&(timers.init_timer));
-	
+
 	// Monte Carlo begin (count starts from 1 to avoid problems using %)
 	for(count=1; count < param.d_sample + 1; count++)
 		{
 		start_timer(&(timers.step_timer));
-		
+
 		update_with_trace_def(&GC, &geo, &param, &acc_local);
 		acc+=acc_local;
-		
+
 		if(count % param.d_measevery ==0 && count >= param.d_thermal)
 			{
 			perform_measures_localobs_with_tracedef(&GC, &geo, &param, &meas_aux);
 			}
-		
+
 		// save configuration for backup
 		if(param.d_saveconf_back_every!=0)
 			{
@@ -82,12 +82,12 @@ void real_main(char *in_file)
 				{
 				// simple
 				write_conf_on_file(&GC, &param);
-				
+
 				// backup copy
 				write_conf_on_file_back(&GC, &param);
 				}
 			}
-		
+
 		// save configuration for offline analysis
 		if(param.d_saveconf_analysis_every!=0)
 			{
@@ -102,27 +102,27 @@ void real_main(char *in_file)
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
 		}
-	
+
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
-	
+
 	acc/=(double)param.d_sample;
-	
+
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
-	
+
 	// save configuration
 	if(param.d_saveconf_back_every!=0)
 		{
 		write_conf_on_file(&GC, &param);
 		}
-	
+
 	// print simulation details
 	print_parameters_tracedef(&param, &timers, acc);
-	
+
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 	}
@@ -131,9 +131,9 @@ void real_main(char *in_file)
 void print_template_input(void)
 	{
 	FILE *fp;
-	
+
 	fp=fopen("template_input.example", "w");
-	
+
 	if(fp==NULL)
 		{
 		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
@@ -156,18 +156,18 @@ void print_template_input(void)
 int main (int argc, char **argv)
 	{
 	char in_file[50];
-	
+
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
 		int twisted_bc = 0;
-		print_authors(parallel_tempering, twisted_bc);	
-		
+		print_authors(parallel_tempering, twisted_bc);
+
 		printf("Usage: %s input_file\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else
@@ -178,9 +178,9 @@ int main (int argc, char **argv)
 			}
 		else strcpy(in_file, argv[1]);
 		}
-	
+
 	real_main(in_file);
-	
+
 	return EXIT_SUCCESS;
 	}
 

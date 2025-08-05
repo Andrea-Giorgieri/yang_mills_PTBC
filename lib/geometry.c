@@ -21,7 +21,7 @@ void init_indexing_lexeo(void)
 	sisp_and_t_to_si_compute=&lexeosp_and_t_to_lexeo;
 	si_to_sisp_and_t_compute=&lexeo_to_lexeosp_and_t;
 	si_to_sisp_and_mu_compute=&lexeo_to_lexeosp_and_mu;
-	
+
 	// for rectangles
 	cart_to_si_rect = &cart_to_lexeo_rect;
 	}
@@ -33,7 +33,7 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	int i, value, valuep, valuem;
 	long r, rm, rp;
 	int cartcoord[STDIM];
-	
+
 	// allocate memory
 	allocate_array_long_pointer(&(geo->d_nnp), param->d_volume, __FILE__, __LINE__);
 	allocate_array_long_pointer(&(geo->d_nnm), param->d_volume, __FILE__, __LINE__);
@@ -42,14 +42,14 @@ void init_geometry(Geometry *geo, GParam const * const param)
 		allocate_array_long(&(geo->d_nnp[r]), STDIM, __FILE__, __LINE__);
 		allocate_array_long(&(geo->d_nnm[r]), STDIM, __FILE__, __LINE__);
 		}
-	
+
 	allocate_array_int( &(geo->d_timeslice), param->d_volume, __FILE__, __LINE__);
 	allocate_array_long(&(geo->d_spacecomp), param->d_volume, __FILE__, __LINE__);
-	
+
 	allocate_array_long_pointer(&(geo->d_tsp), param->d_size[0], __FILE__, __LINE__);
 	for(r=0; r<param->d_size[0]; r++)
 		allocate_array_long(&(geo->d_tsp[r]), param->d_space_vol[0], __FILE__, __LINE__);
-	
+
 	allocate_array_long_pointer_pointer(&(geo->d_musp), STDIM, __FILE__, __LINE__);
 	for(i=0; i<STDIM; i++)
 		{
@@ -57,16 +57,16 @@ void init_geometry(Geometry *geo, GParam const * const param)
 		for(r=0; r<param->d_size[i]; r++)
 			allocate_array_long(&(geo->d_musp[i][r]), (param->d_volume)/(param->d_size[i]), __FILE__, __LINE__);
 		}
-	
+
 	// INITIALIZE
 	for(r=0; r<param->d_volume; r++)
 		{
 		si_to_cart(cartcoord, r, param);
-	
+
 		for(i=0; i<STDIM; i++)
 			{
 			value=cartcoord[i];
-			
+
 			valuep=value+1;
 			if(valuep >= param->d_size[i])
 				{
@@ -75,7 +75,7 @@ void init_geometry(Geometry *geo, GParam const * const param)
 			cartcoord[i]=valuep;
 			rp=cart_to_si(cartcoord, param);
 			geo->d_nnp[r][i]=rp;
-			
+
 			valuem=value-1;
 			if(valuem<0)
 				{
@@ -84,11 +84,11 @@ void init_geometry(Geometry *geo, GParam const * const param)
 			cartcoord[i]=valuem;
 			rm=cart_to_si(cartcoord, param);
 			geo->d_nnm[r][i]=rm;
-			
+
 			cartcoord[i]=value;
 			}
 		} // end of loop on r
-	
+
 	for(r=0; r<param->d_volume; r++)
 		{
 		si_to_sisp_and_t_compute(&rp, &value, r, param);
@@ -98,10 +98,10 @@ void init_geometry(Geometry *geo, GParam const * const param)
 		for(i=0; i<STDIM; i++)
 			{
 			si_to_sisp_and_mu_compute(&rp, &value, r, i, param);
-			geo->d_musp[i][value][rp]=r;	
+			geo->d_musp[i][value][rp]=r;
 			}
 		}
-	
+
 	#ifdef DEBUG
 	test_geometry(geo, param);
 	#endif
@@ -112,7 +112,7 @@ void free_geometry(Geometry *geo, GParam const * const param)
 	{
 	long r;
 	int i;
-	
+
 	for(r=0; r<param->d_volume; r++)
 		{
 		free(geo->d_nnp[r]);
@@ -120,7 +120,7 @@ void free_geometry(Geometry *geo, GParam const * const param)
 		}
 	free(geo->d_nnp);
 	free(geo->d_nnm);
-	
+
 	free(geo->d_timeslice);
 	free(geo->d_spacecomp);
 	for(r=0; r<param->d_size[0]; r++)
@@ -156,33 +156,33 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 	{
 	long si, ris_test, si_bis, sisp;
 	int dir, cart[STDIM], cartsp[STDIM-1], t;
-	
+
 	// test of lex_to_cart <-> cart_to_lex
 	for(si=0; si < param->d_volume; si++)
 		{
 		lex_to_cart(cart, si, param);
 		ris_test=cart_to_lex(cart, param);
-		
+
 		if(si != ris_test)
 			{
 			fprintf(stderr, "Problems while testing geometry! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// test of lexeo_to_cart <-> cart_to_lexeo
 	for(si=0; si < param->d_volume; si++)
 		{
 		lexeo_to_cart(cart, si, param);
 		ris_test=cart_to_lexeo(cart, param);
-		
+
 		if(si != ris_test)
 			{
 			fprintf(stderr, "Problems while testing geometry! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// test of nnp <-> nnm
 	for(si=0; si < param->d_volume; si++)
 		{
@@ -190,7 +190,7 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 			{
 			si_bis=nnp(geo, si, dir);
 			ris_test=nnm(geo, si_bis, dir);
-			
+
 			if(si != ris_test)
 				{
 				fprintf(stderr, "Problems while testing geometry! (%s, %d)\n", __FILE__, __LINE__);
@@ -198,33 +198,33 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 				}
 			}
 		}
-	
+
 	// test of lexsp_to_cartsp <-> cartsp_to_lexsp
 	for(sisp=0; sisp < param->d_space_vol[0]; sisp++)
 		{
 		lexsp_to_cartsp(cartsp, sisp, param);
 		ris_test=cartsp_to_lexsp(cartsp, param);
-		
+
 		if(sisp != ris_test)
 			{
 			fprintf(stderr, "Problems while testing geometry! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// test of lexeosp_to_cartsp <-> cartsp_to_lexeosp
 	for(sisp=0; sisp < param->d_space_vol[0]; sisp++)
 		{
 		lexeosp_to_cartsp(cartsp, sisp, param);
 		ris_test=cartsp_to_lexeosp(cartsp, param);
-		
+
 		if(sisp != ris_test)
 			{
 			fprintf(stderr, "Problems while testing geometry! (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// test of lexeosp_and_t_to_lexeo <-> lexeo_to_lexeosp_and_t
 	for(si=0; si<param->d_volume; si++)
 		{
@@ -255,7 +255,7 @@ long cart_to_lex(int const * const cartcoord, GParam const * const param)
 	{
 	int i;
 	long ris, aux;
-	
+
 	ris=0;
 	aux=1;
 	for(i=0; i<STDIM; i++)
@@ -263,19 +263,19 @@ long cart_to_lex(int const * const cartcoord, GParam const * const param)
 		ris+=cartcoord[i]*aux;
 		aux*=param->d_size[i];
 		}
-	
+
 	// ris = cartcoord[0]
 	//		+cartcoord[1]*size[0]
 	//		+cartcoord[2]*size[0]*size[1]
 	//		+...
 	//		+cartcoord[STDIM-1]*size[0]*size[1]*...*size[STDIM-2]
-	
+
 	return ris;
-	
+
 	/*
 	int i;
 	long ris, aux;
-	
+
 	ris=0;
 	aux=1;
 	for(i=STDIM-1; i>=0; i--)
@@ -283,7 +283,7 @@ long cart_to_lex(int const * const cartcoord, GParam const * const param)
 		ris+=cartcoord[i]*aux;
 		aux*=param->d_size[i];
 		}
-	
+
 	// ris = cartcoord[STDIM-1] +
 	//		+cartcoord[STDIM-2]*size[STDIM-1]+
 	//		+cartcoord[STDIM-3]*size[STDIM-1]*size[STDIM-2]+
@@ -300,7 +300,7 @@ void lex_to_cart(int *cartcoord, long lex, GParam const * const param)
 	{
 	int i;
 	long aux[STDIM];
-	
+
 	aux[0]=1;
 	for(i=1; i<STDIM; i++)
 		{
@@ -311,17 +311,17 @@ void lex_to_cart(int *cartcoord, long lex, GParam const * const param)
 	// aux[2]=size[0]*size[1]
 	// ...
 	// aux[STDIM-1]=size[0]*size[1]*...*size[STDIM-2]
-	
+
 	for(i=STDIM-1; i>=0; i--)
 		{
 		cartcoord[i]=(int) (lex/aux[i]);
 		lex-=aux[i]*cartcoord[i];
 		}
-	
+
 	/*
 	int i;
 	long aux[STDIM];
-	
+
 	aux[STDIM-1]=1;
 	for(i=STDIM-2; i>=0; i--)
 		{
@@ -332,7 +332,7 @@ void lex_to_cart(int *cartcoord, long lex, GParam const * const param)
 	// aux[STDIM-3] = size[STDIM-1]*size[STDIM-2]
 	// ...
 	// aux[0]		 = size[STDIM-1]*size[STDIM-2]*...*size[1]
-	
+
 	for(i=0; i<STDIM; i++)
 		{
 		cartcoord[i]=(int) (lex/aux[i]);
@@ -347,15 +347,15 @@ long cart_to_lexeo(int const * const cartcoord, GParam const * const param)
 	{
 	long lex;
 	int i, eo;
-	
+
 	lex=cart_to_lex(cartcoord, param);
-	
+
 	eo=0;
 	for(i=0; i<STDIM; i++)
 		{
 		eo+=cartcoord[i];
 		}
-	
+
 	if(eo % 2==0)
 		{
 		return lex/2;
@@ -373,7 +373,7 @@ void lexeo_to_cart(int *cartcoord, long lexeo, GParam const * const param)
 	{
 	long lex;
 	int i, eo;
-	
+
 	if(param->d_volume % 2 == 0)
 		{
 		if(lexeo < param->d_volume/2)
@@ -392,7 +392,7 @@ void lexeo_to_cart(int *cartcoord, long lexeo, GParam const * const param)
 			eo+=cartcoord[i];
 			}
 		eo = eo % 2;
-		
+
 		// this is to take care of the case d_volume is even but not
 		// all the lattice extents are even
 		if( (eo == 0 && lexeo >= param->d_volume/2) ||
@@ -421,9 +421,9 @@ void lexeo_to_cart(int *cartcoord, long lexeo, GParam const * const param)
 long lex_to_lexeo(long lex, GParam const * const param)
 	{
 	int cartcoord[STDIM];
-	
+
 	lex_to_cart(cartcoord, lex, param);
-	
+
 	return cart_to_lexeo(cartcoord, param);
 	}
 
@@ -432,9 +432,9 @@ long lex_to_lexeo(long lex, GParam const * const param)
 long lexeo_to_lex(long lexeo, GParam const * const param)
 	{
 	int cartcoord[STDIM];
-	
+
 	lexeo_to_cart(cartcoord, lexeo, param);
-	
+
 	return cart_to_lex(cartcoord, param);
 	}
 
@@ -447,7 +447,7 @@ long cartsp_to_lexsp(int const * const ccsp, GParam const * const param)
 	// ccsp =	x1 x2		x_{STDIM-1}
 	int i;
 	long ris, aux;
-	
+
 	ris=0;
 	aux=1;
 	for(i=0; i<STDIM-1; i++)
@@ -455,15 +455,15 @@ long cartsp_to_lexsp(int const * const ccsp, GParam const * const param)
 		ris+=ccsp[i]*aux;
 		aux*=param->d_size[i+1];
 		}
-	
+
 	// ris = ccsp[0]
 	//		+ccsp[1]*size[1]
 	//		+ccsp[2]*size[1]*size[2]
 	//		+...
 	//		+ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
-	
+
 	return ris;
-	
+
 	/*
 	int i;
 	long ris, aux;
@@ -475,7 +475,7 @@ long cartsp_to_lexsp(int const * const ccsp, GParam const * const param)
 		ris+=ccsp[i]*aux;
 		aux*=param->d_size[i+1];
 		}
-	
+
 	// ris = ccsp[STDIM-2] +
 	//		+ccsp[STDIM-3]*size[STDIM-1]+
 	//		+ccsp[STDIM-4]*size[STDIM-1]*size[STDIM-2]+
@@ -494,7 +494,7 @@ long cartsp_to_lexsp_mu(int const * const ccsp, int mu, GParam const * const par
 	// ccsp = x0 x1	 -   ... x_{STDIM-1}
 	int i, j;
 	long ris, aux;
-	
+
 	ris=0;
 	aux=1;
 	for(i=0; i<STDIM-1; i++)
@@ -504,13 +504,13 @@ long cartsp_to_lexsp_mu(int const * const ccsp, int mu, GParam const * const par
 		else j = i + 1;
 		aux*=param->d_size[j];
 		}
-	
+
 	// ris = ccsp[0]
 	//		+ccsp[1]*size[0]
 	//		+ccsp[2]*size[0]*size[1]
 	//		+... (skipping size[mu])
 	//		+ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
-	
+
 	return ris;
 	}
 
@@ -521,10 +521,10 @@ void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param)
 	// the index for the spatial cartesian coord. goes from 0 to STDIM-2 hence ccsp[STDIM-1]
 	// cc	= t x1 x2 ... x_{STDIM-1}
 	// ccsp =	x1 x2		x_{STDIM-1}
-	
+
 	int i;
 	long aux[STDIM-1];
-	
+
 	aux[0]=1;
 	for(i=1; i<STDIM-1; i++)
 		{
@@ -535,17 +535,17 @@ void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param)
 	// aux[2]=size[1]*size[2]
 	// ...
 	// aux[STDIM-2]=size[1]*size[2]*...*size[STDIM-2]
-	
+
 	for(i=STDIM-2; i>=0; i--)
 		{
 		ccsp[i]=(int) (lexsp/aux[i]);
 		lexsp-=aux[i]*ccsp[i];
 		}
-	
+
 	/*
 	int i;
 	long aux[STDIM-1];
-	
+
 	aux[STDIM-2]=1;
 	for(i=STDIM-3; i>=0; i--)
 		{
@@ -556,7 +556,7 @@ void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const * const param)
 	// aux[STDIM-4] = size[STDIM-1]*size[STDIM-2]
 	// ...
 	// aux[0]		 = size[STDIM-1]*size[STDIM-2]*...*size[2]
-	
+
 	for(i=0; i<STDIM-1; i++)
 		{
 		ccsp[i]=(int) (lexsp/aux[i]);
@@ -571,15 +571,15 @@ long cartsp_to_lexeosp(int const * const ccsp, GParam const * const param)
 	{
 	long lexsp;
 	int i, eo;
-	
+
 	lexsp=cartsp_to_lexsp(ccsp, param);
-	
+
 	eo=0;
 	for(i=0; i<STDIM-1; i++)
 		{
 		eo+=ccsp[i];
 		}
-	
+
 	if(eo % 2==0)
 		{
 		return lexsp/2;
@@ -595,15 +595,15 @@ long cartsp_to_lexeosp_mu(int const * const ccsp, int mu, GParam const * const p
 	{
 	long lexsp;
 	int i, eo;
-	
+
 	lexsp=cartsp_to_lexsp_mu(ccsp, mu, param);
-	
+
 	eo=0;
 	for(i=0; i<STDIM-1; i++)
 		{
 		eo+=ccsp[i];
 		}
-	
+
 	if(eo % 2==0)
 		{
 		return lexsp/2;
@@ -620,7 +620,7 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 	{
 	long lexsp;
 	int i, eo;
-	
+
 	if(param->d_space_vol[0] % 2 == 0)
 		{
 		if(lexeosp < param->d_space_vol[0]/2)
@@ -632,14 +632,14 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 			lexsp=2*(lexeosp - param->d_space_vol[0]/2);
 			}
 		lexsp_to_cartsp(ccsp, lexsp, param);
-		
+
 		eo=0;
 		for(i=0; i<STDIM-1; i++)
 			{
 			eo+=ccsp[i];
 			}
 		eo = eo % 2;
-		
+
 		if( (eo == 0 && lexeosp >= param->d_space_vol[0]/2) ||
 			(eo == 1 && lexeosp <  param->d_space_vol[0]/2) )
 			{
@@ -666,9 +666,9 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const * const param)
 long lexsp_to_lexeosp(long lexsp, GParam const * const param)
 	{
 	int ccsp[STDIM];
-	
+
 	lexsp_to_cartsp(ccsp, lexsp, param);
-	
+
 	return cartsp_to_lexeosp(ccsp, param);
 	}
 
@@ -677,9 +677,9 @@ long lexsp_to_lexeosp(long lexsp, GParam const * const param)
 long lexeosp_to_lexsp(long lexeosp, GParam const * const param)
 	{
 	int ccsp[STDIM];
-	
+
 	lexeosp_to_cartsp(ccsp, lexeosp, param);
-	
+
 	return cartsp_to_lexsp(ccsp, param);
 	}
 
@@ -688,10 +688,10 @@ long lexeosp_to_lexsp(long lexeosp, GParam const * const param)
 long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const * const param)
 	{
 	int cc[STDIM];
-	
+
 	lexeosp_to_cartsp(cc+1, lexeosp, param);
 	cc[0]=t;
-	
+
 	return cart_to_lexeo(cc, param);
 	}
 
@@ -700,37 +700,37 @@ long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const * const param)
 void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const * const param)
 	{
 	int i, cc[STDIM], ccsp[STDIM-1];
-	
+
 	lexeo_to_cart(cc, lexeo, param);
-	
+
 	*t=cc[0];
-	
+
 	for(i=0; i<STDIM-1; i++)
 		{
 		ccsp[i]=cc[i+1];
 		}
-	
+
 	*lexeosp=cartsp_to_lexeosp(ccsp, param);
 	}
 
 void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const * const param)
 	{
 	int i, j, cc[STDIM], ccsp[STDIM-1];
-	
+
 	lexeo_to_cart(cc, lexeo, param);
-	
+
 	*t=cc[mu];
-	
+
 	for(i=0; i<STDIM-1; i++)
 		{
 		if (i < mu) j = i;
 		else j = i + 1;
 		ccsp[i]=cc[j];
 		}
-	
+
 	*lexeosp=cartsp_to_lexeosp_mu(ccsp, mu, param);
 	}
-	
+
 // 4d only geometry for rectangles to be used for hierarchical update during parallel tempering
 
 // reduce a generic integer component in the interval [0,L_max-1]
@@ -744,10 +744,10 @@ int periodic_condition(int const coord, int const L_max)
 // cartesian -> lexicographic eo (on a given rectangle)
 // this function should not be used outside geometry.c
 long cart_to_lexeo_rect(int const * const cartcoord, Rectangle const * const most_update)
-	{	
+	{
 	int i, eo=0;
 	long ris=0, aux=1;
-	
+
 	for(i=0; i<STDIM; i++)
 		{
 		ris+=cartcoord[i]*aux;
@@ -763,27 +763,27 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const * const param
 	// sizes of rectangle and ranges of rect coordinates
 	int aux_L[STDIM], size_min[STDIM], size_max[STDIM];
 	int i;
-	
+
 	// for each value of defect_dir, determine the three orthogonal directions to it
 	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-	
+
 	// rectangle sizes
 	aux_L[param->d_defect_dir]=2*L_R+1;
 	aux_L[perp_dir[param->d_defect_dir][0]]=2*L_R+(param->d_L_defect[0]);
 	aux_L[perp_dir[param->d_defect_dir][1]]=2*L_R+(param->d_L_defect[1]);
 	aux_L[perp_dir[param->d_defect_dir][2]]=2*L_R+(param->d_L_defect[2]);
-	
+
 	// min and max of rect coordinates along every direction
 	size_min[param->d_defect_dir]=(param->d_size[param->d_defect_dir])-1-L_R;
 	size_min[perp_dir[param->d_defect_dir][0]]=-L_R;
 	size_min[perp_dir[param->d_defect_dir][1]]=-L_R;
 	size_min[perp_dir[param->d_defect_dir][2]]=-L_R;
-	
+
 	size_max[param->d_defect_dir]=(param->d_size[param->d_defect_dir])+L_R;
 	size_max[perp_dir[param->d_defect_dir][0]]=(param->d_L_defect[0])+L_R;
 	size_max[perp_dir[param->d_defect_dir][1]]=(param->d_L_defect[1])+L_R;
 	size_max[perp_dir[param->d_defect_dir][2]]=(param->d_L_defect[2])+L_R;
-	
+
 	// d_size_rect[i] must not exceed d_size[i]
 	// if so, the exceeding dimension of the rectangle is just the respective dimension of the whole lattice
 	// and the i-th coordinate just ranges from 0 to d_size[i]-1
@@ -796,26 +796,26 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const * const param
 			size_max[i]=param->d_size[i];
 			}
 		}
-	
+
 	// volume of rectangle
 	long V=1;
 	for(i=0;i<STDIM;i++)
 		V*=aux_L[i];
-	
+
 	// allocate rectangle
 	allocate_array_long(&(most_update->rect_sites), V, __FILE__, __LINE__);
-	
+
 	// save dimensions and volume of the rectangle
 	for(i=0;i<STDIM;i++)
 		most_update->d_size_rect[i]=aux_L[i];
 	most_update->d_vol_rect=V;
-	
+
 	// save lexeo index of sites of the rectangle
 	int coord[STDIM];			// cartesian coordinates on the whole lattice
 	int real_coord[STDIM];	// cartesian coordinates after using periodic conditions
 	long r,r_rect;				// lexeo index on the rectangle and lexeo index on the whole lattice
 	int coord_rect[STDIM];	// cartesian coordinates on the rectangle
-	
+
 	coord_rect[0]=0;
 	for(coord[0]=size_min[0];coord[0]<size_max[0];coord[0]++)
 		{
@@ -829,19 +829,19 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const * const param
 				for(coord[3]=size_min[3];coord[3]<size_max[3];coord[3]++)
 					{
 					// compute the real coordinates on the periodic lattice
-					for(i=0;i<STDIM;i++) 
+					for(i=0;i<STDIM;i++)
 						real_coord[i]=periodic_condition(coord[i],param->d_size[i]);
-					
+
 					r_rect=cart_to_si_rect(coord_rect,most_update); // from cartesian coordinates on the rectangle to lexeo index on the rectangle
 					r=cart_to_si(real_coord,param);						// from cartesian coordinates on the lattice to lexeo index on the lattice
 					most_update->rect_sites[r_rect]=r;
-					
+
 					coord_rect[3]++;
 					} // end of z loop
 				coord_rect[2]++;
 				} // end of y loop
 			coord_rect[1]++;
-			} // end of x loop	
+			} // end of x loop
 		coord_rect[0]++;
 		} // end of t loop
 	}
@@ -850,7 +850,7 @@ void free_rect(Rectangle *most_update)
 	{
 	free(most_update->rect_sites);
 	}
-	
+
 void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam const * const param)
 	{
 	if(param->d_N_hierarc_levels==0)
@@ -864,7 +864,7 @@ void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam 
 		allocate_array_Rectangle(most_update, param->d_N_hierarc_levels, __FILE__, __LINE__);
 		for(i=0; i<param->d_N_hierarc_levels; i++)
 			init_rect(&((*most_update)[i]), param->d_L_rect[i], param);
-		
+
 		#ifdef THETA_MODE
 			allocate_array_Rectangle(clover_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 			for(i=0; i<param->d_N_hierarc_levels; i++)
@@ -903,7 +903,7 @@ void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam co
 void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 	{
 	int border; // border = n -> up to n-th neighbors added to the rectangle
-	
+
 	// swap_rect: border = 1 (under swap, action changes only for plaquettes around the defect)
 	border=1;
 	init_rect(&(rect_aux->swap_rect), border, param);
@@ -930,7 +930,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 			}
 
 		#ifdef THETA_MODE
-		// clover_rect: border = d_L_rect + 2 
+		// clover_rect: border = d_L_rect + 2
 		allocate_array_Rectangle(&(rect_aux->clover_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
 		for(int i=0; i<param->d_N_hierarc_levels; i++)
 			{
@@ -938,7 +938,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 			init_rect(&(rect_aux->clover_rect[i]), border, param);
 			}
 		#endif
-		
+
 		#ifdef MULTICANONICAL_MODE
 		// topcharge_rect: border = d_L_rect + 4*coolsteps + 2
 		allocate_array_Rectangle(&(rect_aux->topcharge_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
@@ -948,7 +948,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 			if (param->d_topo_cooling == 1) border = param->d_L_rect[i] + 2 + 4*param->d_topo_coolsteps;
 			init_rect(&(rect_aux->topcharge_rect[i]), border, param);
 			}
-		
+
 		// cooling_rect: border = topcharge_rect + 4*(coolsteps - coolstep)
 		if (param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0)
 			{
@@ -982,13 +982,13 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 		for(i=0; i<param->d_N_hierarc_levels; i++)
 			free_rect(&(rect_aux->update_rect[i]));
 		free(rect_aux->update_rect);
-		
+
 		#ifdef THETA_MODE
 		for(i=0; i<param->d_N_hierarc_levels; i++)
 			free_rect(&(rect_aux->clover_rect[i]));
 		free(rect_aux->clover_rect);
 		#endif
-		
+
 		#ifdef MULTICANONICAL_MODE
 		if (param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0)
 			{
@@ -1015,7 +1015,7 @@ double square_distance(long const i, long const j, GParam const * const param)
 	int x[STDIM], y[STDIM];
 	double d[STDIM], half_size[STDIM];
 	double distance2=0.0;
-	
+
 	si_to_cart(x, i, param); // i --> x
 	si_to_cart(y, j, param); // j --> y
 	for (mu=0; mu<STDIM; mu++)

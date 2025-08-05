@@ -17,16 +17,16 @@ typedef struct GParam {
 	double d_beta;
 	double d_h[NCOLOR]; // parameters for the trace deformation
 	double d_theta;
-	
+
 	// parallel tempering parameters
 	int     d_defect_dir;          // defect boundary
 	int     d_L_defect[STDIM-1];   // defect sizes
 	int     d_N_replica_pt;        // numbers of replica used in parallel tempering
 	double* d_pt_bound_cond_coeff; // boundary conditions coefficients
-	
+
 	// twist parameters
 	int d_k_twist[STDIM*(STDIM-1)/2];	// twist parameter for each plane
-	
+
 	// hierarchical update (parallel tempering)
 	int  d_N_hierarc_levels; // number of hierarchical levels
 	int *d_L_rect;           // d_L_rect is a vector of length d_N_hierarc_levels
@@ -39,9 +39,9 @@ typedef struct GParam {
 	int d_thermal;
 	int d_overrelax;
 	int d_measevery;
-	
+
 	// time limit in hours
-	double d_walltime; 
+	double d_walltime;
 
 	// initialization & saving
 	int d_start;
@@ -50,7 +50,7 @@ typedef struct GParam {
 
 	// for metropolis
 	double d_epsilon_metro;
-	
+
 	// for observables to measure
 	int d_plaquette_meas;
 	int d_clover_energy_meas;
@@ -61,7 +61,7 @@ typedef struct GParam {
 	int d_chi_prime_meas;
 	int d_charge_prime_meas;
 	int d_topcharge_tcorr_meas;
-	
+
 	int  d_multipolyakov_order;
 	int *d_multipolyakov_dirs;
 
@@ -74,7 +74,7 @@ typedef struct GParam {
 	int    d_ngfsteps;
 	int    d_gf_meas_each;
 	int    d_gf_num_meas;
-	
+
 	// for adaptive-step gradient-flow evolution
 	double d_agf_length;
 	double d_agf_meas_each;
@@ -117,7 +117,7 @@ typedef struct GParam {
 	long   d_volume_defect;        // volume of the defect (only for parallel tempering)
 	int    d_n_grid;               // total grid points (only for multicanonic)
 	int    d_n_planes;             // number of planes (only for twisted boundary conditions)
-	
+
 	// for multicanonic
 	char     d_topo_potential_file[STD_STRING_LENGTH];
 	double   d_grid_step;
@@ -127,7 +127,7 @@ typedef struct GParam {
 	int      d_topo_coolsteps;  // cooling steps of the charge before evaluating V_a
 	double   d_topo_agf_time;   // adaptive gradflow time before evaluating V_a. TODO: unused, debug only, remove?
 	double   d_topo_alpha;      // alpha parameter for alpha-rounding of cooled charge
-	
+
 	// for tuning
 	int      d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
 	int      d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)

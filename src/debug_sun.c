@@ -16,15 +16,15 @@ int main(void)
   unsigned int seme=0;
   double energy;
   GParam param;
-  
+
   SuN M, N, L, T;
-   
+
   // initialize random seed
   initrand(seme);
 
   // fix a value for d_beta
   param.d_beta=2.3;
-    
+
   printf("\n*******************************\n");
   printf("PROGRAM FOR THE DEBUG OF SU(N)\n");
   printf("*******************************\n\n");

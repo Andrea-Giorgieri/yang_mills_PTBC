@@ -172,15 +172,15 @@ void remove_white_line_and_comments(FILE *input)
 
 	// skip empty line
 	{do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');}
-	
+
 	// skip comment, from \043 = ascii oct for # to first newline or EOF
 	if(temp_i == '\043') {do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF);}
-	
+
 	// return if EOF reached or nothing else to remove, after pushing back last char
 	if(temp_i == EOF) return;
 	ungetc(temp_i, input);
 	if(temp_i != '\n' && temp_i != ' ' && temp_i != '\043') return;
-	
+
 	// recursive call if another white line or comment
 	remove_white_line_and_comments(input);
 	}
@@ -188,7 +188,7 @@ void remove_white_line_and_comments(FILE *input)
 void set_defaults(GParam * const param)
 	{
 	int i;
-	
+
 	// multilevel
 	for(i=0; i<NLEVELS; i++) param->d_ml_step[i] = 0;
 
@@ -203,23 +203,23 @@ void set_defaults(GParam * const param)
 	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
 	param->d_defect_dir   = 0;
 	param->d_N_replica_pt = 1;
-	
+
 	// gradient flow
 	param->d_ngfsteps     = 0;
 	param->d_gf_meas_each = 1;
 	param->d_gfstep       = 1;
-	
+
 	// adaptive gradient flow
 	param->d_agf_length    = 0;
 	param->d_agf_meas_each = 1;
 	param->d_agf_step      = 0.1;
 	param->d_agf_delta     = 0.00001;
 	param->d_agf_time_bin  = 0;
-	
+
 	// cooling
 	param->d_coolsteps  = 0;
 	param->d_coolrepeat = 0;
-	
+
 	// multicanonical with cold topcharge
 	param->d_topo_cooling    = 0;
 	param->d_topo_coolsteps  = 0;
@@ -228,10 +228,10 @@ void set_defaults(GParam * const param)
 	param->d_topo_tuning_stp = 0.1;
 	param->d_topo_tuning_save_every = 0;
 	param->d_topo_tuning_even = 1;
-	
+
 	// walltime
 	param->d_walltime = 24.0;
-		
+
 	// measures
 	param->d_plaquette_meas        = 1;
 	param->d_clover_energy_meas    = 0;
@@ -243,7 +243,7 @@ void set_defaults(GParam * const param)
 	param->d_polyakov_density_meas = 0;
 	param->d_topcharge_tcorr_meas  = 0;
 	param->d_multipolyakov_order   = 0;
-	
+
 	// filenames
 	strcpy(param->d_ml_file,               "");
 	strcpy(param->d_conf_file,             "");
@@ -266,27 +266,27 @@ void readinput(char const * const in_file, GParam * const param)
 	FILE *input;
 	char str[STD_STRING_LENGTH], param_name[STD_STRING_LENGTH];
 	int i, err;
-	
+
 	// set default values
 	set_defaults(param);
-	
+
 	// open the input file
-	input=fopen(in_file, "r"); 
+	input=fopen(in_file, "r");
 	if(input==NULL)
 		{
 		fprintf(stderr, "Error opening input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	// slide the input file
-	for(;;) 
+	for(;;)
 		{
 		// check for EOF after skipping white line or comments
 		remove_white_line_and_comments(input);
 		i = getc(input);
 		if(i == EOF) break;
 		ungetc(i, input);
-		
+
 		// read the name of a parameter in str
 		err=fscanf(input, "%s", str);
 		if(err!=1)
@@ -294,9 +294,9 @@ void readinput(char const * const in_file, GParam * const param)
 			fprintf(stderr, "Error reading input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-		
+
 		// look for the parameter and set its value
-		
+
 		// lattice params
 		strcpy(param_name, "size");
 		if(strcmp(str, param_name) == 0)
@@ -305,14 +305,14 @@ void readinput(char const * const in_file, GParam * const param)
 				set_int_param(input, &(param->d_size[i]), param_name, &param_positive_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "beta");
 		if(strcmp(str, param_name) == 0)
 			{
 			set_double_param(input, &(param->d_beta), param_name, &param_positive_double);
 			continue;
 			}
-		
+
 		strcpy(param_name, "htracedef");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -320,14 +320,14 @@ void readinput(char const * const in_file, GParam * const param)
 				set_double_param(input, &(param->d_h[i]), param_name, &param_any_double);
 			continue;
 			}
-		
+
 		strcpy(param_name, "theta");
 		if(strcmp(str, param_name) == 0)
 			{
 			set_double_param(input, &(param->d_theta), param_name, &param_any_double);
 			continue;
 			}
-		
+
 		strcpy(param_name, "k_twist");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -346,7 +346,7 @@ void readinput(char const * const in_file, GParam * const param)
 				set_double_param(input, &(param->d_pt_bound_cond_coeff[i]), param_name, &param_any_double);
 			continue;
 			}
-			
+
 		strcpy(param_name, "defect_dir");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -377,7 +377,7 @@ void readinput(char const * const in_file, GParam * const param)
 				set_int_param(input, &(param->d_N_sweep_rect[i]), param_name, &param_nonnegative_int);
 			continue;
 			}
-		
+
 		// simulation params
 		strcpy(param_name, "sample");
 		if(strcmp(str, param_name) == 0)
@@ -505,7 +505,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_topcharge_tcorr_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "multipolyakov_order");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -533,8 +533,8 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_coolrepeat), param_name, &param_nonnegative_int);
 			continue;
 			}
-		
-		// gradient flow params		
+
+		// gradient flow params
 		strcpy(param_name, "gfstep");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -708,7 +708,7 @@ void readinput(char const * const in_file, GParam * const param)
 			{
 			set_string_param(input, param->d_swap_acc_file, param_name, &param_any_string);
 			continue;
-			}	
+			}
 
 		strcpy(param_name, "swap_track_file");
 		if(strcmp(str, param_name) == 0)
@@ -723,7 +723,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_string_param(input, param->d_multicanonic_acc_file, param_name, &param_any_string);
 			continue;
 			}
-		
+
 		// multicanonical params
 		strcpy(param_name, "topo_potential_file");
 		if(strcmp(str, param_name) == 0)
@@ -759,7 +759,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_topo_coolsteps), param_name, &param_nonnegative_int);
 			continue;
 			}
-					
+
 		strcpy(param_name, "topo_alpha");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -811,20 +811,20 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_plaq_dir[1]), param_name, &param_any_int);
 			continue;
 			}
-		
+
 		// raise error if parameter is unrecognized
 		fprintf(stderr, "Error: unrecognized option %s in input file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	// close the input file
 	fclose(input);
-		
+
 	// convert walltime from hours to seconds
 	param->d_walltime *= 3600;
-	
+
 	// Further checks
-		
+
 	// multilevel
 	if(param->d_ml_step[0]!=0)
 		{
@@ -848,7 +848,7 @@ void readinput(char const * const in_file, GParam * const param)
 			exit(EXIT_FAILURE);
 			}
 		}
-	
+
 	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
 	// This prevents even-odd parallelization of updates.
 	// TODO: implement parallel sweep on the largest sublattice with even sides and sequential sweep of the rest
@@ -863,7 +863,7 @@ void readinput(char const * const in_file, GParam * const param)
 			}
 		}
 	#endif
-	
+
 	// sizes
 	err=0;
 	for(i=0; i<STDIM; i++)
@@ -872,12 +872,12 @@ void readinput(char const * const in_file, GParam * const param)
 			fprintf(stderr, "Error: all sizes have to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-			
+
 	// parallel tempering
 	if(param->d_defect_dir >= STDIM)
 		{
 		fprintf(stderr, "Error: defect_dir must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);	
+		exit(EXIT_FAILURE);
 		}
 	if(param->d_L_defect[0]>param->d_size[0])
 		{
@@ -894,7 +894,7 @@ void readinput(char const * const in_file, GParam * const param)
 		fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	// check on gradflow parameters
 	if(param->d_agf_meas_each <= param->d_agf_time_bin)
 		{
@@ -911,7 +911,7 @@ void readinput(char const * const in_file, GParam * const param)
 		fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 		}
-	
+
 	// check on topological observables
 	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
 		{
@@ -933,9 +933,9 @@ void readinput(char const * const in_file, GParam * const param)
 		if (param->d_multipolyakov_dirs[i] >= STDIM)
 			{
 			fprintf(stderr, "Error: multipolyakov_dirs must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);	
+			exit(EXIT_FAILURE);
 			}
-	
+
 	// check on filenames
 	check_required_string(param->d_conf_file,             "conf_file",  1);
 	check_required_string(param->d_twist_file,            "twist_file", 1);
@@ -949,7 +949,7 @@ void readinput(char const * const in_file, GParam * const param)
 	check_required_string(param->d_swap_tracking_file,    "swap_track_file",       param->d_N_replica_pt > 1);
 
 	init_derived_constants(param);
-	
+
 	#ifdef MULTICANONICAL_MODE
 	check_required_string(param->d_multicanonic_acc_file, "multicanonic_acc_file", 1);
 	check_required_string(param->d_topo_potential_file,   "topo_potential_file",   1);
@@ -964,14 +964,14 @@ void read_topo_potential(GParam * const param)
 	int i, j, a, err;
 	double x, V;
 	FILE *fp;
-	
+
 	fp=fopen(param->d_topo_potential_file, "r");
 	if( fp==NULL )
 		{
 		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_topo_potential_file, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-		}	
-	
+		}
+
 	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
 	for (int a=0; a<param->d_N_replica_pt; a++)
 		{
@@ -1015,22 +1015,22 @@ void write_topo_potential(GParam const * const param, char * filename)
 	int i, a;
 	double x;
 	FILE *fp;
-	
+
 	fp=fopen(filename, "w");
 	if( fp==NULL )
 		{
 		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
-		}	
+		}
 
 	// write x and V_a(x)
 	for (i=0; i<param->d_n_grid; i++)
 		{
 		x = i * param->d_grid_step - param->d_grid_max;
-		
+
 		// write x
 		fprintf(fp, "% 12.6e ", x);
-		
+
 		// write V_a(x)
 		for(a=0; a<param->d_N_replica_pt; a++)
 			{
@@ -1057,27 +1057,27 @@ void init_derived_constants(GParam *param)
 
 	param->d_inv_vol = 1.0/((double) param->d_volume);
 	for(i=0; i<STDIM; i++) param->d_inv_space_vol[i] = 1.0/((double) param->d_space_vol[i]);
-	
+
 	// volume of the defect
 	param->d_volume_defect=1;
 	for(i=0; i<STDIM-1;i++)
 		{
 		param->d_volume_defect *= param->d_L_defect[i];
 		}
-	
+
 	// number of grid points (multicanonic only)
 	param->d_n_grid = (int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
-	
+
 	// number of planes (twisted boundary conditions only)
 	param->d_n_planes = STDIM*(STDIM-1);
-	
+
 	// number of measures during gradient-flow evolution
-	if (param->d_gf_meas_each > 0) 
+	if (param->d_gf_meas_each > 0)
 		param->d_gf_num_meas = (int)(param->d_ngfsteps / param->d_gf_meas_each);
 	else
 		param->d_gf_num_meas = 0;
 
-	if (param->d_agf_meas_each > 0) 
+	if (param->d_agf_meas_each > 0)
 		param->d_agf_num_meas = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
 	else
 		param->d_agf_num_meas = 0;
@@ -1104,7 +1104,7 @@ void print_configuration_parameters(FILE *fp)
 	#ifdef OPENMP_MODE
 	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
 	#endif
-	
+
 	if(endian()==0) fprintf(fp, "Little endian machine\n\n");
 	else fprintf(fp, "Big endian machine\n\n");
 	}
@@ -1116,12 +1116,12 @@ void print_pt_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "defect: %d", param->d_L_defect[0]);
 	for(i=1; i<STDIM-1; i++) fprintf(fp, "x%d", param->d_L_defect[i]);
 	fprintf(fp, "\n\n");
-	
+
 	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
 	fprintf(fp,"boundary condition constants: ");
 	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
 	fprintf(fp,"\n");
-	
+
 	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
 	if(param->d_N_hierarc_levels>0)
 		{
@@ -1163,11 +1163,11 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	int i;
 	fprintf(fp, "number of colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-	
+
 	fprintf(fp, "lattice: %d", param->d_size[0]);
 	for(i=1; i<STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
 	fprintf(fp, "\n\n");
-	
+
 	fprintf(fp, "twist parameters: ");
 	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
 	fprintf(fp,"\n");
@@ -1176,13 +1176,13 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "theta: %.10lf\n", param->d_theta);
 	#endif
 	fprintf(fp, "\n");
-	
+
 	fprintf(fp, "sample:    %d\n", param->d_sample);
 	fprintf(fp, "thermal:   %d\n", param->d_thermal);
 	fprintf(fp, "overrelax: %d\n", param->d_overrelax);
 	fprintf(fp, "measevery: %d\n", param->d_measevery);
 	fprintf(fp, "\n");
-	
+
 	fprintf(fp, "plaquette_meas:        %d\n", param->d_plaquette_meas);
 	fprintf(fp, "clover_energy_meas:    %d\n", param->d_clover_energy_meas);
 	fprintf(fp, "energy_density_meas:   %d\n", param->d_energy_density_meas);
@@ -1192,11 +1192,11 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
 	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_topcharge_tcorr_meas);
 	fprintf(fp, "\n");
-	
+
 	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
 	for(i=0; i<param->d_multipolyakov_order; i++) fprintf(fp, "%d ", param->d_multipolyakov_dirs[i]);
 	fprintf(fp, "\n\n");
-	
+
 	fprintf(fp, "start:                   %d\n", param->d_start);
 	fprintf(fp, "saveconf_back_every:     %d\n", param->d_saveconf_back_every);
 	fprintf(fp, "saveconf_analysis_every: %d\n", param->d_saveconf_analysis_every);
@@ -1294,9 +1294,9 @@ void print_parameters_local_agf(GParam const * const param, Time_Utils const * c
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1308,15 +1308,15 @@ void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Uti
 	fprintf(fp, "+---------------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_pt_multicanonic |\n");
 	fprintf(fp, "+---------------------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
 	print_multicanonic_parameters(fp, param);
 	print_simul_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1338,10 +1338,10 @@ void print_parameters_local_pt(GParam const * const param, Time_Utils const * co
 	print_cooling_parameters(fp, param);
 
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
-	
+
 void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
@@ -1361,10 +1361,10 @@ void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const *
 	print_cooling_parameters(fp, param);
 
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
-	
+
 void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const * const timers)
 	{
 	FILE *fp;
@@ -1382,12 +1382,12 @@ void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const 
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
-	
+
 void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time)
 	{
 	FILE *fp;
@@ -1407,26 +1407,26 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 	print_adaptive_gradflow_parameters(fp, param);
 	print_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	diff_sec = difftime(time_end, time_start);
 	fprintf(fp, "Simulation time:              %.3lf seconds\n", diff_sec );
 	fprintf(fp, "Adaptive gradflow time:       %d seconds\n", (int)agf_time);
 	fprintf(fp, "Debug adaptive gradflow time: %d seconds\n", (int)dagf_time);
 	fprintf(fp, "Gradflow time:                %d seconds\n", (int)gf_time);
 	fprintf(fp, "\n");
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------+\n");
 	fprintf(fp, "| Simulation details for debug_agf_vs_gf |\n");
 	fprintf(fp, "+----------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
 	#ifdef MULTICANONICAL_MODE
@@ -1435,7 +1435,7 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	fprintf(fp, "Simulation time:              %d seconds\n", (int)time_mc );
 	fprintf(fp, "Adaptive gradflow time:\n");
 	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1.0000, (int)time_agf0);
@@ -1443,55 +1443,55 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/100.00, (int)time_agf2);
 	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1000.0, (int)time_agf3);
 	fprintf(fp, "\n");
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_polycorr_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_polycorr_long |\n");
 	fprintf(fp, "+-------------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	print_multilevel_parameters(fp, param);
-	
+
 	fprintf(fp, "level0_repeat:	%d\n", param->d_ml_level0_repeat);
 	fprintf(fp, "\n");
 	fprintf(fp, "dist_poly:	%d\n", param->d_dist_poly);
 	fprintf(fp, "\n");
-		
+
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_polycorr(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_polycorr |\n");
 	fprintf(fp, "+--------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	print_multilevel_parameters(fp, param);
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1504,9 +1504,9 @@ void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "+--------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_t0 |\n");
 	fprintf(fp, "+--------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
-	
+
 	fprintf(fp, "number of colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
 
@@ -1520,9 +1520,9 @@ void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "\n");
 	fprintf(fp, "gfstep:	%lf\n", param->d_gfstep);
 	fprintf(fp, "\n");
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1535,12 +1535,12 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "+-------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_gradient_flow |\n");
 	fprintf(fp, "+-------------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
-	
+
 	fprintf(fp, "number of colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-	
+
 	fprintf(fp, "lattice: %d", param->d_size[0]);
 	for(i=1; i<STDIM; i++)
 		{
@@ -1549,11 +1549,11 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "\n\n");
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
-	
+
 	print_gradflow_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1566,12 +1566,12 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "+----------------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_adaptive_gradient_flow |\n");
 	fprintf(fp, "+----------------------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
-	
+
 	fprintf(fp, "number of colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-	
+
 	fprintf(fp, "lattice: %d", param->d_size[0]);
 	for(i=1; i<STDIM; i++)
 		{
@@ -1580,23 +1580,23 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "\n\n");
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
-	
+
 	print_adaptive_gradflow_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_tracedef(GParam const * const param, Time_Utils const * const timers, double acc)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tracedef |\n");
 	fprintf(fp, "+--------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	fprintf(fp, "htracedef: ");
 	for(int i=0; i<(int)floor(NCOLOR/2.0); i++)
@@ -1610,88 +1610,88 @@ void print_parameters_tracedef(GParam const * const param, Time_Utils const * co
 	print_simul_parameters(fp, param);
 	print_metro_parameters(fp, param, acc);
 	print_cooling_parameters(fp, param);
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_disc |\n");
 	fprintf(fp, "+---------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
-	
+
 	fprintf(fp, "dist_poly:		%d\n", param->d_dist_poly);
 	fprintf(fp, "transv_dist:	%d\n", param->d_trasv_dist);
 	fprintf(fp, "plaq_dir:		%d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_conn |\n");
 	fprintf(fp, "+---------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
-	
+
 	fprintf(fp, "dist_poly:	%d\n", param->d_dist_poly);
 	fprintf(fp, "transv_dist: %d\n", param->d_trasv_dist);
 	fprintf(fp, "plaq_dir: %d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
 void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const timers)
 	{
 	FILE *fp;
-	
+
 	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_conn_long |\n");
 	fprintf(fp, "+--------------------------------------------------+\n\n");
-	
+
 	print_configuration_parameters(fp);
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
 	print_multilevel_parameters(fp, param);
-	
+
 	fprintf(fp, "level0_repeat:	%d\n", param->d_ml_level0_repeat);
 	fprintf(fp, "dist_poly:	%d\n", param->d_dist_poly);
 	fprintf(fp, "transv_dist: %d\n", param->d_trasv_dist);
 	fprintf(fp, "plaq_dir: %d %d\n", param->d_plaq_dir[0], param->d_plaq_dir[1]);
 	fprintf(fp, "\n");
-	
+
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1711,10 +1711,10 @@ void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const 
 	print_simul_parameters(fp, param);
 	print_adaptive_gradflow_parameters(fp, param);
 	print_cooling_parameters(fp, param);
-	
+
 	fprintf(fp, "Tuning steps: %d\n", count );
 	print_time_utils(fp, timers);
-	
+
 	fclose(fp);
 	}
 
@@ -1739,16 +1739,16 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "overrelax  5\n");
 	fprintf(fp, "measevery  1\n");
 	fprintf(fp,"\n");
-	
+
 	fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
 	fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
 	fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
 	fprintf(fp, "\n");
-	
+
 	fprintf(fp, "randseed 0    # (0=time)\n");
 	fprintf(fp, "walltime 24   # wall time in hours\n");
 	fprintf(fp, "\n");
-	
+
 	fprintf(fp, "# Observables to measure\n");
 	fprintf(fp, "plaquette_meas        0  # 1=YES, 0=NO\n");
 	fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
@@ -1775,7 +1775,7 @@ void print_template_pt_parameters(FILE *fp)
 	fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
 	fprintf(fp,"\n");
 	}
-	
+
 void print_template_twist_parameters(FILE *fp)
 	{
 	fprintf(fp,"# Twist parameters\n");
@@ -1877,7 +1877,7 @@ void print_authors(int parallel_tempering, int twisted_bc)
 		printf("Twisted Boundary Conditions implemented by Andrea Giorgieri (andrea.giorgieri.pi@gmail.com)\n");
 	if(parallel_tempering==1 || twisted_bc==1)
 		printf("within yang-mills package\n\n");
-	
+
 	printf("Details about yang-mills package:\n");
 	printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
 	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
@@ -1892,33 +1892,33 @@ void print_compilation_details()
 	printf("\n");
 	printf("\tINT_ALIGN: %s\n", QUOTEME(INT_ALIGN));
 	printf("\tDOUBLE_ALIGN: %s\n", QUOTEME(DOUBLE_ALIGN));
-	
+
 	#ifdef DEBUG
 	printf("\n\tDEBUG mode\n");
 	#endif
-	
+
 	#ifdef OPENMP_MODE
 	printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
 	#endif
-	
+
 	#ifdef THETA_MODE
 	printf("\n\tusing imaginary theta\n");
 	#endif
-	
+
 	#ifdef MULTICANONICAL_MODE
 	printf("\n\tusing multicanonical algorithm\n");
 	#endif
-	
+
 	#ifdef OPT_MULTIHIT
 	printf("\tcompiled for multihit optimization\n");
 	#endif
-	
+
 	#ifdef OPT_MULTILEVEL
 	printf("\tcompiled for multilevel optimization\n");
 	#endif
-	
+
 	printf("\n");
-	
+
 	#ifdef __INTEL_COMPILER
 	printf("\tcompiled with icc\n");
 	#elif defined(__clang__)

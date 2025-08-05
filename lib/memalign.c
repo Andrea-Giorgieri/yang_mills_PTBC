@@ -1,5 +1,5 @@
 #ifndef MEMALIGN_C
-#define MEMALIGN_C	
+#define MEMALIGN_C
 
 #include"../include/macro.h"
 #include"../include/memalign.h"

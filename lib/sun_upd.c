@@ -131,14 +131,14 @@ void cool_SuN(SuN *link, SuN const *const staple)
 	double complex fii, fij, fji, fjj;
 	double aux;
 	int i, j, k;
-	
+
 	equal_SuN(&prod, staple);	   // prod=staple
 	times_equal_SuN(&prod, link);  // prod=staple*link
 
 	for(i = 0; i < NCOLOR - 1; i++)
 		{
 		for(j = i + 1; j < NCOLOR; j++)
-			{			
+			{
 			ennetodue(&prod, i, j, &aux, &u);  // aux=xi unused
 			equal_dag_Su2(&udag, &u);
 
@@ -166,7 +166,7 @@ void cool_SuN(SuN *link, SuN const *const staple)
 				}
 			}
 		}
-	
+
 	// Maximize ReTr[staple * C *link] for C \in Z(SU(N)) and update link *= C
 	// \phi \equiv carg(Tr[staple * link]) => C = \exp{-i * 2\pi/N * round(\phi / (2*\pi/N))}
 	aux = argtr_SuN(&prod);                         // aux = phi

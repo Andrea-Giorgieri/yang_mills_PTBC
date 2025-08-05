@@ -27,7 +27,7 @@ void real_main(char *in_file)
 	Acc_Utils acc_counters;
 	Meas_Utils *meas_aux;
 	Time_Utils timers;
-	
+
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count;
 	FILE *swaptrackfilep;
@@ -37,7 +37,7 @@ void real_main(char *in_file)
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
-	
+
 	// read input file
 	readinput(in_file, &param);
 
@@ -45,36 +45,36 @@ void real_main(char *in_file)
 	init_time_utils(&timers, param.d_walltime);
 	start_timer(&(timers.prog_timer));
 	start_timer(&(timers.init_timer));
-	
+
 	// initialize random generator
 	initrand(param.d_randseed);
-	
+
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
-	
+
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
-	
+
 	// initialize rectangles for hierarchical update and swap
 	init_rect_utils(&rect_aux, &param);
-	
+
 	// init acceptances array
 	init_acc_utils(&acc_counters, &param);
-	
+
 	// init meas utils
 	init_meas_utils_replica(&meas_aux, &param);
-	
+
 	stop_timer(&(timers.init_timer));
-	
+
 	// Monte Carlo begin
 	for(count=0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
-		
+
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		print_conf_labels(swaptrackfilep, GC, &param);
@@ -84,7 +84,7 @@ void real_main(char *in_file)
 			{
 			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
 			}
-		
+
 		// save configurations for backup
 		if(param.d_saveconf_back_every!=0)
 			{
@@ -107,7 +107,7 @@ void real_main(char *in_file)
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&(GC[0]), &param, name);
-				
+
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
@@ -117,40 +117,40 @@ void real_main(char *in_file)
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
 		}
-	
+
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
-	
+
 	// free meas utils
 	free_meas_utils_replica(meas_aux, &param);
-	
+
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
-	
+
 	// save configurations
 	if (param.d_saveconf_back_every!=0)
 		{
 		write_replica_on_file(GC, &param);
 		}
-	
+
 	// print simulation details
 	print_parameters_local_pt_gf(&param, &timers);
-	
+
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
-	
+
 	// free gauge configurations
 	free_replica(GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
-	
+
 	// free rectangles for hierarchical update and swap
 	free_rect_utils(&rect_aux, &param);
-	
+
 	// free acceptances array
 	free_acc_utils(&acc_counters, &param);
-	
+
 	// free hierarchical update parameters
 	free_hierarc_params(&param);
 	}
@@ -159,9 +159,9 @@ void real_main(char *in_file)
 void print_template_input(void)
 	{
 	FILE *fp;
-	
+
 	fp=fopen("template_input.example", "w");
-	
+
 	if(fp==NULL)
 		{
 		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
@@ -188,9 +188,9 @@ int main (int argc, char **argv)
 		int parallel_tempering = 1;
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
-		
+
 		printf("Usage: %s input_file\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
 

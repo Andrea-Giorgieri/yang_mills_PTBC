@@ -25,7 +25,7 @@ void real_main(char *in_file, long step, long stop_index)
 	GParam param;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
-	
+
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
@@ -41,8 +41,8 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// this code has to start from saved conf.
 	param.d_start = 2;
-	
-	// not to overwrite files of runs with online gradient flow 
+
+	// not to overwrite files of runs with online gradient flow
 	strcat(param.d_data_file, "_agf");
 	strcat(param.d_energydensity_file, "_agf");
 	strcat(param.d_chiprime_file, "_agf");
@@ -55,10 +55,10 @@ void real_main(char *in_file, long step, long stop_index)
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
-	
+
 	// find and init first conf
 	while(init_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
 	if (step > stop_index)
@@ -72,25 +72,25 @@ void real_main(char *in_file, long step, long stop_index)
 	while(step <= stop_index)
 		{
 		start_timer(&(timers.step_timer));
-		
+
 		start_timer(&(timers.meas_timer));
 		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.meas_timer));
-		
+
 		while(read_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
-		
+
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
 		}
-	
+
 	stop_timer(&(timers.prog_timer));
-	
+
 	// free gauge conf
 	free_gauge_conf(&GC, &param);
-	
+
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 
@@ -133,12 +133,12 @@ int main(int argc, char **argv)
 		int parallel_tempering = 0;
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
-		
+
 		printf("Usage: %s input_file start_index stop_index\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 			strcpy(in_file, argv[1]);
 			}
 		}
-	
+
 	long start_index = strtol(argv[2], NULL, 10);
 	long stop_index = strtol(argv[3], NULL, 10);
 	if(start_index < 0) fprintf(stderr, "argument 'start_index' must be a non-negative integer\n");

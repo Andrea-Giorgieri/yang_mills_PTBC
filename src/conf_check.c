@@ -18,7 +18,7 @@ void getspacetimedim(char *infile, int *dim)
 	{
 	int err;
 	FILE *fp;
-	
+
 	fp=fopen(infile, "r");
 	if(fp==NULL)
 		{
@@ -44,7 +44,7 @@ void getsizeandhash(char *infile, int *sides, char *hash)
 	FILE *fp;
 	long update_index;
 	int dim, err, i;
-	
+
 	fp=fopen(infile, "r");
 	if(fp==NULL)
 		{
@@ -59,7 +59,7 @@ void getsizeandhash(char *infile, int *sides, char *hash)
 			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
-		
+
 		for(i=0; i<dim; i++)
 			{
 			err=fscanf(fp, "%d", &(sides[i]) );
@@ -69,7 +69,7 @@ void getsizeandhash(char *infile, int *sides, char *hash)
 				exit(EXIT_FAILURE);
 				}
 			}
-		
+
 		err=fscanf(fp, "%ld %s", &update_index, hash);
 		if(err!=2)
 			{
@@ -89,10 +89,10 @@ void computehash(char *infile, int dim, long volume, char *hash)
 		FILE *fp;
 		long r;
 		int j;
-		
+
 		MD5_CTX mdContext;
 		unsigned char c[MD5_DIGEST_LENGTH];
-		
+
 		// open the configuration file in binary
 		fp=fopen(infile, "rb");
 		if(fp==NULL)
@@ -108,7 +108,7 @@ void computehash(char *infile, int dim, long volume, char *hash)
 				{
 				j=fgetc(fp);
 				}
-			
+
 			// read the configuration & compute md5sum
 			MD5_Init(&mdContext);
 			for(r=0; r<volume; r++)
@@ -136,7 +136,7 @@ void computehash(char *infile, int dim, long volume, char *hash)
 				{
 				sprintf(&(hash[2*r]), "%02x", c[r]);
 				}
-			
+
 			fclose(fp);
 			}
 	#else
@@ -162,12 +162,12 @@ int main (int argc, char **argv)
 	#else
 		char md5sum_old[2*STD_STRING_LENGTH+1]={0};
 	#endif
-	
+
 	if(argc != 2)
 		{
 		printf("Usage: %s conf_file\n\n", argv[0]);
 		print_compilation_details();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else
@@ -181,15 +181,15 @@ int main (int argc, char **argv)
 			strcpy(infile, argv[1]);
 			}
 		}
-	
+
 	// get spacetime dim
 	getspacetimedim(infile, &dim);
-	
+
 	allocate_array_int(&sides, dim, __FILE__, __LINE__);
-	
+
 	// get lattice size and initial hash
 	getsizeandhash(infile, sides, md5sum_old);
-	
+
 	#ifdef HASH_MODE
 	// total volume
 	volumel=1;
@@ -197,10 +197,10 @@ int main (int argc, char **argv)
 		{
 		volumel*=sides[i];
 		}
-	
+
 	// compute the hash
 	computehash(infile, dim, volumel, md5sum_new);
-	
+
 	// check md5sum computed and stored
 	if(strncmp(md5sum_old, md5sum_new, 2*MD5_DIGEST_LENGTH+1)!=0)
 		{
@@ -208,9 +208,9 @@ int main (int argc, char **argv)
 		return EXIT_FAILURE;
 		}
 	#endif
-	
+
 	free(sides);
-	
+
 	return EXIT_SUCCESS;
 	}
 

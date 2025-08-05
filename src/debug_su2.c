@@ -16,15 +16,15 @@ int main(void)
   unsigned int seme=0;
   double energy;
   GParam param;
-  
+
   Su2 M, N, L, T, mI;
-   
+
   // initialize random seed
   initrand(seme);
 
   // fix a value for d_beta
   param.d_beta=2.3;
-    
+
   printf("\n*******************************\n");
   printf("PROGRAM FOR THE DEBUG OF SU(2)\n");
   printf("*******************************\n");
@@ -65,7 +65,7 @@ int main(void)
     {
     printf("    OK\n");
     }
-  else 
+  else
     {
     printf("    ERROR!!!!!!!!!!!\n");
     return EXIT_FAILURE;
@@ -84,7 +84,7 @@ int main(void)
     {
     printf("    OK\n");
     }
-  else 
+  else
     {
     printf("    ERROR!!!!!!!!!!!\n");
     return EXIT_FAILURE;
@@ -104,11 +104,11 @@ int main(void)
   single_overrelaxation_Su2(&M, &N);
   times_Su2(&T, &M, &N);  // T=M*N
   energy-=retr_Su2(&T);    // -=final energy
-  if(fabs(energy)<MIN_VALUE) 
+  if(fabs(energy)<MIN_VALUE)
     {
     printf("  OK\n");
     }
-  else 
+  else
     {
     printf("  ERROR!!!!!!!!!!!   DeltaE=%g\n", energy);
     return EXIT_FAILURE;
@@ -130,11 +130,11 @@ int main(void)
 
   times_Su2(&T, &M, &N);  // T=M*N
   energy-=retr_Su2(&T);   // -=final energy
-  if(energy<MIN_VALUE) 
+  if(energy<MIN_VALUE)
     {
     printf("  OK\n");
     }
-  else 
+  else
     {
     printf("  ERROR!!!!!!!!!!!   DeltaE=%g\n", energy);
     return EXIT_FAILURE;

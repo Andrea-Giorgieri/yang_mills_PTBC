@@ -469,7 +469,7 @@ inline double relative_dist_U1(U1 const *const restrict A, U1 const *const restr
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
-	
+
 	double complex tr_AxB, tr_ApB;
 	double aux_AxB, aux_ApB;
 

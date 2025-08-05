@@ -25,52 +25,52 @@ void real_main(char *in_file)
 	GParam param;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
-	
+
 	int stop;
 	long step=0; // just to avoid gcc warning of maybe-uninitialized
-	
+
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
-	
-	// read input file	
+
+	// read input file
 	readinput(in_file, &param);
 
 	// initialize timers
 	init_time_utils(&timers, param.d_walltime);
 	start_timer(&(timers.prog_timer));
 	start_timer(&(timers.init_timer));
-	
+
 	// this code has to start from saved conf.
 	param.d_start=2;
-	
-	// not to overwrite files of runs with online gradient flow 
+
+	// not to overwrite files of runs with online gradient flow
 	strcpy(param.d_data_file, "_gradflow");
 	strcpy(param.d_chiprime_file, "_gradflow");
 	strcpy(param.d_topcharge_tcorr_file, "_gradflow");
 	strcpy(param.d_log_file, "_gradflow");
-	
+
 	// initialize random generator
 	initrand(param.d_randseed);
-	
+
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
-	
+
 	if (param.d_saveconf_analysis_every == 0) stop = 1;
 	else step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
-	
+
 	stop_timer(&(timers.init_timer));
-	
+
 	while(stop == 0)
 		{
 		start_timer(&(timers.step_timer));
-		
+
 		stop = init_gauge_conf_step(&GC, &param, step);
 		if (stop == 0)
 			{
@@ -80,18 +80,18 @@ void real_main(char *in_file)
 		stop_timer(&(timers.step_timer));
 		if (wall_time_check(&timers) == 1) break;
 		}
-	
+
 	stop_timer(&(timers.prog_timer));
-	
+
 	// close data file
 	free_meas_utils(meas_aux, &param, 0);
-	
+
 	// print simulation details
 	print_parameters_gf(&param, &timers);
-	
+
 	// free gauge configurations
 	free_gauge_conf(&GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
 	}
@@ -100,9 +100,9 @@ void real_main(char *in_file)
 void print_template_input(void)
 	{
 	FILE *fp;
-	
+
 	fp=fopen("template_input.example", "w");
-	
+
 	if(fp==NULL)
 		{
 		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
@@ -133,18 +133,18 @@ void print_template_input(void)
 int main (int argc, char **argv)
 	{
 	char in_file[500];
-	
+
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
-		
+
 		printf("Usage: %s input_file\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else
@@ -158,9 +158,9 @@ int main (int argc, char **argv)
 			strcpy(in_file, argv[1]);
 			}
 		}
-	
+
 	real_main(in_file);
-	
+
 	return EXIT_SUCCESS;
 	}
 

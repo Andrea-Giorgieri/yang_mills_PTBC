@@ -26,37 +26,37 @@ void real_main(char *in_file)
 	Rect_Utils rect_aux;
 	Acc_Utils acc_counters;
 	Meas_Utils meas_aux_agf, meas_aux_gf;
-	
+
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH], name_gf[STD_STRING_LENGTH], name_agf[STD_STRING_LENGTH];
 	int count;
 	FILE *swaptrackfilep;
 	time_t time1, time2, time3, time4, time5, time6, gf_time, agf_time, dagf_time;
-	
+
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
 	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
 	#endif
-	
+
 	// read input file
 	readinput(in_file, &param);
-	
+
 	// initialize random generator
 	initrand(param.d_randseed);
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
-	
+
 	// initialize geometry
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
-	
+
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
-	
+
 	// initialize rectangles for hierarchical update and swap
 	init_rect_utils(&rect_aux, &param);
-	
+
 	// init acceptances array
 	init_acc_utils(&acc_counters, &param);
 
@@ -72,7 +72,7 @@ void real_main(char *in_file)
 	init_meas_utils(&meas_aux_gf, &param, 0);
 	strcpy(param.d_data_file, aux);
 	//step_filep = fopen("./data/step_file.dat", "w");
-	
+
 	// Monte Carlo begin
 	time(&time1);
 	gf_time = 0;
@@ -121,7 +121,7 @@ void real_main(char *in_file)
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&(GC[0]), &param, name);
-				
+
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
@@ -129,42 +129,42 @@ void real_main(char *in_file)
 				}
 			}
 		}
-	
+
 	time(&time2);
 	// Monte Carlo end
-	
+
 	// close data file
 	free_meas_utils(meas_aux_agf, &param, 0);
 	free_meas_utils(meas_aux_gf, &param, 0);
 	//fclose(step_filep);
-	
+
 	// close swap tracking file
 	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
-	
+
 	// save configurations
 	if (param.d_saveconf_back_every!=0)
 		{
 		write_replica_on_file(GC, &param);
 		}
-	
+
 	// print simulation details
 	print_parameters_debug_agf_vs_gf(&param, time1, time2, agf_time, dagf_time, gf_time);
-	
+
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
-	
+
 	// free gauge configurations
 	free_replica(GC, &param);
-	
+
 	// free geometry
 	free_geometry(&geo, &param);
-	
+
 	// free rectangles for hierarchical update and swap
 	free_rect_utils(&rect_aux, &param);
-	
+
 	// free acceptances array
 	free_acc_utils(&acc_counters, &param);
-	
+
 	// free hierarchical update parameters
 	free_hierarc_params(&param);
 	}
@@ -172,9 +172,9 @@ void real_main(char *in_file)
 void print_template_input(void)
 	{
 	FILE *fp;
-	
+
 	fp=fopen("template_input.example", "w");
-	
+
 	if(fp==NULL)
 		{
 		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
@@ -196,15 +196,15 @@ void print_template_input(void)
 int main (int argc, char **argv)
 	{
 	char in_file[STD_STRING_LENGTH];
-	
+
 	if(argc != 2)
 		{
 		printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
 		printf("Usage: %s input_file\n\n", argv[0]);
-		
+
 		print_compilation_details();
 		print_template_input();
-		
+
 		return EXIT_SUCCESS;
 		}
 	else

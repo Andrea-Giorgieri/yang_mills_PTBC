@@ -1584,14 +1584,14 @@ void cooling(Gauge_Conf * const GC,
 			int const n)
 	{
 	long r, num_even;
-	int i, k;
+	int dir, k;
 
 	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
 
 	for(k=0; k<n; k++)
 		{
 		// cooling
-		for(i=0; i<STDIM; i++)
+		for(dir=0; dir<STDIM; dir++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(r)
@@ -1599,8 +1599,8 @@ void cooling(Gauge_Conf * const GC,
 			for(r=0; r<num_even; r++)
 				{
 				GAUGE_GROUP staple;
-				calcstaples_wilson(GC, geo, param, r, i, &staple);
-				cool(&(GC->lattice[r][i]), &staple);
+				calcstaples_wilson(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
 				}
 
 			#ifdef OPENMP_MODE
@@ -1609,22 +1609,21 @@ void cooling(Gauge_Conf * const GC,
 			for(r=num_even; r<(param->d_volume); r++)
 				{
 				GAUGE_GROUP staple;
-				calcstaples_wilson(GC, geo, param, r, i, &staple);
-				cool(&(GC->lattice[r][i]), &staple);
+				calcstaples_wilson(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
 				}
 			}
 		}
 
 	// final unitarization
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r, i)
+	#pragma omp parallel for num_threads(NTHREADS) private(r, dir)
 	#endif
-	for(r=0; r<(param->d_volume); r++)
+	for(long s=0; s<STDIM*(param->d_volume); s++)
 		{
-		for(i=0; i<STDIM; i++)
-			{
-			unitarize(&(GC->lattice[r][i]));
-			}
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+		unitarize(&(GC->lattice[r][dir]));
 		}
 	}
 
@@ -1636,7 +1635,7 @@ void hierarchical_cooling(Gauge_Conf * const GC,
 			Rectangle const * const cooling_rect)
 	{
 	long n, is_even, num_even;
-	int i, k;
+	int dir, k;
 
 	for(k=0; k<param->d_topo_coolsteps; k++)
 		{
@@ -1644,7 +1643,7 @@ void hierarchical_cooling(Gauge_Conf * const GC,
 		is_even  = ( (cooling_rect[k]).d_vol_rect ) % 2;
 		num_even = ( (cooling_rect[k]).d_vol_rect + is_even ) / 2; // number of even sites
 
-		for(i=0; i<STDIM; i++)
+		for(dir=0; dir<STDIM; dir++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS) private(n)
@@ -1653,8 +1652,8 @@ void hierarchical_cooling(Gauge_Conf * const GC,
 				{
 				GAUGE_GROUP staple;
 				long r = (cooling_rect[k]).rect_sites[n];
-				calcstaples_wilson(GC, geo, param, r, i, &staple);
-				cool(&(GC->lattice[r][i]), &staple);
+				calcstaples_wilson(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
 				}
 
 			#ifdef OPENMP_MODE
@@ -1664,8 +1663,8 @@ void hierarchical_cooling(Gauge_Conf * const GC,
 				{
 				GAUGE_GROUP staple;
 				long r = (cooling_rect[k]).rect_sites[n];
-				calcstaples_wilson(GC, geo, param, r, i, &staple);
-				cool(&(GC->lattice[r][i]), &staple);
+				calcstaples_wilson(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
 				}
 			}
 		}
@@ -1673,13 +1672,13 @@ void hierarchical_cooling(Gauge_Conf * const GC,
 	// final unitarization
 	k = param->d_topo_coolsteps-1; // largest rectangle
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(n)
+	#pragma omp parallel for num_threads(NTHREADS) private(n, dir)
 	#endif
 	for(n=0; n<(STDIM*((cooling_rect[k]).d_vol_rect)); n++)
 		{
 		long s = n % ((cooling_rect[k]).d_vol_rect);
 		long r = (cooling_rect[k]).rect_sites[s];
-		int dir = (int) ( (n-s) / ( (cooling_rect[k]).d_vol_rect) );
+		dir = (int) ( (n-s) / ( (cooling_rect[k]).d_vol_rect) );
 		unitarize(&(GC->lattice[r][dir]));
 		}
 	}

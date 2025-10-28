@@ -54,7 +54,7 @@ void init_multicanonic_gauge_conf(Gauge_Conf * const GC, Geometry const * const 
 			exit(EXIT_FAILURE);
 		}
 
-	// move lattice_cold to lattice_copy_cold, lattice_cold initialized before topcharge calculation
+	// move lattice_cold to lattice_copy_cold, lattice_cold will be initialized before topcharge calculation
 	GAUGE_GROUP **aux;
 	aux = GC->lattice_cold;
 	GC->lattice_cold = GC->lattice_copy_cold;

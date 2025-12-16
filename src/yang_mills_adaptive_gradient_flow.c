@@ -74,7 +74,7 @@ void real_main(char *in_file, long step, long stop_index)
 		start_timer(&(timers.step_timer));
 
 		start_timer(&(timers.meas_timer));
-		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
+		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.meas_timer));
 
 		while(read_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);

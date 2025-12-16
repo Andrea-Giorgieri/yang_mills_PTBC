@@ -74,7 +74,7 @@ void real_main(char *in_file)
 		stop = init_gauge_conf_step(&GC, &param, step);
 		if (stop == 0)
 			{
-			perform_measures_localobs_with_gradflow(&GC, &geo, &param, &meas_aux);
+			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 			step += param.d_saveconf_analysis_every;
 			}
 		stop_timer(&(timers.step_timer));

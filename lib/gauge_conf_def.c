@@ -450,10 +450,12 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * 
 	{
 	(void) geo; // to avoid compiler warning of unused variable
 
+	GC->conf_label = 0;
 	GC->replica_index = 0;
 
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
+	init_bound_cond(GC, param);
 	#ifdef MULTICANONICAL_MODE
 	init_multicanonic_gauge_conf(GC, geo, param);
 	#endif
@@ -536,16 +538,15 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam const * const param)
 	{
-	int i;
 	(void) geo;  // to avoid compiler warning of unused variable
 
 	// allocate the vector to store replicas
 	allocate_array_Gauge_Conf(GC, param->d_N_replica_pt, __FILE__, __LINE__);
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(i)
+	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(i=0; i<param->d_N_replica_pt; i++)
+	for(int i=0; i<param->d_N_replica_pt; i++)
 		{
 		char filename[STD_STRING_LENGTH], replica_index_str[STD_STRING_LENGTH];
 		strcpy(filename,param->d_conf_file); // filename = param->d_conf_file
@@ -573,45 +574,18 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam
 // initialization of the defect for a single replica
 void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 	{
-	const int TRUE	= 1;
-	const int FALSE = 0;
-	long r;
-	int j, is_on_defect;
-	int cartcoord[STDIM];
-
-	// for each value of defect_dir, determine the three orthogonal directions to it
-	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-
-	//allocation of C[r][j]
+	// allocation of C[r][j]
 	allocate_C(GC, param);
 
 	// initialization of C[r][j]
-	// start initializing them to 1
-	for(r=0; r<param->d_volume; r++)
-		for(j=0; j<STDIM; j++)
+	for(long r=0; r<param->d_volume; r++)
+		for(int j=0; j<STDIM; j++)
 			{
-			GC->C[r][j]=1.0;
-			}
-
-	// if there is more than 1 replica, initialize c(r) != 1 on the defect and along direction <defect_dir>
-	if(param->d_N_replica_pt > 1)
-		{
-		j=param->d_defect_dir;
-		for(r=0; r<param->d_volume; r++)
-			{
-			// check if r is on the defect or not
-			si_to_cart(cartcoord, r, param);
-			if( (cartcoord[param->d_defect_dir] == ((param->d_size[param->d_defect_dir])-1)) &&
-				(cartcoord[perp_dir[param->d_defect_dir][0]] < (param->d_L_defect[0])) &&
-				(cartcoord[perp_dir[param->d_defect_dir][1]] < (param->d_L_defect[1])) &&
-				(cartcoord[perp_dir[param->d_defect_dir][2]] < (param->d_L_defect[2])) ) is_on_defect = TRUE;
-			else is_on_defect = FALSE;
-
-			// if r is on defect assign bound cond
-			if(is_on_defect == TRUE)
+			if(j == param->d_defect_dir && is_on_defect(r, param) == 1)
 				GC->C[r][j] = param->d_pt_bound_cond_coeff[GC->replica_index];
+			else
+				GC->C[r][j] = 1.0;
 			}
-		}
 	}
 
 // initialization of the twist factors

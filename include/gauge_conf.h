@@ -359,20 +359,12 @@ void polyakov_adj(		Gauge_Conf const * const GC,
 						double *repoly,
 						double *impoly);
 
-void polyakov_with_tracedef(			Gauge_Conf const * const GC,
-										Geometry const * const geo,
-										GParam const * const param,
-										double *repoly,
-										double *impoly);
 
 void check_correlation_decay_cooling(	Gauge_Conf const * const GC,
 										Geometry const * const geo,
 										GParam const * const param,
 										double *ratio);
 
-double sum_abs_topcharge_dens(			Gauge_Conf const * const GC,
-										Geometry const * const geo,
-										GParam const * const param);
 
 double loc_topcharge(		Gauge_Conf const * const GC,
 							Geometry const * const geo,
@@ -402,49 +394,11 @@ void topcharge_timeslices(	Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param, double *ris, int ncool, FILE*);
 
-void topcharge_timeslices_cooling(	Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									Meas_Utils *meas_aux);
-
-void topcharge_timeslices_gradflow(	Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									Meas_Utils *meas_aux);
 
 double topo_chi_prime(				Gauge_Conf const * const GC,
 									Geometry const * const geo,
 									GParam const * const param);
 
-void topo_obs_cooling(				Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									Meas_Utils *meas_aux);
-
-void topo_obs_gradflow(				Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									Meas_Utils *meas_aux);
-
-void topo_obs_clover_energy_gradflow(	Gauge_Conf * const GC,
-										Geometry const * const geo,
-										GParam const * const param,
-										Meas_Utils *meas_aux);
-
-void topcharge_cooling(					Gauge_Conf * const GC,
-										Geometry const * const geo,
-										GParam const * const param,
-										Meas_Utils *meas_aux);
-
-void topcharge_gradflow(				Gauge_Conf * const GC,
-										Geometry const * const geo,
-										GParam const * const param,
-										Meas_Utils *meas_aux);
-
-void topcharge_clover_energy_gradflow(	Gauge_Conf * const GC,
-										Geometry const * const geo,
-										GParam const * const param,
-										Meas_Utils *meas_aux);
 
 void loc_topcharge_corr(				Gauge_Conf * const GC,
 										Geometry const * const geo,
@@ -464,7 +418,7 @@ void perform_measures_localobs(			Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
 
-void perform_measures_localobs_notopo(	Gauge_Conf * const GC,
+void perform_measures_localobs_hot(		Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
@@ -474,15 +428,15 @@ void perform_measures_localobs_cooling(	Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
 
-void perform_measures_localobs_with_gradflow(					Gauge_Conf * const GC,
-																Geometry const * const geo,
-																GParam const * const param,
-																Meas_Utils *meas_aux);
+void perform_measures_localobs_gradflow(Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const * const param,
+										Meas_Utils *meas_aux);
 
-void perform_measures_localobs_with_adaptive_gradflow(			Gauge_Conf * const GC,
-																Geometry const * const geo,
-																GParam const * const param,
-																Meas_Utils *meas_aux);
+void perform_measures_localobs_adaptive_gradflow(	Gauge_Conf * const GC,
+													Geometry const * const geo,
+													GParam const * const param,
+													Meas_Utils *meas_aux);
 
 void perform_measures_localobs_with_adaptive_gradflow_debug1(	Gauge_Conf * const GC,
 																Geometry const * const geo,
@@ -504,10 +458,6 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(	Gauge_Conf * const
 																GParam const * const param,
 																Meas_Utils *meas_aux);
 
-void perform_measures_localobs_with_tracedef(	Gauge_Conf * const GC,
-												Geometry const * const geo,
-												GParam const * const param,
-												Meas_Utils *meas_aux);
 
 void optimize_multihit_polycorr(				Gauge_Conf * const GC,
 												Geometry const * const geo,
@@ -564,6 +514,10 @@ void perform_measures_tube_conn(		Gauge_Conf * const GC,
 void perform_measures_tube_conn_long(	Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
+
+int sprintf_header_datafile_aux(		char * const header,
+										char * const smoothing_method,
+										GParam const * const param);
 
 void header_datafile(					char * const,
 										GParam const * const param);
@@ -786,6 +740,11 @@ void parallel_tempering_with_hierarchical_update(	Gauge_Conf * const GC, Geometr
 
 
 void cooling(							Gauge_Conf * const GC,
+										Geometry const * const geo,
+										GParam const * const param,
+										int const n);
+
+void cooling_with_defect(				Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const * const param,
 										int const n);

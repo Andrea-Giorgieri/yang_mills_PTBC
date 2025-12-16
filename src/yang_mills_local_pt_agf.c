@@ -85,11 +85,11 @@ void real_main(char *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			start_timer(&(timers.meas_timer));
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &(meas_aux[0]));
+			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
 
 			#ifdef REPLICA_MEAS_MODE
 			for (int i=1; i<param.d_N_replica_pt; i++)
-				perform_measures_localobs_with_adaptive_gradflow(&(GC[i]), &geo, &param, &(meas_aux[i]));
+				perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
 			#endif
 			stop_timer(&(timers.meas_timer));
 			}

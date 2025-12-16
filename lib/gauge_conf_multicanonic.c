@@ -150,7 +150,7 @@ void free_tune_utils(Tune_Utils * tune_utils)
 
 void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune_Utils * const tune_utils)
 	{
-	int i_grid, flag, a;
+	int i_grid, i_grid_0, flag, a;
 	double x, x0, s, t, aux_d;
 
 	for (a=0; a<param->d_N_replica_pt; a++)
@@ -199,12 +199,14 @@ void tune_topo_potential(Gauge_Conf const * const GC, GParam * const param, Tune
 			}
 		}
 
-	// translate potentials so that V_0(0) = 0
-	i_grid = (int)(floor((param->d_grid_max)/param->d_grid_step));
-	aux_d = param->d_grid[0][i_grid];
+	// translate potentials so that V_a(0) = 0
+	i_grid_0 = (int)(floor((param->d_grid_max)/param->d_grid_step));
 	for (a=0; a<param->d_N_replica_pt; a++)
+		{
+		aux_d = param->d_grid[a][i_grid_0];
 		for (i_grid=0; i_grid<param->d_n_grid; i_grid++)
-			param->d_grid[a][i_grid] = param->d_grid[a][i_grid] - aux_d;
+			param->d_grid[a][i_grid] -= aux_d;
+		}
 	}
 
 
@@ -372,9 +374,8 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 
 	// TODO: debug, remove
 	//fprintf(stderr, "%ld % f ", r, ris);
-	#endif
 
-	#if (STDIM==2 && NCOLOR==1)
+	#elif (STDIM==2 && NCOLOR==1)
 	GAUGE_GROUP u1matrix;
 	double angle;
 
@@ -387,6 +388,15 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 	angle -= atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
 
 	ris = angle;
+	
+	#else
+	(void) GC1;
+	(void) GC2;
+	(void) geo;
+	(void) param;
+	(void) r;
+	fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
+	exit(EXIT_FAILURE);
 	#endif
 
 	return ris;
@@ -399,12 +409,6 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const * const GC,
 							GParam const * const param,
 							Rectangle const * const topcharge_rect)
 	{
-	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-		{
-		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
 	Gauge_Conf helper;
 	double ris;
 	long n;
@@ -448,12 +452,6 @@ double multicanonic_topcharge_cooling(Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const * const param)
 	{
-	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-		{
-		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
 	if(param->d_topo_coolsteps>0)
 		{
 		Gauge_Conf helper;
@@ -481,11 +479,6 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf * const GC,
 										int const hierarc_level,
 										Rect_Utils const * const rect_aux)
 	{
-	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-		{
-		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
 	// TODO: debug and benchmark hierarchical_cooling
 	if(param->d_topo_coolsteps>0)
 		{
@@ -517,12 +510,6 @@ double topcharge_agf_multicanonic(Gauge_Conf * const GC,
 									GParam const * const param,
 									Meas_Utils *meas_aux)
 	{
-	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
-		{
-		fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
 	if (param->d_topo_agf_time > 0.0)	//if using gradient flow
 		{
 		int accepted;

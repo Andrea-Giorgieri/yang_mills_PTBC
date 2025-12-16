@@ -1392,23 +1392,17 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf * const GC, Geometry c
 												Rect_Utils const * const rect_aux,
 												Acc_Utils *acc_counters)
 	{
-	int j;
-	if(hierarc_level==((param->d_N_hierarc_levels)-1))
+	if(hierarc_level < param->d_N_hierarc_levels)
 		{
-		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
+		for(int j=0; j<param->d_N_sweep_rect[hierarc_level]; j++)
 			{
 			update_rectangle_with_defect(GC, geo, param, hierarc_level, rect_aux, acc_counters);
-			if(param->d_N_replica_pt>1) swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
-			conf_translation(&(GC[0]), geo, param);
-			}
-		}
-	else
-		{
-		for(j=0;j<param->d_N_sweep_rect[hierarc_level];j++)
-			{
-			update_rectangle_with_defect(GC, geo, param, hierarc_level, rect_aux, acc_counters);
-			if(param->d_N_replica_pt>1) swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
-			conf_translation(&(GC[0]), geo, param);
+			if(param->d_N_replica_pt > 1)
+				{
+				swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
+				if(fabs(param->d_pt_bound_cond_coeff[0] - 1.0) < MIN_VALUE)
+					conf_translation(&(GC[0]), geo, param);
+				}
 			hierarchical_update_rectangle_with_defect(GC, geo, param, hierarc_level+1, rect_aux, acc_counters);
 			}
 		}
@@ -1419,12 +1413,9 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry
 													Rect_Utils const * const rect_aux,
 													Acc_Utils *acc_counters)
 	{
-	int i;
-	int start_hierarc=0; // first hierarc level is  0
-
 	// set multicanonic Metropolis acceptance counters to zero to compute mean acc over single updating step
 	#ifdef MULTICANONICAL_MODE
-	for(i=0;i<param->d_N_replica_pt; i++)
+	for(int i=0; i<param->d_N_replica_pt; i++)
 		{
 		acc_counters->num_accepted_metro_multicanonic[i] = 0;
 		acc_counters->num_metro_multicanonic[i] = 0;
@@ -1433,19 +1424,16 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf * const GC, Geometry
 
 	// full update + hierarchical update + swaps and translations after every sweep
 	update_with_defect(GC, geo, param, acc_counters);
-
-	// TODO: remove, debug only
-	//if(param->d_N_replica_pt==1) hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, rect_aux, acc_counters);
-	if(param->d_N_replica_pt>1)
+	if(param->d_N_replica_pt > 1)
 		{
 		swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
-		conf_translation(&(GC[0]), geo, param);
-		if(param->d_N_hierarc_levels>0)
-			hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, rect_aux, acc_counters);
+		if(fabs(param->d_pt_bound_cond_coeff[0] - 1.0) < MIN_VALUE)
+			conf_translation(&(GC[0]), geo, param);
 		}
+	hierarchical_update_rectangle_with_defect(GC, geo, param, 0, rect_aux, acc_counters);
 
 	// increase update index of all replica
-	for(i=0;i<param->d_N_replica_pt; i++)
+	for(int i=0; i<param->d_N_replica_pt; i++)
 		GC[i].update_index++;
 
 	// print mean multicanonic acceptance over a single updating step
@@ -1584,11 +1572,11 @@ void cooling(Gauge_Conf * const GC,
 			int const n)
 	{
 	long r, num_even;
-	int dir, k;
+	int dir;
 
 	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
 
-	for(k=0; k<n; k++)
+	for(int k=0; k<n; k++)
 		{
 		// cooling
 		for(dir=0; dir<STDIM; dir++)
@@ -1610,6 +1598,57 @@ void cooling(Gauge_Conf * const GC,
 				{
 				GAUGE_GROUP staple;
 				calcstaples_wilson(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
+				}
+			}
+		}
+
+	// final unitarization
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) private(r, dir)
+	#endif
+	for(long s=0; s<STDIM*(param->d_volume); s++)
+		{
+		r = s % (param->d_volume);
+		dir = (int) ( (s - r) / (param->d_volume) );
+		unitarize(&(GC->lattice[r][dir]));
+		}
+	}
+
+
+// perform n cooling steps minimizing the action at theta=0 in the presence of the defect
+void cooling_with_defect(Gauge_Conf * const GC,
+			Geometry const * const geo,
+			GParam const * const param,
+			int const n)
+	{
+	long r, num_even;
+	int dir;
+
+	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
+
+	for(int k=0; k<n; k++)
+		{
+		// cooling
+		for(dir=0; dir<STDIM; dir++)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS) private(r)
+			#endif
+			for(r=0; r<num_even; r++)
+				{
+				GAUGE_GROUP staple;
+				calcstaples_wilson_with_defect(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
+				}
+
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS) private(r)
+			#endif
+			for(r=num_even; r<(param->d_volume); r++)
+				{
+				GAUGE_GROUP staple;
+				calcstaples_wilson_with_defect(GC, geo, param, r, dir, &staple);
 				cool(&(GC->lattice[r][dir]), &staple);
 				}
 			}

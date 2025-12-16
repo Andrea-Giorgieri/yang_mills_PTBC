@@ -39,11 +39,11 @@ long (*si_to_lex)(long si, GParam const * const param);           // lexicograph
 long (*sisp_and_t_to_si_compute)(long sisp, int t, GParam const * const param);            // single index spatial and time -> single index tot
 void (*si_to_sisp_and_t_compute)(long *sisp, int *t, long si, GParam const * const param); // single index tot -> single index spatial and time
 void (*si_to_sisp_and_mu_compute)(long *sisp, int *t, long si, int mu, GParam const * const param); // single index tot -> single index spatial and mu
+long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
 int	dirs_to_si(int const i, int const j); //plane i-j -> single index, for twist factors
 
-long (*cart_to_si_rect)(int const * const cartcoord, Rectangle const * const most_update); // cartesian -> single index on rectangles
-
 // general functions
+int is_on_defect(long const r, GParam const * const param);
 void init_indexing_lexeo(void); // has to be called before init_geometry
 void init_geometry(Geometry *geo, GParam const * const param);
 void free_geometry(Geometry *geo, GParam const * const param);

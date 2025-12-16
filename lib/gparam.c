@@ -203,6 +203,8 @@ void set_defaults(GParam * const param)
 	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
 	param->d_defect_dir   = 0;
 	param->d_N_replica_pt = 1;
+	allocate_array_double(&(param->d_pt_bound_cond_coeff), 1, __FILE__, __LINE__);
+	param->d_pt_bound_cond_coeff[0] = 1.0;
 
 	// gradient flow
 	param->d_ngfsteps     = 0;
@@ -217,8 +219,8 @@ void set_defaults(GParam * const param)
 	param->d_agf_time_bin  = 0;
 
 	// cooling
-	param->d_coolsteps  = 0;
 	param->d_coolrepeat = 0;
+	param->d_coolsteps  = 1;
 
 	// multicanonical with cold topcharge
 	param->d_topo_cooling    = 0;
@@ -240,6 +242,7 @@ void set_defaults(GParam * const param)
 	param->d_chi_prime_meas        = 0;
 	param->d_charge_prime_meas     = 0;
 	param->d_polyakov_meas         = 0;
+	param->d_polyakov_powers_meas  = 0;
 	param->d_polyakov_density_meas = 0;
 	param->d_topcharge_tcorr_meas  = 0;
 	param->d_multipolyakov_order   = 0;
@@ -341,6 +344,7 @@ void readinput(char const * const in_file, GParam * const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_N_replica_pt), param_name, &param_positive_int);
+			free(param->d_pt_bound_cond_coeff);
 			allocate_array_double(&(param->d_pt_bound_cond_coeff), param->d_N_replica_pt, __FILE__, __LINE__);
 			for (i=0; i<param->d_N_replica_pt; i++)
 				set_double_param(input, &(param->d_pt_bound_cond_coeff[i]), param_name, &param_any_double);
@@ -475,6 +479,13 @@ void readinput(char const * const in_file, GParam * const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_polyakov_meas), param_name, &param_bool_int);
+			continue;
+			}
+		
+		strcpy(param_name, "polyakov_powers_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_polyakov_powers_meas), param_name, &param_bool_int);
 			continue;
 			}
 
@@ -1078,7 +1089,7 @@ void init_derived_constants(GParam *param)
 		param->d_gf_num_meas = 0;
 
 	if (param->d_agf_meas_each > 0)
-		param->d_agf_num_meas = (int)floor((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
+		param->d_agf_num_meas = (int)((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
 	else
 		param->d_agf_num_meas = 0;
 	}
@@ -1102,7 +1113,7 @@ void free_hierarc_params(GParam *param)
 void print_configuration_parameters(FILE *fp)
 	{
 	#ifdef OPENMP_MODE
-	fprintf(fp, "using OpenMP with %d threads\n\n", NTHREADS);
+	fprintf(fp, "Using OpenMP with %d threads\n\n", NTHREADS);
 	#endif
 
 	if(endian()==0) fprintf(fp, "Little endian machine\n\n");
@@ -1112,57 +1123,53 @@ void print_configuration_parameters(FILE *fp)
 void print_pt_parameters(FILE *fp, GParam const * const param)
 	{
 	int i;
+	fprintf(fp, "Using Parallel Tempering with\n");
 	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
-	fprintf(fp, "defect: %d", param->d_L_defect[0]);
-	for(i=1; i<STDIM-1; i++) fprintf(fp, "x%d", param->d_L_defect[i]);
-	fprintf(fp, "\n\n");
-
-	fprintf(fp,"number of copies used in parallel tempering: %d\n", param->d_N_replica_pt);
-	fprintf(fp,"boundary condition constants: ");
-	for(i=0;i<param->d_N_replica_pt;i++) fprintf(fp,"%lf ",param->d_pt_bound_cond_coeff[i]);
-	fprintf(fp,"\n");
-
-	fprintf(fp,"number of hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	fprintf(fp, "defect sizes: ");
+	for(i=0; i<STDIM-1; i++) fprintf(fp, "%d ", param->d_L_defect[i]);
+	fprintf(fp, "\n");
+	fprintf(fp, "number of replicas: %d\n", param->d_N_replica_pt);
+	fprintf(fp, "boundary conditions: ");
+	for(i=0; i<param->d_N_replica_pt; i++) fprintf(fp, "%lf ", param->d_pt_bound_cond_coeff[i]);
+	fprintf(fp, "\n");
+	fprintf(fp,"hierarchical levels: %d\n", param->d_N_hierarc_levels);
 	if(param->d_N_hierarc_levels>0)
 		{
-		fprintf(fp,"extention of rectangles: ");
-		for(i=0;i<param->d_N_hierarc_levels;i++)
-			{
-			fprintf(fp,"%d ", param->d_L_rect[i]);
-			}
+		fprintf(fp, "extentions of hierarchical rectangles: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++) fprintf(fp, "%d ", param->d_L_rect[i]);
+		fprintf(fp, "\n");
+		fprintf(fp, "sweeps per hierarchical level: ");
+		for(i=0;i<param->d_N_hierarc_levels;i++) fprintf(fp, "%d ", param->d_N_sweep_rect[i]);
 		fprintf(fp,"\n");
-		fprintf(fp,"number of sweeps per hierarchical level: ");
-		for(i=0;i<param->d_N_hierarc_levels;i++)
-			{
-			fprintf(fp,"%d ", param->d_N_sweep_rect[i]);
-			}
 		}
-	fprintf(fp,"\n\n");
+	fprintf(fp,"\n");
 	}
 
 void print_multicanonic_parameters(FILE *fp, GParam const * const param)
 	{
-	fprintf(fp,"Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
-	fprintf(fp,"topo_cooling:     %d\n", param->d_topo_cooling);
-	fprintf(fp,"topo_coolsteps:   %d\n", param->d_topo_coolsteps);
-	fprintf(fp,"topo_alpha:       %lf\n", param->d_topo_alpha);
-	fprintf(fp,"\n");
+	fprintf(fp, "Using Multicanonical method with\n");
+	fprintf(fp, "Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
+	fprintf(fp, "topo_cooling:     %d\n", param->d_topo_cooling);
+	fprintf(fp, "topo_coolsteps:   %d\n", param->d_topo_coolsteps);
+	fprintf(fp, "topo_alpha:       %lf\n", param->d_topo_alpha);
+	fprintf(fp, "\n");
 	}
 
 void print_multicanonic_tuning_parameters(FILE *fp, GParam const * const param)
 	{
-	fprintf(fp,"topo_tuning_thr:         %lf\n", param->d_topo_tuning_thr);
-	fprintf(fp,"topo_tuning_stp:         %lf\n", param->d_topo_tuning_stp);
-	fprintf(fp,"topo_tuning_save_every:  %d\n",  param->d_topo_tuning_save_every);
-	fprintf(fp,"topo_tuning_even:        %d\n",  param->d_topo_tuning_even);
-	fprintf(fp,"\n");
+	fprintf(fp, "Tuning Multicanonical method with\n");
+	fprintf(fp, "topo_tuning_thr:         %lf\n", param->d_topo_tuning_thr);
+	fprintf(fp, "topo_tuning_stp:         %lf\n", param->d_topo_tuning_stp);
+	fprintf(fp, "topo_tuning_save_every:  %d\n",  param->d_topo_tuning_save_every);
+	fprintf(fp, "topo_tuning_even:        %d\n",  param->d_topo_tuning_even);
+	fprintf(fp, "\n");
 	}
 
 void print_simul_parameters(FILE *fp, GParam const * const param)
 	{
 	int i;
-	fprintf(fp, "number of colors: %d\n", NCOLOR);
-	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
+	fprintf(fp, "colors: %d\n", NCOLOR);
+	fprintf(fp, "spacetime dimension: %d\n\n", STDIM);
 
 	fprintf(fp, "lattice: %d", param->d_size[0]);
 	for(i=1; i<STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
@@ -1188,6 +1195,7 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "energy_density_meas:   %d\n", param->d_energy_density_meas);
 	fprintf(fp, "charge_meas:           %d\n", param->d_charge_meas);
 	fprintf(fp, "polyakov_meas:         %d\n", param->d_polyakov_meas);
+	fprintf(fp, "polyakov_powers_meas:  %d\n", param->d_polyakov_powers_meas);
 	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
 	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_topcharge_tcorr_meas);
@@ -1205,35 +1213,40 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "\n");
 	}
 
-void print_adaptive_gradflow_parameters(FILE *fp, GParam const * const param)
+void print_smoothing_parameters(FILE *fp, GParam const * const param)
 	{
-	fprintf(fp, "agf_length     %lf\n", param->d_agf_length);
-	fprintf(fp, "agf_step:      %lf\n", param->d_agf_step);
-	fprintf(fp, "agf_meas_each  %lf\n", param->d_agf_meas_each);
-	fprintf(fp, "agf_delta      %e\n",  param->d_agf_delta);
-	fprintf(fp, "\n");
-	}
-
-void print_gradflow_parameters(FILE *fp, GParam const * const param)
-	{
-	fprintf(fp, "gfstep:        %lf\n", param->d_gfstep);
-	fprintf(fp, "num_gfsteps    %d\n",  param->d_ngfsteps);
-	fprintf(fp, "gf_meas_each   %d\n",    param->d_gf_meas_each);
-	fprintf(fp, "\n");
-	}
-
-void print_cooling_parameters(FILE *fp, GParam const * const param)
-	{
-	fprintf(fp, "coolsteps:     %d\n", param->d_coolsteps);
-	fprintf(fp, "coolrepeat:    %d\n", param->d_coolrepeat);
-	fprintf(fp, "\n");
+	if (param->d_agf_num_meas > 0)
+		{
+		fprintf(fp, "Using adaptive gradient flow with\n");
+		fprintf(fp, "agf_length     %lf\n", param->d_agf_length);
+		fprintf(fp, "agf_step:      %lf\n", param->d_agf_step);
+		fprintf(fp, "agf_meas_each  %lf\n", param->d_agf_meas_each);
+		fprintf(fp, "agf_delta      %e\n",  param->d_agf_delta);
+		fprintf(fp, "\n");
+		}
+	if (param->d_gf_num_meas > 0)
+		{
+		fprintf(fp, "Using fixed-step gradient flow with\n");
+		fprintf(fp, "gfstep:        %lf\n", param->d_gfstep);
+		fprintf(fp, "num_gfsteps    %d\n",  param->d_ngfsteps);
+		fprintf(fp, "gf_meas_each   %d\n",    param->d_gf_meas_each);
+		fprintf(fp, "\n");
+		}
+	if (param->d_coolrepeat > 0)
+		{
+		fprintf(fp, "Using cooling with\n");
+		fprintf(fp, "coolrepeat:    %d\n", param->d_coolrepeat);
+		fprintf(fp, "coolsteps:     %d\n", param->d_coolsteps);
+		fprintf(fp, "\n");
+		}
 	}
 
 void print_multilevel_parameters(FILE *fp, GParam const * const param)
 	{
 	int i;
+	fprintf(fp, "Using Multilevel algorithm with\n");
 	fprintf(fp, "multihit:	%d\n", param->d_multihit);
-	fprintf(fp, "levels for multileves: %d\n", NLEVELS);
+	fprintf(fp, "levels for multilevel: %d\n", NLEVELS);
 	fprintf(fp, "multilevel steps: ");
 	for(i=0; i<NLEVELS; i++)
 		{
@@ -1271,7 +1284,7 @@ void print_parameters_local(GParam const * const param, Time_Utils const * const
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1292,8 +1305,7 @@ void print_parameters_local_agf(GParam const * const param, Time_Utils const * c
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_adaptive_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1313,7 +1325,7 @@ void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Uti
 	print_pt_parameters(fp, param);
 	print_multicanonic_parameters(fp, param);
 	print_simul_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1335,7 +1347,7 @@ void print_parameters_local_pt(GParam const * const param, Time_Utils const * co
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1357,8 +1369,7 @@ void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const *
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1380,8 +1391,7 @@ void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const 
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_adaptive_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1404,9 +1414,7 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_adaptive_gradflow_parameters(fp, param);
-	print_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	diff_sec = difftime(time_end, time_start);
 	fprintf(fp, "Simulation time:              %.3lf seconds\n", diff_sec );
@@ -1433,8 +1441,7 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	print_multicanonic_parameters(fp, param);
 	#endif
 	print_simul_parameters(fp, param);
-	print_adaptive_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	fprintf(fp, "Simulation time:              %d seconds\n", (int)time_mc );
 	fprintf(fp, "Adaptive gradflow time:\n");
@@ -1550,7 +1557,7 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
 
-	print_gradflow_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1581,7 +1588,7 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "randseed: %u\n", param->d_randseed);
 	fprintf(fp, "\n");
 
-	print_adaptive_gradflow_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1609,7 +1616,7 @@ void print_parameters_tracedef(GParam const * const param, Time_Utils const * co
 	#endif
 	print_simul_parameters(fp, param);
 	print_metro_parameters(fp, param, acc);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	print_time_utils(fp, timers);
 
@@ -1709,8 +1716,7 @@ void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const 
 	print_multicanonic_parameters(fp, param);
 	print_multicanonic_tuning_parameters(fp, param);
 	print_simul_parameters(fp, param);
-	print_adaptive_gradflow_parameters(fp, param);
-	print_cooling_parameters(fp, param);
+	print_smoothing_parameters(fp, param);
 
 	fprintf(fp, "Tuning steps: %d\n", count );
 	print_time_utils(fp, timers);

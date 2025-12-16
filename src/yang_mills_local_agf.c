@@ -63,7 +63,7 @@ void real_main(char *in_file)
 	if(param.d_sample == 0) // no update is done, only measures are performed on read configuration
 		{
 		start_timer(&(timers.step_timer));
-		perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
+		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.step_timer));
 		}
 	for(count=0; count < param.d_sample; count++)
@@ -76,7 +76,7 @@ void real_main(char *in_file)
 		// perform measures
 		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 			{
-			perform_measures_localobs_with_adaptive_gradflow(&GC, &geo, &param, &meas_aux);
+			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 			}
 
 		// save configuration for backup

@@ -30,14 +30,10 @@ void init_indexing_lexeo(void)
 // initialize geometry
 void init_geometry(Geometry *geo, GParam const * const param)
 	{
-	int i, value, valuep, valuem;
-	long r, rm, rp;
-	int cartcoord[STDIM];
-
 	// allocate memory
 	allocate_array_long_pointer(&(geo->d_nnp), param->d_volume, __FILE__, __LINE__);
 	allocate_array_long_pointer(&(geo->d_nnm), param->d_volume, __FILE__, __LINE__);
-	for(r=0; r<(param->d_volume); r++)
+	for(long r=0; r<(param->d_volume); r++)
 		{
 		allocate_array_long(&(geo->d_nnp[r]), STDIM, __FILE__, __LINE__);
 		allocate_array_long(&(geo->d_nnm[r]), STDIM, __FILE__, __LINE__);
@@ -47,58 +43,55 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	allocate_array_long(&(geo->d_spacecomp), param->d_volume, __FILE__, __LINE__);
 
 	allocate_array_long_pointer(&(geo->d_tsp), param->d_size[0], __FILE__, __LINE__);
-	for(r=0; r<param->d_size[0]; r++)
+	for(long r=0; r<param->d_size[0]; r++)
 		allocate_array_long(&(geo->d_tsp[r]), param->d_space_vol[0], __FILE__, __LINE__);
 
 	allocate_array_long_pointer_pointer(&(geo->d_musp), STDIM, __FILE__, __LINE__);
-	for(i=0; i<STDIM; i++)
+	for(int i=0; i<STDIM; i++)
 		{
 		allocate_array_long_pointer(&(geo->d_musp[i]), param->d_size[i], __FILE__, __LINE__);
-		for(r=0; r<param->d_size[i]; r++)
+		for(long r=0; r<param->d_size[i]; r++)
 			allocate_array_long(&(geo->d_musp[i][r]), (param->d_volume)/(param->d_size[i]), __FILE__, __LINE__);
 		}
 
-	// INITIALIZE
-	for(r=0; r<param->d_volume; r++)
+	// initialize nearest neighbors
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(long r=0; r<param->d_volume; r++)
 		{
+		int value, cartcoord[STDIM];
 		si_to_cart(cartcoord, r, param);
 
-		for(i=0; i<STDIM; i++)
+		for(int i=0; i<STDIM; i++)
 			{
-			value=cartcoord[i];
+			value = cartcoord[i];
 
-			valuep=value+1;
-			if(valuep >= param->d_size[i])
-				{
-				valuep-=param->d_size[i];
-				}
-			cartcoord[i]=valuep;
-			rp=cart_to_si(cartcoord, param);
-			geo->d_nnp[r][i]=rp;
+			cartcoord[i] = (value + 1) % param->d_size[i];
+			geo->d_nnp[r][i] = cart_to_si(cartcoord, param);
 
-			valuem=value-1;
-			if(valuem<0)
-				{
-				valuem+=param->d_size[i];
-				}
-			cartcoord[i]=valuem;
-			rm=cart_to_si(cartcoord, param);
-			geo->d_nnm[r][i]=rm;
+			cartcoord[i] = (value - 1 + param->d_size[i]) % param->d_size[i];
+			geo->d_nnm[r][i] = cart_to_si(cartcoord, param);
 
-			cartcoord[i]=value;
+			cartcoord[i] = value;
 			}
-		} // end of loop on r
+		}
 
-	for(r=0; r<param->d_volume; r++)
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(long r=0; r<param->d_volume; r++)
 		{
+		int value;
+		long rp;
 		si_to_sisp_and_t_compute(&rp, &value, r, param);
-		geo->d_spacecomp[r]=rp;
-		geo->d_timeslice[r]=value;
-		geo->d_tsp[value][rp]=r;
-		for(i=0; i<STDIM; i++)
+		geo->d_spacecomp[r] = rp;
+		geo->d_timeslice[r] = value;
+		geo->d_tsp[value][rp] = r;
+		for(int i=0; i<STDIM; i++)
 			{
 			si_to_sisp_and_mu_compute(&rp, &value, r, i, param);
-			geo->d_musp[i][value][rp]=r;
+			geo->d_musp[i][value][rp] = r;
 			}
 		}
 
@@ -239,6 +232,7 @@ void test_geometry(Geometry const * const geo, GParam const * const param)
 		}
 	}
 
+
 //plane i-j -> single index, for twist factors
 int	dirs_to_si(int const i, int const j)
 	{
@@ -246,6 +240,28 @@ int	dirs_to_si(int const i, int const j)
 	if(j<i) return j*(2*STDIM - 3 - j)/2 + i - 1 + STDIM*(STDIM-1)/2;	//anticlockwise
 	fprintf(stderr, "Directions can't be the same! (%s, %d)\n", __FILE__, __LINE__);
 	exit(EXIT_FAILURE);
+	}
+
+
+// check if lexeo index r is on the defect
+int is_on_defect(long const r, GParam const * const param)
+	{
+	int cartcoord[STDIM], i_defect;
+	si_to_cart(cartcoord, r, param);
+	for(int i=0; i<STDIM; i++)
+		{
+		if(i == param->d_defect_dir)
+			{
+			if(cartcoord[i] != param->d_size[i]-1) return 0;
+			}
+		else
+			{
+			i_defect = i;
+			if(i > param->d_defect_dir) i_defect -= 1; 
+			if(cartcoord[i] >= param->d_L_defect[i_defect]) return 0;
+			}
+		}
+	return 1;
 	}
 
 //------------ these are not to be used outside geometry.c ----------------
@@ -757,6 +773,7 @@ long cart_to_lexeo_rect(int const * const cartcoord, Rectangle const * const mos
 	eo=eo%2;
 	return (eo*(most_update->d_vol_rect)+ris)/2; // even sites first
 	}
+
 
 void init_rect(Rectangle *most_update, int const L_R, GParam const * const param)
 	{

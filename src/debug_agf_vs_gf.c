@@ -88,11 +88,11 @@ void real_main(char *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			time(&time3);
-			perform_measures_localobs_with_adaptive_gradflow(&(GC[0]), &geo, &param, &meas_aux_agf);
+			perform_measures_localobs(&(GC[0]), &geo, &param, &meas_aux_agf);
 			time(&time4);
-			//perform_measures_localobs_with_adaptive_gradflow_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
+			//perform_measures_localobs_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
 			time(&time5);
-			perform_measures_localobs_with_gradflow(&(GC[0]), &geo, &param, &meas_aux_gf);
+			perform_measures_localobs(&(GC[0]), &geo, &param, &meas_aux_gf);
 			time(&time6);
 			agf_time += time4 - time3;
 			dagf_time += time5 - time4;

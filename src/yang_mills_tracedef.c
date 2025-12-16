@@ -72,7 +72,7 @@ void real_main(char *in_file)
 
 		if(count % param.d_measevery ==0 && count >= param.d_thermal)
 			{
-			perform_measures_localobs_with_tracedef(&GC, &geo, &param, &meas_aux);
+			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 			}
 
 		// save configuration for backup

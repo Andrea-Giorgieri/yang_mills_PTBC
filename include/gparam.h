@@ -57,6 +57,7 @@ typedef struct GParam {
 	int d_energy_density_meas;
 	int d_charge_meas;
 	int d_polyakov_meas;
+	int d_polyakov_powers_meas;
 	int d_polyakov_density_meas;
 	int d_chi_prime_meas;
 	int d_charge_prime_meas;
@@ -171,9 +172,7 @@ void print_pt_parameters(FILE *fp, GParam const * const param);
 void print_multicanonic_parameters(FILE *fp, GParam const * const param);
 void print_multicanonic_tuning_parameters(FILE *fp, GParam const * const param);
 void print_simul_parameters(FILE *fp, GParam const * const param);
-void print_adaptive_gradflow_parameters(FILE *fp, GParam const * const param);
-void print_gradflow_parameters(FILE *fp, GParam const * const param);
-void print_cooling_parameters(FILE *fp, GParam const * const param);
+void print_smoothing_parameters(FILE *fp, GParam const * const param);
 void print_multilevel_parameters(FILE *fp, GParam const * const param);
 void print_metro_parameters(FILE *fp, GParam const * const param, double acc);
 

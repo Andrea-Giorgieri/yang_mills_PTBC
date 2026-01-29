@@ -30,6 +30,7 @@ void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const * const param)
 		}
 	}
 
+
 void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const * const param)
 	{
 	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
@@ -41,6 +42,7 @@ void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const * const param)
 		}
 	}
 
+
 void allocate_C(Gauge_Conf *GC, GParam const * const param)
 	{
 	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
@@ -49,6 +51,7 @@ void allocate_C(Gauge_Conf *GC, GParam const * const param)
 		allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
 		}
 	}
+
 
 void allocate_Z_with_copy(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -61,7 +64,8 @@ void allocate_Z_with_copy(Gauge_Conf *GC, GParam const * const param)
 		}
 	}
 
-void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu)
+
+void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu, int x_obc)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -69,7 +73,13 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu
 	for(long r=0; r<param->d_volume; r++)
 		{
 		int cartcoord[STDIM];
+		int is_on_open_boundary;
 		si_to_cart(cartcoord, r, param);
+		is_on_open_boundary = 0;
+		if(param->d_obc_dir != -1)
+			if(cartcoord[param->d_obc_dir] == x_obc || cartcoord[param->d_obc_dir] == periodic_condition(x_obc - 1, param->d_size[param->d_obc_dir]))
+				is_on_open_boundary = 1;
+
 		for(int i = 0; i < STDIM; i++)
 			{
 			for(int j = i + 1; j < STDIM; j++)
@@ -78,22 +88,35 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu
 				int si_ij = dirs_to_si(i, j);
 				int si_ji = dirs_to_si(j, i);
 
-				// initialize to 1, then overwrite
-				GC->Z[r][si_ij] = 1.0 + I * 0.0;
-				GC->Z[r][si_ji] = 1.0 + I * 0.0;
-				GC->Z_copy[r][si_ij] = 1.0 + I * 0.0;
-				GC->Z_copy[r][si_ji] = 1.0 + I * 0.0;
-				if (cartcoord[i] == x_mu && cartcoord[j] == x_nu)
+				// initialize to 1, 0, 1/2 if pbc, obc(temporal), obc(spatial) respectively,
+				// then multiply by twist phase
+				if(is_on_open_boundary == 1)
 					{
-					GC->Z[r][si_ij] = cexp(I*PI2_N*(param->d_k_twist[si_ij]));
-					GC->Z[r][si_ji] = conj(GC->Z[r][si_ij]);
-					GC->Z_copy[r][si_ij] = cexp(I*PI2_N*(param->d_k_twist[si_ij]));
-					GC->Z_copy[r][si_ji] = conj(GC->Z_copy[r][si_ij]);
+					if(i == param->d_obc_dir || j == param->d_obc_dir)
+						{
+						GC->Z[r][si_ij] = 0.0 + I * 0.0;
+						}
+					else
+						{
+						GC->Z[r][si_ij] = 0.5 + I * 0.0;
+						}
 					}
+				else
+					{
+					GC->Z[r][si_ij] = 1.0 + I * 0.0;
+					}
+				if(cartcoord[i] == x_mu && cartcoord[j] == x_nu)
+					{
+					GC->Z[r][si_ij] *= cexp(I*PI2_N*(param->d_k_twist[si_ij]));
+					}
+				GC->Z[r][si_ji] = conj(GC->Z[r][si_ij]);
+				GC->Z_copy[r][si_ij] = GC->Z[r][si_ij];
+				GC->Z_copy[r][si_ji] = GC->Z[r][si_ji];
 				}
 			}
 		}
 	}
+
 
 void equal_lattice(GAUGE_GROUP * const * const lattice1,
 					GAUGE_GROUP const * const * const lattice2,
@@ -111,6 +134,7 @@ void equal_lattice(GAUGE_GROUP * const * const lattice1,
 		equal(&(lattice1[r][i]), &(lattice2[r][i]));
 		}
 	}
+
 
 void equal_equal_lattice(GAUGE_GROUP * const * const lattice1,
 							GAUGE_GROUP * const * const lattice2,
@@ -130,6 +154,7 @@ void equal_equal_lattice(GAUGE_GROUP * const * const lattice1,
 		equal(&(lattice2[r][i]), &(lattice3[r][i]));
 		}
 	}
+
 
 double lattice_total_dist(GAUGE_GROUP const * const * const lattice1,
 					GAUGE_GROUP const * const * const lattice2,
@@ -153,6 +178,7 @@ double lattice_total_dist(GAUGE_GROUP const * const * const lattice1,
 		}
 	return ris / ((double)NCOLOR*(double)NCOLOR);
 	}
+
 
 double lattice_max_dist(GAUGE_GROUP const * const * const lattice1,
 					GAUGE_GROUP const * const * const lattice2,
@@ -197,6 +223,7 @@ double lattice_max_dist(GAUGE_GROUP const * const * const lattice1,
 	return ris / ((double)NCOLOR*(double)NCOLOR);
 	}
 
+
 void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const param)
 	{
 	long s;
@@ -218,6 +245,7 @@ void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const * const par
 	GC1->stored_topcharge = GC2->stored_topcharge;
 	#endif
 	}
+
 
 void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 	{
@@ -242,6 +270,7 @@ void accept_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		}
 	}
 
+
 void restore_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 	{
 	long s;
@@ -255,6 +284,7 @@ void restore_gauge_conf(Gauge_Conf * const GC, GParam const * const param)
 		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
 		}
 	}
+
 
 void accept_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level, Rect_Utils const * const rect_aux)
 	{
@@ -295,6 +325,7 @@ void accept_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level,
 	#endif
 	}
 
+
 void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level, Rect_Utils const * const rect_aux)
 	{
 	long s;
@@ -326,6 +357,7 @@ void restore_gauge_conf_rectangle(Gauge_Conf * const GC, int const hierarc_level
 		equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
 		}
 	}
+
 
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
@@ -446,6 +478,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	equal_lattice(GC->lattice_copy, GC->lattice, param);
 	}
 
+
 void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * const param)
 	{
 	(void) geo; // to avoid compiler warning of unused variable
@@ -460,6 +493,7 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const * const geo, GParam const * 
 	init_multicanonic_gauge_conf(GC, geo, param);
 	#endif
 	}
+
 
 int init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	{
@@ -497,11 +531,12 @@ int init_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	return 1;
 	}
 
+
 int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *fp;
-	int x_mu, x_nu;
+	int x_mu, x_nu, x_obc;
 
 	//gauge conf filename at step
 	strcpy(name, param->d_conf_file);
@@ -528,12 +563,14 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 		fclose(fp);
 		x_mu = 0;
 		x_nu = 0;
-		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, name);
-		initialize_Z_with_copy(GC, param, x_mu, x_nu);
+		x_obc = 0;
+		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, name);
+		initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
 		}
 	else return 0;
 	return 1;
 	}
+
 
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam const * const param)
@@ -571,6 +608,7 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const * const geo, GParam
 		}
 	}
 
+
 // initialization of the defect for a single replica
 void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -588,10 +626,11 @@ void init_bound_cond(Gauge_Conf *GC, GParam const * const param)
 			}
 	}
 
+
 // initialization of the twist factors
 void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
-	int x_mu, x_nu;
+	int x_mu, x_nu, x_obc;
 
 	//allocation of Z[r][j]
 	allocate_Z_with_copy(GC, param);
@@ -600,15 +639,19 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	x_mu = 0;
 	x_nu = 0;
 
-	// update twist position if starting from stored conf
+	// default open boundary position
+	x_obc = 0;
+
+	// update twist and open boundary position if starting from stored conf
 	if(param->d_start == 2)
 		{
-		read_twist_cond_from_file_with_name(&x_mu, &x_nu, param, filename);
+		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, filename);
 		}
 
 	// assign Z on positions x_mu, x_nu,
-	initialize_Z_with_copy(GC, param, x_mu, x_nu);
+	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
 	}
+
 
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const param, char const * const filename)
 	{
@@ -708,7 +751,8 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 		}
 	}
 
-void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, GParam const * const param, char const * const filename)
+
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, GParam const * const param, char const * const filename)
 	{
 	FILE *fp;
 	int err, i, tmp_i, dimension;
@@ -729,8 +773,7 @@ void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, GParam const * co
 			}
 		if(dimension != STDIM)
 			{
-			fprintf(stderr, "The space time dimension of the configuration (%d) does not coincide with the one of the global parameter (%d)\n",
-				dimension, STDIM);
+			fprintf(stderr, "The space time dimension of the configuration (%d) does not coincide with the one of the global parameter (%d)\n", dimension, STDIM);
 			exit(EXIT_FAILURE);
 			}
 
@@ -755,9 +798,23 @@ void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, GParam const * co
 			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
 			exit(EXIT_FAILURE);
 			}
+		err=fscanf(fp, "%*d %d", x_obc);
+		if(err!=1)
+			{
+			if(param->d_obc_dir != -1)
+				{
+				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
+				}
+			else
+				{
+				*x_obc = 0;
+				}
+			}
 		fclose(fp);
 		}
 	}
+
 
 void free_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -790,6 +847,7 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const * const param)
 	#endif
 	}
 
+
 void free_replica(Gauge_Conf *GC, GParam const * const param)
 	{
 	int i;
@@ -800,6 +858,7 @@ void free_replica(Gauge_Conf *GC, GParam const * const param)
 		}
 	free(GC);
 	}
+
 
 void free_bound_cond(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -813,6 +872,7 @@ void free_bound_cond(Gauge_Conf *GC, GParam const * const param)
 		}
 	free(GC->C);
 	}
+
 
 void free_twist_cond(Gauge_Conf *GC, GParam const * const param)
 	{
@@ -828,6 +888,7 @@ void free_twist_cond(Gauge_Conf *GC, GParam const * const param)
 	free(GC->Z);
 	free(GC->Z_copy);
 	}
+
 
 // save a configuration in ILDG-like format
 void write_conf_on_file_with_name(Gauge_Conf const * const GC,
@@ -884,11 +945,13 @@ void write_conf_on_file_with_name(Gauge_Conf const * const GC,
 		}
 	}
 
+
 void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 									GParam const * const param,
 									char const * const namefile)
 	{
 	int i, j, mu, nu, cartcoord[STDIM], twisted_bc;
+	double complex z;
 	FILE *fp;
 
 	fp=fopen(namefile, "w"); // open the twist configuration file
@@ -919,7 +982,7 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 						}
 			}
 
-		if (twisted_bc == 1) // find twist cartcoord on plane cartcoord[i] = 0 for i != mu, nu (no need to read all volume)
+		if(twisted_bc == 1) // find twist cartcoord on plane cartcoord[i] = 0 for i != mu, nu (no need to read all volume)
 			{
 			for(i=0; i<param->d_size[mu]; i++)
 				{
@@ -927,7 +990,8 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 				for(j=0; j<param->d_size[nu]; j++)
 					{
 					cartcoord[nu] = j;
-					if (cabs(GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(mu,nu)] - (1.0+0.0*I))> MIN_VALUE)
+					z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(mu,nu)];
+					if (fabs(carg(z)) > MIN_VALUE)
 						{
 						fprintf(fp, "%d %d %d %d \n", mu, nu, i, j);
 						}
@@ -938,15 +1002,45 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 			{
 			fprintf(fp, "%d %d %d %d \n", 0, 1, 0, 0);
 			}
+
+		j = 0; // default boundary position
+		if(param->d_obc_dir != -1) // find position of open boundary
+			{
+			for(i=0; i<STDIM; i++)
+				{
+				cartcoord[i] = 0;
+				if(i != param->d_obc_dir) mu = i; // any direction different from obc_dir
+				}
+			for(i=0; i<param->d_size[param->d_obc_dir]-1; i++)
+				{
+				cartcoord[param->d_obc_dir] = i;
+				z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(param->d_obc_dir,mu)];
+				if (cabs(z) < MIN_VALUE)
+					{
+					if(i != 0) j = i + 1;
+					else
+						{
+						cartcoord[param->d_obc_dir] = 1;
+						z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(param->d_obc_dir,mu)];
+						if (cabs(z) < MIN_VALUE) j = 1;
+						else j = 0;
+						}
+					break;
+					}
+				}
+			}
+		fprintf(fp, "%d %d \n", param->d_obc_dir, j);
 		fclose(fp);
 		}
 	}
+
 
 void write_conf_on_file(Gauge_Conf const * const GC, GParam const * const param)
 	{
 	write_conf_on_file_with_name(GC, param, param->d_conf_file);
 	write_twist_on_file_with_name(GC, param, param->d_twist_file);
 	}
+
 
 void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const param)
 	{
@@ -970,6 +1064,7 @@ void write_replica_on_file(Gauge_Conf const * const GC, GParam const * const par
 		write_twist_on_file_with_name(&(GC[i]),param,filename);
 		}
 	}
+
 
 void write_replica_on_file_back(Gauge_Conf const * const GC, GParam const * const param)
 	{
@@ -1001,6 +1096,7 @@ void write_replica_on_file_back(Gauge_Conf const * const GC, GParam const * cons
 		}
 	counter=1-counter;
 	}
+
 
 void write_conf_on_file_back(Gauge_Conf const * const GC, GParam const * const param)
 	{

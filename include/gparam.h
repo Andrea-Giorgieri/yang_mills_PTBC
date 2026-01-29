@@ -24,8 +24,9 @@ typedef struct GParam {
 	int     d_N_replica_pt;        // numbers of replica used in parallel tempering
 	double* d_pt_bound_cond_coeff; // boundary conditions coefficients
 
-	// twist parameters
+	// twist parameters and open boundary conditions
 	int d_k_twist[STDIM*(STDIM-1)/2];	// twist parameter for each plane
+	int d_obc_dir;                      // direction of obc (-1 if pbc)
 
 	// hierarchical update (parallel tempering)
 	int  d_N_hierarc_levels; // number of hierarchical levels

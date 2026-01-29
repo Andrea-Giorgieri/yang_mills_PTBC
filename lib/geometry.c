@@ -95,6 +95,10 @@ void init_geometry(Geometry *geo, GParam const * const param)
 			}
 		}
 
+	for(int mu=0; mu<STDIM; mu++)
+		for(int i=0; i<STDIM-1; i++)
+			geo->d_orth_dir[mu][i] = orthogonal_dir(mu, i);
+
 	#ifdef DEBUG
 	test_geometry(geo, param);
 	#endif
@@ -263,6 +267,7 @@ int is_on_defect(long const r, GParam const * const param)
 		}
 	return 1;
 	}
+
 
 //------------ these are not to be used outside geometry.c ----------------
 
@@ -731,31 +736,32 @@ void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const * co
 
 void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const * const param)
 	{
-	int i, j, cc[STDIM], ccsp[STDIM-1];
+	int i, cc[STDIM], ccsp[STDIM-1];
 
 	lexeo_to_cart(cc, lexeo, param);
 
 	*t=cc[mu];
 
 	for(i=0; i<STDIM-1; i++)
-		{
-		if (i < mu) j = i;
-		else j = i + 1;
-		ccsp[i]=cc[j];
-		}
-
+		ccsp[i] = cc[(i < mu) ? i : i + 1];
 	*lexeosp=cartsp_to_lexeosp_mu(ccsp, mu, param);
 	}
 
-// 4d only geometry for rectangles to be used for hierarchical update during parallel tempering
+// geometry for rectangles to be used for hierarchical update during parallel tempering
 
 // reduce a generic integer component in the interval [0,L_max-1]
 int periodic_condition(int const coord, int const L_max)
 	{
-	if(coord<0) return (L_max+coord%L_max);
-	else if(coord>=L_max) return (coord%L_max);
-	else return coord;
+	return (coord % L_max + L_max) % L_max;
 	}
+
+
+// i-th direction orthogonal to mu
+int orthogonal_dir(int const mu, int const i)
+	{
+	return (i < mu) ? i : i + 1;
+	}
+
 
 // cartesian -> lexicographic eo (on a given rectangle)
 // this function should not be used outside geometry.c
@@ -778,89 +784,89 @@ long cart_to_lexeo_rect(int const * const cartcoord, Rectangle const * const mos
 void init_rect(Rectangle *most_update, int const L_R, GParam const * const param)
 	{
 	// sizes of rectangle and ranges of rect coordinates
-	int aux_L[STDIM], size_min[STDIM], size_max[STDIM];
-	int i;
+	int aux_L[STDIM], size_min[STDIM];
+	int i, j;
 
-	// for each value of defect_dir, determine the three orthogonal directions to it
-	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-
-	// rectangle sizes
-	aux_L[param->d_defect_dir]=2*L_R+1;
-	aux_L[perp_dir[param->d_defect_dir][0]]=2*L_R+(param->d_L_defect[0]);
-	aux_L[perp_dir[param->d_defect_dir][1]]=2*L_R+(param->d_L_defect[1]);
-	aux_L[perp_dir[param->d_defect_dir][2]]=2*L_R+(param->d_L_defect[2]);
-
-	// min and max of rect coordinates along every direction
-	size_min[param->d_defect_dir]=(param->d_size[param->d_defect_dir])-1-L_R;
-	size_min[perp_dir[param->d_defect_dir][0]]=-L_R;
-	size_min[perp_dir[param->d_defect_dir][1]]=-L_R;
-	size_min[perp_dir[param->d_defect_dir][2]]=-L_R;
-
-	size_max[param->d_defect_dir]=(param->d_size[param->d_defect_dir])+L_R;
-	size_max[perp_dir[param->d_defect_dir][0]]=(param->d_L_defect[0])+L_R;
-	size_max[perp_dir[param->d_defect_dir][1]]=(param->d_L_defect[1])+L_R;
-	size_max[perp_dir[param->d_defect_dir][2]]=(param->d_L_defect[2])+L_R;
+	// rectangle sizes and min of rect coordinates along every direction
+	aux_L[param->d_defect_dir] = 2 * L_R + 1;
+	size_min[param->d_defect_dir] = param->d_size[param->d_defect_dir] - L_R - 1;
+	for(i=0; i<STDIM-1; i++)
+		{
+		j = orthogonal_dir(param->d_defect_dir, i);
+		aux_L[j] = 2 * L_R + param->d_L_defect[i];
+		size_min[j] = -L_R;
+		}
 
 	// d_size_rect[i] must not exceed d_size[i]
 	// if so, the exceeding dimension of the rectangle is just the respective dimension of the whole lattice
 	// and the i-th coordinate just ranges from 0 to d_size[i]-1
-	for(i=0;i<STDIM;i++)
+	for(i=0; i<STDIM; i++)
 		{
-		if(aux_L[i]>=param->d_size[i])
+		if(aux_L[i] >= param->d_size[i])
 			{
-			aux_L[i]=param->d_size[i];
-			size_min[i]=0;
-			size_max[i]=param->d_size[i];
+			aux_L[i] = param->d_size[i];
+			size_min[i] = 0;
 			}
 		}
 
 	// volume of rectangle
-	long V=1;
-	for(i=0;i<STDIM;i++)
-		V*=aux_L[i];
+	long V = 1;
+	for(i=0; i<STDIM; i++)
+		V *= aux_L[i];
 
 	// allocate rectangle
 	allocate_array_long(&(most_update->rect_sites), V, __FILE__, __LINE__);
 
 	// save dimensions and volume of the rectangle
-	for(i=0;i<STDIM;i++)
-		most_update->d_size_rect[i]=aux_L[i];
-	most_update->d_vol_rect=V;
+	for(i=0; i<STDIM; i++)
+		most_update->d_size_rect[i] = aux_L[i];
+	most_update->d_vol_rect = V;
 
 	// save lexeo index of sites of the rectangle
-	int coord[STDIM];			// cartesian coordinates on the whole lattice
-	int real_coord[STDIM];	// cartesian coordinates after using periodic conditions
-	long r,r_rect;				// lexeo index on the rectangle and lexeo index on the whole lattice
-	int coord_rect[STDIM];	// cartesian coordinates on the rectangle
+	int coord[STDIM];       // cartesian coordinates on the whole lattice
+	int real_coord[STDIM];  // cartesian coordinates after using periodic conditions
+	int coord_rect[STDIM];  // cartesian coordinates on the rectangle
+	long r, r_rect;         // lexeo index on the rectangle and lexeo index on the whole lattice
 
-	coord_rect[0]=0;
-	for(coord[0]=size_min[0];coord[0]<size_max[0];coord[0]++)
+	for(i=0; i<STDIM; i++)
+		coord_rect[i] = 0;
+
+	// loop over each rectancle site
+	while (1)
 		{
-		coord_rect[1]=0;
-		for(coord[1]=size_min[1];coord[1]<size_max[1];coord[1]++)
+		// compute rectangle coordinates coord_rect and lattice coordinates real_coord for current iteration
+		for(i=0; i<STDIM; i++)
 			{
-			coord_rect[2]=0;
-			for(coord[2]=size_min[2];coord[2]<size_max[2];coord[2]++)
+			coord[i] = size_min[i] + coord_rect[i];
+			real_coord[i] = periodic_condition(coord[i], param->d_size[i]);
+			}
+
+		// convert to lexicographical index on rectangle and lattice
+		r_rect = cart_to_si_rect(coord_rect, most_update);
+		r = cart_to_si(real_coord, param);
+
+		most_update->rect_sites[r_rect] = r;
+
+		// move to the next rectangle site
+		i = STDIM - 1;
+		while (i >= 0)
+			{
+			if(coord_rect[i] < aux_L[i] - 1)
 				{
-				coord_rect[3]=0;
-				for(coord[3]=size_min[3];coord[3]<size_max[3];coord[3]++)
-					{
-					// compute the real coordinates on the periodic lattice
-					for(i=0;i<STDIM;i++)
-						real_coord[i]=periodic_condition(coord[i],param->d_size[i]);
+				coord_rect[i]++;
+				break;
+				}
+			else
+				{
+				coord_rect[i] = 0;
+				i--;
+				}
+			}
 
-					r_rect=cart_to_si_rect(coord_rect,most_update); // from cartesian coordinates on the rectangle to lexeo index on the rectangle
-					r=cart_to_si(real_coord,param);						// from cartesian coordinates on the lattice to lexeo index on the lattice
-					most_update->rect_sites[r_rect]=r;
-
-					coord_rect[3]++;
-					} // end of z loop
-				coord_rect[2]++;
-				} // end of y loop
-			coord_rect[1]++;
-			} // end of x loop
-		coord_rect[0]++;
-		} // end of t loop
+		// break when all indices have reached their max values
+		if (i < 0)
+			break;
+		}
 	}
 
 void free_rect(Rectangle *most_update)
@@ -1027,22 +1033,27 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 
 // compute the square distance between sites i and j on a periodic lattice (toroidal geometry)
 double square_distance(long const i, long const j, GParam const * const param)
-{
-	int mu;
+	{
 	int x[STDIM], y[STDIM];
-	double d[STDIM], half_size[STDIM];
-	double distance2=0.0;
+	double res = 0.0;
 
 	si_to_cart(x, i, param); // i --> x
 	si_to_cart(y, j, param); // j --> y
-	for (mu=0; mu<STDIM; mu++)
-	{
-	d[mu]=( (double) (abs(x[mu] - y[mu])) ); // d_mu = | x_mu - y_mu |
-	half_size[mu] = ((double) param->d_size[mu])/2.0;
-	if ( d[mu] > half_size[mu] ) d[mu] = ((double) param->d_size[mu]) - d[mu]; // periodic boundaries: if d_mu > L/2 ==> d_mu = L - d_mu
-	distance2 += d[mu]*d[mu]; // distance^2 = sum_mu d_mu^2
+
+	for (int mu = 0; mu < STDIM; ++mu)
+		{
+		const double L = (double)param->d_size[mu];
+		const double half_L = 0.5 * L;
+		double d = (double)labs(x[mu] - y[mu]);
+
+		// periodic boundary conditions
+		if (d > half_L) d = L - d;
+
+		res += d * d;
+		}
+
+	return res;
 	}
-	return distance2;
-}
+
 
 #endif

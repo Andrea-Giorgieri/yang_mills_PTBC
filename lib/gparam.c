@@ -196,8 +196,9 @@ void set_defaults(GParam * const param)
 	for(i=0; i<NCOLOR; i++) param->d_h[i] = 0.0;
 	param->d_theta = 0.0;
 
-	// twist
+	// twist and open boundary conditions
 	for (i=0; i<STDIM*(STDIM-1)/2; i++) param->d_k_twist[i] = 0;
+	param->d_obc_dir = -1;
 
 	// parallel tempering
 	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
@@ -336,6 +337,13 @@ void readinput(char const * const in_file, GParam * const param)
 			{
 			for (i=0; i<STDIM*(STDIM-1)/2; i++)
 				set_int_param(input, &(param->d_k_twist[i]), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "obc_dir");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_obc_dir), param_name, &param_any_int);
 			continue;
 			}
 
@@ -481,7 +489,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_polyakov_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "polyakov_powers_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -884,6 +892,13 @@ void readinput(char const * const in_file, GParam * const param)
 			exit(EXIT_FAILURE);
 			}
 
+	// open boundary conditions
+	if(param->d_obc_dir < -1 || param->d_obc_dir >= STDIM)
+		{
+		fprintf(stderr, "Error: direction of open boundary conditions must be -1 (pbc) or a valid space-time dimension (%s, %d)\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+		}
+
 	// parallel tempering
 	if(param->d_defect_dir >= STDIM)
 		{
@@ -1175,6 +1190,8 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	for(i=1; i<STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
 	fprintf(fp, "\n\n");
 
+	if(param->d_obc_dir != -1)
+		fprintf(fp, "obc_dir: %d\n", param->d_obc_dir);
 	fprintf(fp, "twist parameters: ");
 	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
 	fprintf(fp,"\n");

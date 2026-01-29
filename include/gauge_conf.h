@@ -29,8 +29,8 @@ typedef struct Gauge_Conf {
 	double **C;		// C [volume] [STDIM], this factor changes the boundary condition for the link on the defect
 	int conf_label;	// save the label of the configuration to keep track of the swaps
 
-	// for the twisted boundary conditions
-	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)], this factor implements the twist for the links on the boundary
+	// for the boundary conditions
+	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)], this factor implements the twsited or open boundary conditions
 
 	// auxiliary conf for Metropolis tests and translations
 	GAUGE_GROUP **lattice_copy;		// copy of lattice
@@ -117,7 +117,7 @@ void allocate_C(						Gauge_Conf *GC, GParam const * const param);
 
 void allocate_Z_with_copy(				Gauge_Conf *GC, GParam const * const param);
 
-void initialize_Z_with_copy(			Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu);
+void initialize_Z_with_copy(			Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu, int x_obc);
 
 void equal_lattice(							GAUGE_GROUP * const * const lattice1,
 											GAUGE_GROUP const * const * const lattice2,
@@ -192,7 +192,7 @@ void free_twist_cond(						Gauge_Conf *GC,
 void read_gauge_conf_from_file_with_name(	Gauge_Conf *GC,
 											GParam const * const param, char const * const filename);
 
-void read_twist_cond_from_file_with_name(	int *x_mu, int *x_nu,
+void read_twist_cond_from_file_with_name(	int *x_mu, int *x_nu, int *x_obc,
 											GParam const * const param, char const * const filename);
 
 void free_gauge_conf(						Gauge_Conf *GC,

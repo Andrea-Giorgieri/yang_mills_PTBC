@@ -21,14 +21,11 @@
 void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
 				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
 	{
-	int aux_i, i, j, num_swaps, is_even, is_even_first;
+	int mu, j, num_swaps, is_even, is_even_first;
 	long k, s, num_even, num_odd, num_swaps_1, num_swaps_2;
 	// Just an alias to be used in reduction clause for OpenMP. icc gives error during
 	// optimization if reduction(+:acc_counters->metro_swap_prob[:num_swaps]) is used
 	double *aux_p = acc_counters->metro_swap_prob;
-
-	// for each value of defect_dir, determine the three orthogonal directions to it
-	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
 
 	// N_replica_pt - 1 is the total number of swaps
 	num_swaps = ((param->d_N_replica_pt)-1);
@@ -56,14 +53,14 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		num_swaps_2=num_even;
 		}
 
-	// swaps are done for all couples (i,j) where i=defect_dir and j !=i => three couples
-	i=param->d_defect_dir;
+	// swaps are done for all couples (mu,j) where mu=defect_dir and j != mu => three couples
+	mu=param->d_defect_dir;
 
 	// first group of swaps
 
 	// compute action differences (multicanonical contribution in the next loop)
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,aux_i,j)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,j)
 	#endif
 	for(s=0;s<((num_swaps_1)*(swap_rectangle->d_vol_rect));s++)
 		{
@@ -73,11 +70,11 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		int a = 2*l+is_even_first; // labels of replica
 		int b = a+1;
 
-		for(aux_i=0; aux_i<STDIM-1; aux_i++)
+		for(int i=0; i<STDIM-1; i++)
 			{
-			j = perp_dir[param->d_defect_dir][aux_i];
-			// contribution to action difference between replicas a and b of site r on plane (i,j)
-			aux_p[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
+			j = geo->d_orth_dir[mu][i];
+			// contribution to action difference between replicas a and b of site r on plane (mu,j)
+			aux_p[a] += delta_action_swap(GC, geo, param, r, mu, j, a, b);
 			}
 		}
 
@@ -105,7 +102,7 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 
 	// compute action differences
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,aux_i,j)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps]) private(s,j)
 	#endif
 	for(s=0;s<((num_swaps_2)*(swap_rectangle->d_vol_rect));s++)
 		{
@@ -114,11 +111,11 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 		int l = (int) ( (s-n) / (swap_rectangle->d_vol_rect) );
 		int a = 2*l+is_even_first; // labels of replica
 		int b = a+1;
-		for(aux_i=0; aux_i<STDIM-1; aux_i++)
+		for(int i=0; i<STDIM-1; i++)
 			{
-			j = perp_dir[param->d_defect_dir][aux_i];
-			// contribution to action difference between replicas a and b of site r on plane (i,j)
-			aux_p[a] += delta_action_swap(GC, geo, param, r, i, j, a, b);
+			j = geo->d_orth_dir[mu][i];
+			// contribution to action difference between replicas a and b of site r on plane (mu,j)
+			aux_p[a] += delta_action_swap(GC, geo, param, r, mu, j, a, b);
 			}
 		}
 

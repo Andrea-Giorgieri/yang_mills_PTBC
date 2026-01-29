@@ -11,6 +11,7 @@ typedef struct Geometry {
    long   *d_spacecomp;  // d_spacecomp[r]     = space component of r
    long  **d_tsp;        // d_tsp[t][rsp]      = r such that d_timeslice[r] = t and d_spacecomp[r] = rsp
    long ***d_musp;       // d_musp[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
+   int     d_orth_dir[STDIM][STDIM-1];  // d_orth_dir[mu][i]  = i-th direction orthogonal to mu
 } Geometry;
 
 typedef struct Rectangle {
@@ -113,6 +114,7 @@ long cart_to_lexeo_rect(int const * const cartcoord, Rectangle const * const mos
 // geometry of rectangles used in the hierarchical update during parallel tempering
 
 int periodic_condition(int const coord, int const L_max);
+int orthogonal_dir(int const mu, int const i);
 void init_rect(Rectangle *most_update, int const L_R, GParam const * const param);
 void free_rect(Rectangle *most_update);
 void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam const * const param);

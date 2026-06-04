@@ -46,7 +46,8 @@ void real_main(char *in_file, long step, long stop_index)
 	strcat(param.d_data_file, "_agf");
 	strcat(param.d_energydensity_file, "_agf");
 	strcat(param.d_chiprime_file, "_agf");
-	strcat(param.d_topcharge_tcorr_file, "_agf");
+	strcat(param.d_energy_slices_file, "_agf");
+	strcat(param.d_charge_slices_file, "_agf");
 	strcat(param.d_log_file, "_agf");
 
 	// initialize random generator

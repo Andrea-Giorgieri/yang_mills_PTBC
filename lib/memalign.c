@@ -21,6 +21,15 @@ void allocate_array_int(int **const array, long size, char const * const file, i
 		}
 	}
 
+void allocate_array_int_pointer(int ***const array, long size, char const * const file, int line)
+	{
+	if(posix_memalign((void **)array, (size_t)INT_ALIGN, (size_t)size*sizeof(int*)) != 0)
+		{
+		fprintf(stderr, "Problems allocating an array of ptrs to int! (%s, %d)\n", file, line);
+		exit(EXIT_FAILURE);
+		}
+	}
+
 void allocate_array_long(long **const array, long size, char const * const file, int line)
 	{
 	if(posix_memalign((void **)array, (size_t)INT_ALIGN, (size_t)size*sizeof(long)) != 0)

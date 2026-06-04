@@ -245,7 +245,8 @@ void set_defaults(GParam * const param)
 	param->d_polyakov_meas         = 0;
 	param->d_polyakov_powers_meas  = 0;
 	param->d_polyakov_density_meas = 0;
-	param->d_topcharge_tcorr_meas  = 0;
+	param->d_energy_slices_meas    = 0;
+	param->d_charge_slices_meas    = 0;
 	param->d_multipolyakov_order   = 0;
 
 	// filenames
@@ -256,7 +257,8 @@ void set_defaults(GParam * const param)
 	strcpy(param->d_energydensity_file,    "");
 	strcpy(param->d_polyakovdensity_file,  "");
 	strcpy(param->d_chiprime_file,         "");
-	strcpy(param->d_topcharge_tcorr_file,  "");
+	strcpy(param->d_energy_slices_file,    "");
+	strcpy(param->d_charge_slices_file,    "");
 	strcpy(param->d_log_file,              "");
 	strcpy(param->d_swap_acc_file,         "");
 	strcpy(param->d_swap_tracking_file,    "");
@@ -517,11 +519,18 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_charge_prime_meas), param_name, &param_bool_int);
 			continue;
 			}
+		
+		strcpy(param_name, "energy_slices_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_energy_slices_meas), param_name, &param_bool_int);
+			continue;
+			}
 
 		strcpy(param_name, "topcharge_tcorr_meas");
 		if(strcmp(str, param_name) == 0)
 			{
-			set_int_param(input, &(param->d_topcharge_tcorr_meas), param_name, &param_bool_int);
+			set_int_param(input, &(param->d_charge_slices_meas), param_name, &param_bool_int);
 			continue;
 			}
 
@@ -706,11 +715,18 @@ void readinput(char const * const in_file, GParam * const param)
 			set_string_param(input, param->d_chiprime_file, param_name, &param_any_string);
 			continue;
 			}
+		
+		strcpy(param_name, "energy_slices_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_energy_slices_file, param_name, &param_any_string);
+			continue;
+			}
 
 		strcpy(param_name, "topcharge_tcorr_file");
 		if(strcmp(str, param_name) == 0)
 			{
-			set_string_param(input, param->d_topcharge_tcorr_file, param_name, &param_any_string);
+			set_string_param(input, param->d_charge_slices_file, param_name, &param_any_string);
 			continue;
 			}
 
@@ -944,7 +960,7 @@ void readinput(char const * const in_file, GParam * const param)
 		err  = param->d_charge_meas;
 		err += param->d_charge_prime_meas;
 		err += param->d_chi_prime_meas;
-		err += param->d_topcharge_tcorr_meas;
+		err += param->d_charge_slices_meas;
 		if (err != 0)
 			{
 			fprintf(stderr, "Error: can't measure topological observables with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
@@ -970,7 +986,8 @@ void readinput(char const * const in_file, GParam * const param)
 	check_required_string(param->d_energydensity_file,    "energy_density_file",   param->d_energy_density_meas);
 	check_required_string(param->d_polyakovdensity_file,  "polyakov_density_file", param->d_polyakov_density_meas);
 	check_required_string(param->d_chiprime_file,         "chiprime_data_file",    param->d_chi_prime_meas);
-	check_required_string(param->d_topcharge_tcorr_file,  "topcharge_tcorr_file",  param->d_topcharge_tcorr_meas);
+	check_required_string(param->d_energy_slices_file,    "energy_slices_file",    param->d_energy_slices_meas);
+	check_required_string(param->d_charge_slices_file,    "topcharge_tcorr_file",  param->d_charge_slices_meas);
 	check_required_string(param->d_swap_acc_file,         "swap_acc_file",         param->d_N_replica_pt > 1);
 	check_required_string(param->d_swap_tracking_file,    "swap_track_file",       param->d_N_replica_pt > 1);
 
@@ -1096,6 +1113,11 @@ void init_derived_constants(GParam *param)
 
 	// number of planes (twisted boundary conditions only)
 	param->d_n_planes = STDIM*(STDIM-1);
+	
+	// default open boundary position
+	param->d_obc_default_pos = 0;
+	if(param->d_obc_dir != -1)
+		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
 
 	// number of measures during gradient-flow evolution
 	if (param->d_gf_meas_each > 0)
@@ -1215,7 +1237,8 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "polyakov_powers_meas:  %d\n", param->d_polyakov_powers_meas);
 	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
-	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_topcharge_tcorr_meas);
+	fprintf(fp, "energy_slices_meas:    %d\n", param->d_energy_slices_meas);
+	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_charge_slices_meas);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
@@ -1780,6 +1803,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 	fprintf(fp, "polyakov_density_meas 0  # 1=YES, 0=NO\n");
 	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
+	fprintf(fp, "energy_slices_meas    0  # 1=YES, 0=NO\n");
 	fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
 	fprintf(fp,"\n");
 	fprintf(fp, "multipolyakov_order   0  # n  mu_1 mu_2 ... mu_n\n");
@@ -1882,7 +1906,8 @@ void print_template_output_parameters(FILE *fp)
 	fprintf(fp, "energy_density_file   energy_density.dat\n");
 	fprintf(fp, "polyakov_density_file polyakov_density.dat\n");
 	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
-	fprintf(fp, "topcharge_tcorr_file  topo_tcorr_cool.dat\n");
+	fprintf(fp, "energy_slices_file    energy_slices.dat\n");
+	fprintf(fp, "topcharge_tcorr_file  charge_slices.dat\n");
 	fprintf(fp, "log_file              log.dat\n");
 	fprintf(fp, "swap_acc_file         swap_acc.dat\n");
 	fprintf(fp, "swap_track_file       swap_track.dat\n");

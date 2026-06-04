@@ -49,7 +49,8 @@ void real_main(char *in_file)
 	// not to overwrite files of runs with online gradient flow
 	strcpy(param.d_data_file, "_gradflow");
 	strcpy(param.d_chiprime_file, "_gradflow");
-	strcpy(param.d_topcharge_tcorr_file, "_gradflow");
+	strcpy(param.d_energy_slices_file, "_gradflow");
+	strcpy(param.d_charge_slices_file, "_gradflow");
 	strcpy(param.d_log_file, "_gradflow");
 
 	// initialize random generator
@@ -121,7 +122,8 @@ void print_template_input(void)
 		fprintf(fp, "twist_file            twist.dat\n");
 		fprintf(fp, "data_file             dati.dat\n");
 		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
-		fprintf(fp, "topcharge_tcorr_file  topo_tcorr_cool.dat\n");
+		fprintf(fp, "energy_slices_file    energy_slices.dat\n");
+		fprintf(fp, "topcharge_tcorr_file  charge_slices.dat\n");
 		fprintf(fp, "log_file              log.dat\n");
 		fprintf(fp, "\n");
 		fprintf(fp, "randseed 0 #(0=time)\n");

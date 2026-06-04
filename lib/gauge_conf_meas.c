@@ -294,7 +294,33 @@ void plaquette(Gauge_Conf const * const GC,
 	*plaqt=pt;
 	}
 
-// compute the clover energy density and write to binary file
+
+// compute the clover discretization of
+// sum_{\mu\nu}	Tr(F_{\mu\nu}F_{\mu\nu})/2
+double loc_clover_energy(Gauge_Conf const * const GC,
+							Geometry const * const geo,
+							GParam const * const param,
+							long const r)
+	{
+	GAUGE_GROUP aux1, aux2;
+	double res = 0.0;
+
+	for(int i=0; i<STDIM; i++)
+		{
+		for(int j=i+1; j<STDIM; j++)
+			{
+			clover(GC, geo, param, r, i, j, &aux1);
+			ta(&aux1);
+			equal(&aux2, &aux1);
+			times_equal(&aux1, &aux2);
+			res += retr(&aux1);
+			}
+		}
+	return -(double)NCOLOR * res / 16; 
+	}
+
+
+// compute and write to binary file the clover energy density 
 void energy_density(Gauge_Conf const * const GC,
 					Geometry const * const geo,
 					GParam const * const param,
@@ -306,22 +332,7 @@ void energy_density(Gauge_Conf const * const GC,
 	#endif
 	for(long r=0; r<param->d_volume; r++)
 		{
-		int i, j;
-		double ris=0;
-		GAUGE_GROUP aux1, aux2;
-
-		for(i=0; i<STDIM; i++)
-			{
-			for(j=i+1; j<STDIM; j++)
-				{
-				clover(GC, geo, param, r, i, j, &aux1);
-				ta(&aux1);
-				equal(&aux2, &aux1);
-				times_equal(&aux1, &aux2);
-				ris+=-NCOLOR*retr(&aux1)/16.0;
-				}
-			}
-		meas_aux->energy_density[r] = ris;
+		meas_aux->energy_density[r] = loc_clover_energy(GC, geo, param, r);;
 		//TODO: try parallel writing with pwrite() if available
 		}
 
@@ -331,39 +342,49 @@ void energy_density(Gauge_Conf const * const GC,
 	fwrite(meas_aux->energy_density, sizeof(double), (size_t)param->d_volume, fp);
 	}
 
-// compute the clover discretization of
-// sum_{\mu\nu}	Tr(F_{\mu\nu}F_{\mu\nu})/2
+
+// compute the average clover energy density
 void clover_disc_energy(Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param,
 							double * const energy)
 	{
-	long r;
-	double ris;
-
-	ris=0.0;
+	double res = 0.0;
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : ris)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
-	for(r=0; r<param->d_volume; r++)
-		{
-		int i, j;
-		GAUGE_GROUP aux1, aux2;
+	for(long r=0; r<param->d_volume; r++) res += loc_clover_energy(GC, geo, param, r);
+	*energy = res * param->d_inv_vol;
+	}
 
-		for(i=0; i<STDIM; i++)
-			{
-			for(j=i+1; j<STDIM; j++)
-				{
-				clover(GC, geo, param, r, i, j, &aux1);
-				ta(&aux1);
-				equal(&aux2, &aux1);
-				times_equal(&aux1, &aux2);
-				ris+=-NCOLOR*retr(&aux1)/16.0;
-				}
-			}
+
+// compute the clover energy density
+// for all the slices along direction mu
+void clover_energy_slices(Gauge_Conf const * const GC,
+					Geometry const * const geo,
+					GParam const * const param,
+					int const mu,
+					double *slices,
+					int meas_count,
+					FILE *filep)
+	{
+	int L_mu = param->d_size[mu];
+	for(int i=0; i<L_mu; i++) slices[i] = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+: slices[:L_mu])
+	#endif
+	for(long r=0; r<param->d_volume; r++)
+		{
+		int x_mu = geo->d_mucomp[mu][r];
+		slices[x_mu] += loc_clover_energy(GC, geo, param, r);
 		}
-	*energy=ris*param->d_inv_vol;
+	for(int i=0; i<L_mu; i++) slices[i] *= param->d_inv_space_vol[mu];
+
+	fprintf(filep, "%ld %d ", GC->update_index, meas_count);
+	for (int i=0; i<param->d_size[mu]; i++) fprintf(filep, " % 18.12e", slices[i]);
+	fprintf(filep, "\n");
 	}
 
 
@@ -802,25 +823,30 @@ double topo_chi_prime(Gauge_Conf const * const GC,
 	}
 
 
-void topcharge_timeslices(Gauge_Conf const * const GC,
+void topcharge_slices(Gauge_Conf const * const GC,
 						Geometry const * const geo,
-						GParam const * const param, double *ris, int ncool, FILE *topchar_tcorr_filep)
+						GParam const * const param,
+						int const mu,
+						double *slices,
+						int meas_count,
+						FILE *filep)
 	{
-	int N_t = param->d_size[0];
+	int L_mu = param->d_size[mu];
 
-	for (int i=0; i<N_t; i++) ris[i]=0.0;
+	for (int i=0; i<L_mu; i++) slices[i] = 0.0;
+
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:ris[:N_t])
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:slices[:L_mu])
 	#endif
 	for(long r=0; r<(param->d_volume); r++)
 		{
-		int t = geo->d_timeslice[r];
-		ris[t] += loc_topcharge(GC, geo, param, r);
+		int x_mu = geo->d_mucomp[mu][r];
+		slices[x_mu] += loc_topcharge(GC, geo, param, r);
 		}
 
-	fprintf(topchar_tcorr_filep, "%ld %d ", GC->update_index, ncool);
-	for (int i=0; i<param->d_size[0]; i++) fprintf(topchar_tcorr_filep, " % 18.12e", ris[i]);
-	fprintf(topchar_tcorr_filep, "\n");
+	fprintf(filep, "%ld %d ", GC->update_index, meas_count);
+	for (int i=0; i<param->d_size[mu]; i++) fprintf(filep, " % 18.12e", slices[i]);
+	fprintf(filep, "\n");
 	}
 
 
@@ -947,7 +973,8 @@ void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GPa
 	if (param->d_polyakov_meas         == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
 	if (param->d_multipolyakov_order   >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
 	if (param->d_polyakov_density_meas == 1) for (int i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count+1);
-	if (param->d_topcharge_tcorr_meas  == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, meas_count+1, meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas    == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->e_slices, meas_count+1, meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas    == 1) topcharge_slices(GC, geo, param, 0, meas_aux->q_slices, meas_count+1, meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas        == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
 	if (param->d_charge_prime_meas     == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	}
@@ -972,10 +999,11 @@ void perform_measures_localobs_hot(Gauge_Conf * const GC, Geometry const * const
 	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, 0);
 	if (param->d_chi_prime_meas        == 1) chi_prime = topo_chi_prime(GC, geo, param);
 	if (param->d_charge_prime_meas     == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
-	if (param->d_topcharge_tcorr_meas  == 1) topcharge_timeslices(GC, geo, param, meas_aux->sum_q_timeslices, 0, meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas    == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->e_slices, 0, meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas    == 1) topcharge_slices(GC, geo, param, 0, meas_aux->q_slices, 0, meas_aux->q_slices_filep);
 	//action(GC, geo, param, &action1, &action2, &action3, &pot);
 
-	// print meas (energy_density, topcharge_tcorr_timeslices already printed)
+	// print meas (energy_density and energy/charge slices already printed)
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
 	if (param->d_plaquette_meas       == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
 	if (param->d_clover_energy_meas   == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
@@ -991,7 +1019,8 @@ void perform_measures_localobs_hot(Gauge_Conf * const GC, Geometry const * const
 	fflush(meas_aux->datafilep);
 	if (param->d_energy_density_meas   == 1) fflush(meas_aux->energydensityfilep);
 	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) fflush(meas_aux->polyakovdensityfilep[i]);
-	if (param->d_topcharge_tcorr_meas  == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas    == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas    == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas        == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -1023,7 +1052,8 @@ void perform_measures_localobs(Gauge_Conf * const GC,
 	// newline and flush data files
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -1042,7 +1072,16 @@ void perform_measures_localobs_cooling(Gauge_Conf * const GC,
 	// restore gauge conf before cooling from GC->lattice_copy
 	restore_gauge_conf(GC, param);
 
-	// print meas gradflow
+	// print meas cooling
+	print_measures_aux(param->d_coolrepeat, GC->update_index, param, meas_aux);
+	
+	//TODO: remove, debug only
+	for(int meas_count=0; meas_count < param->d_coolrepeat; meas_count++)
+		{
+		cooling_with_defect(GC, geo, param, param->d_coolsteps);
+		perform_measures_aux(GC, geo, param, meas_count, meas_aux);
+		}
+	restore_gauge_conf(GC, param);
 	print_measures_aux(param->d_coolrepeat, GC->update_index, param, meas_aux);
 	}
 
@@ -1172,7 +1211,8 @@ void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -1215,17 +1255,17 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const 
 			gftime += gftime_step_min;
 
 			// perform measures
-			if (gftime - param->d_agf_meas_each*(meas_count+1) > param->d_agf_meas_each / 10000.0 )
+			if (gftime - param->d_agf_meas_each*(meas_count+1) > - gftime_step_min / 2)
 				{
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
-			}
-
+			
 			if (gftime_step_min < gftime / 50.0)
 				{
 				gftime_step_min = gftime / 50.0;
 				}
+			}
 
 		// restore gauge conf before gradflow from GC->lattice_copy
 		restore_gauge_conf(GC, param);
@@ -1247,7 +1287,8 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -1338,7 +1379,8 @@ void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -1460,7 +1502,8 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_topcharge_tcorr_meas == 1) fflush(meas_aux->topchar_tcorr_filep);
+	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
+	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
 	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
 	}
 
@@ -2323,9 +2366,13 @@ void open_data_files(Meas_Utils * meas_aux, int const replica_index, GParam cons
 	if (param->d_chi_prime_meas == 1)
 		meas_aux->chiprimefilep = open_file_with_header_replica(param->d_chiprime_file, header, replica_index, param, 0);
 
+	// energy_slices file
+	if (param->d_energy_slices_meas == 1)
+		meas_aux->e_slices_filep = open_file_with_header_replica(param->d_energy_slices_file, header, replica_index, param, 0);
+
 	// topcharge_tcorr file
-	if (param->d_topcharge_tcorr_meas == 1)
-		meas_aux->topchar_tcorr_filep = open_file_with_header_replica(param->d_topcharge_tcorr_file, header, replica_index, param, 0);
+	if (param->d_charge_slices_meas == 1)
+		meas_aux->q_slices_filep = open_file_with_header_replica(param->d_charge_slices_file, header, replica_index, param, 0);
 
 	// energy_density file
 	if (param->d_energy_density_meas == 1)
@@ -2360,9 +2407,13 @@ void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const
 	if (param->d_chi_prime_meas == 1)
 		fclose(meas_aux.chiprimefilep);
 
+	// energy_slices file
+	if (param->d_energy_slices_meas == 1)
+		fclose(meas_aux.e_slices_filep);
+
 	// topcharge_tcorr file
-	if (param->d_topcharge_tcorr_meas == 1)
-		fclose(meas_aux.topchar_tcorr_filep);
+	if (param->d_charge_slices_meas   == 1)
+		fclose(meas_aux.q_slices_filep);
 
 	// clover_energy_density file
 	if (param->d_energy_density_meas == 1)
@@ -2415,8 +2466,11 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 			allocate_array_double(&(meas_aux->multipolyim), num_meas, __FILE__, __LINE__);
 			}
 
-		if (param->d_topcharge_tcorr_meas == 1)
-			allocate_array_double(&(meas_aux->sum_q_timeslices), param->d_size[0], __FILE__, __LINE__);
+		if (param->d_energy_slices_meas == 1)
+			allocate_array_double(&(meas_aux->e_slices), param->d_size[0], __FILE__, __LINE__);
+
+		if (param->d_charge_slices_meas   == 1)
+			allocate_array_double(&(meas_aux->q_slices), param->d_size[0], __FILE__, __LINE__);
 
 		if (param->d_chi_prime_meas == 1)
 			allocate_array_double(&(meas_aux->chi_prime), num_meas, __FILE__, __LINE__);
@@ -2510,8 +2564,11 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 			free(meas_aux.multipolyim);
 			}
 
-		if (param->d_topcharge_tcorr_meas == 1 )
-			free(meas_aux.sum_q_timeslices);
+		if (param->d_energy_slices_meas == 1 )
+			free(meas_aux.e_slices);
+
+		if (param->d_charge_slices_meas   == 1 )
+			free(meas_aux.q_slices);
 
 		if (param->d_chi_prime_meas == 1)
 			free(meas_aux.chi_prime);

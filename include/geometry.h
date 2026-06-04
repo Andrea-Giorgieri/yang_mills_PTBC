@@ -5,13 +5,12 @@
 #include"gparam.h"
 
 typedef struct Geometry {
-   long  **d_nnp;        // d_nnp_loc[r][i]    = next neighbour (on the local lattice) in dir.  i of the site r
-   long  **d_nnm;        // d_nnm_loc[r][i]    = next neighbour (on the local lattice) in dir. -i of the site r
-   int    *d_timeslice;  // d_timeslice[r]     = time component of r
-   long   *d_spacecomp;  // d_spacecomp[r]     = space component of r
-   long  **d_tsp;        // d_tsp[t][rsp]      = r such that d_timeslice[r] = t and d_spacecomp[r] = rsp
-   long ***d_musp;       // d_musp[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
-   int     d_orth_dir[STDIM][STDIM-1];  // d_orth_dir[mu][i]  = i-th direction orthogonal to mu
+   long  **d_nnp;          // d_nnp_loc[r][i]    = next neighbour (on the local lattice) in dir.  i of the site r
+   long  **d_nnm;          // d_nnm_loc[r][i]    = next neighbour (on the local lattice) in dir. -i of the site r
+   int   **d_mucomp;       // d_mucomp[mu][r]    = mu component of r
+   long  **d_muorth;       // d_muorth[mu][r]    = mu-orthogonal-space component of r
+   long ***d_mutimespace;  // d_mutimespace[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
+   int     d_orth_dir[STDIM][STDIM-1];  // d_orth_dir[mu][i] = i-th direction orthogonal to mu
 } Geometry;
 
 typedef struct Rectangle {
@@ -64,20 +63,20 @@ inline long nnm(Geometry const * const geo, long r, int i)
 // single index spatial and time -> single index tot
 inline long sisp_and_t_to_si(Geometry const * const geo, long sisp, int t)
   {
-  return geo->d_tsp[t][sisp];
+  return geo->d_mutimespace[0][t][sisp];
   }
 
 // single index nu != mu and mu -> single index tot
 inline long sisp_and_mu_to_si(Geometry const * const geo, long sisp, int t, int mu)
   {
-  return geo->d_musp[mu][t][sisp];
+  return geo->d_mutimespace[mu][t][sisp];
   }
 
 // single index tot -> single index spatial and time
 inline void si_to_sisp_and_t(long *sisp, int *t, Geometry const * const geo, long si)
   {
-  *sisp=geo->d_spacecomp[si];
-  *t=geo->d_timeslice[si];
+  *sisp=geo->d_muorth[0][si];
+  *t=geo->d_mucomp[0][si];
   }
 
 // for debug

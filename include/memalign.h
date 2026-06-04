@@ -14,6 +14,7 @@
 #include"tens_prod_adj.h"
 
 void allocate_array_int(int **const array, long size, char const * const file, int const line);
+void allocate_array_int_pointer(int ***const array, long size, char const * const file, int const line);
 void allocate_array_long(long **const array, long size, char const * const file, int const line);
 void allocate_array_long_pointer(long ***const array, long size, char const * const file, int const line);
 void allocate_array_long_pointer_pointer(long ****const array, long size, char const * const file, int line);

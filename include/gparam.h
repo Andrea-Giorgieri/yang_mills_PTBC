@@ -27,6 +27,7 @@ typedef struct GParam {
 	// twist parameters and open boundary conditions
 	int d_k_twist[STDIM*(STDIM-1)/2];	// twist parameter for each plane
 	int d_obc_dir;                      // direction of obc (-1 if pbc)
+	int d_obc_default_pos;              // default starting position of obc
 
 	// hierarchical update (parallel tempering)
 	int  d_N_hierarc_levels; // number of hierarchical levels
@@ -62,7 +63,8 @@ typedef struct GParam {
 	int d_polyakov_density_meas;
 	int d_chi_prime_meas;
 	int d_charge_prime_meas;
-	int d_topcharge_tcorr_meas;
+	int d_energy_slices_meas;
+	int d_charge_slices_meas;
 
 	int  d_multipolyakov_order;
 	int *d_multipolyakov_dirs;
@@ -99,7 +101,8 @@ typedef struct GParam {
 	char d_twist_file[STD_STRING_LENGTH];            // save twist configuration
 	char d_data_file[STD_STRING_LENGTH];             // print measures of simple observables
 	char d_chiprime_file[STD_STRING_LENGTH]; 		 // print chi prime measures
-	char d_topcharge_tcorr_file[STD_STRING_LENGTH];  // print topological charge time correlator measures
+	char d_energy_slices_file[STD_STRING_LENGTH];    // print energy slices measures
+	char d_charge_slices_file[STD_STRING_LENGTH];    // print topological charge time correlator measures
 	char d_energydensity_file[STD_STRING_LENGTH];    // print energy density measures
 	char d_polyakovdensity_file[STD_STRING_LENGTH];  // print polyakov density measures
 	char d_log_file[STD_STRING_LENGTH];              // print program details
@@ -164,7 +167,6 @@ void remove_white_line_and_comments(FILE *input);
 void read_topo_potential(GParam *param);
 void write_topo_potential(GParam const * const param, char *filename);
 void init_derived_constants(GParam *param);
-void init_data_file(FILE **dataf, FILE **chiprimefilep, FILE **topchar_tcorr_f, GParam const * const param);
 void free_hierarc_params(GParam *param);
 
 // print simulation parameters aux

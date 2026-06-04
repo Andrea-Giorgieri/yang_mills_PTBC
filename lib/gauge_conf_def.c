@@ -74,36 +74,50 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu
 		{
 		int cartcoord[STDIM];
 		int is_on_open_boundary;
+		int cut_obc_dir_link;
+
+		//for open boundary conditions: the cut is between x_obc and x_obc + 1
 		si_to_cart(cartcoord, r, param);
 		is_on_open_boundary = 0;
+		cut_obc_dir_link = 0;
 		if(param->d_obc_dir != -1)
-			if(cartcoord[param->d_obc_dir] == x_obc || cartcoord[param->d_obc_dir] == periodic_condition(x_obc - 1, param->d_size[param->d_obc_dir]))
+			{
+			if(cartcoord[param->d_obc_dir] == x_obc)
+				{
 				is_on_open_boundary = 1;
+				cut_obc_dir_link = 1;
+				}
+			if(cartcoord[param->d_obc_dir] == periodic_condition(x_obc + 1, param->d_size[param->d_obc_dir]))
+				{
+				is_on_open_boundary = 1;
+				cut_obc_dir_link = 0;
+				}
+			}
 
 		for(int i = 0; i < STDIM; i++)
 			{
 			for(int j = i + 1; j < STDIM; j++)
 				{
-				//for clockwise and anti-clockwise plaquette
+				//for anti-clockwise and clockwise plaquette
 				int si_ij = dirs_to_si(i, j);
 				int si_ji = dirs_to_si(j, i);
 
 				// initialize to 1, 0, 1/2 if pbc, obc(temporal), obc(spatial) respectively,
 				// then multiply by twist phase
-				if(is_on_open_boundary == 1)
+				GC->Z[r][si_ij] = 1.0 + I * 0.0;
+				if(i == param->d_obc_dir || j == param->d_obc_dir)
 					{
-					if(i == param->d_obc_dir || j == param->d_obc_dir)
+					if(cut_obc_dir_link == 1)
 						{
 						GC->Z[r][si_ij] = 0.0 + I * 0.0;
-						}
-					else
-						{
-						GC->Z[r][si_ij] = 0.5 + I * 0.0;
 						}
 					}
 				else
 					{
-					GC->Z[r][si_ij] = 1.0 + I * 0.0;
+					if(is_on_open_boundary == 1)
+						{
+						GC->Z[r][si_ij] = 0.5 + I * 0.0;
+						}
 					}
 				if(cartcoord[i] == x_mu && cartcoord[j] == x_nu)
 					{
@@ -563,7 +577,7 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const * const param, long step)
 		fclose(fp);
 		x_mu = 0;
 		x_nu = 0;
-		x_obc = 0;
+		x_obc = param->d_obc_default_pos;
 		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, name);
 		initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
 		}
@@ -640,7 +654,7 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 	x_nu = 0;
 
 	// default open boundary position
-	x_obc = 0;
+	x_obc = param->d_obc_default_pos;
 
 	// update twist and open boundary position if starting from stored conf
 	if(param->d_start == 2)
@@ -808,7 +822,7 @@ void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, GPara
 				}
 			else
 				{
-				*x_obc = 0;
+				*x_obc = param->d_obc_default_pos;
 				}
 			}
 		fclose(fp);
@@ -1003,7 +1017,7 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 			fprintf(fp, "%d %d %d %d \n", 0, 1, 0, 0);
 			}
 
-		j = 0; // default boundary position
+		j = param->d_obc_default_pos; // arbitrary boundary position to avoid errors
 		if(param->d_obc_dir != -1) // find position of open boundary
 			{
 			for(i=0; i<STDIM; i++)
@@ -1011,20 +1025,13 @@ void write_twist_on_file_with_name(Gauge_Conf const * const GC,
 				cartcoord[i] = 0;
 				if(i != param->d_obc_dir) mu = i; // any direction different from obc_dir
 				}
-			for(i=0; i<param->d_size[param->d_obc_dir]-1; i++)
+			for(i=0; i<param->d_size[param->d_obc_dir]; i++)
 				{
 				cartcoord[param->d_obc_dir] = i;
-				z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(param->d_obc_dir,mu)];
-				if (cabs(z) < MIN_VALUE)
+				z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(param->d_obc_dir, mu)];
+				if(cabs(z) < MIN_VALUE)
 					{
-					if(i != 0) j = i + 1;
-					else
-						{
-						cartcoord[param->d_obc_dir] = 1;
-						z = GC->Z[cart_to_si(cartcoord, param)][dirs_to_si(param->d_obc_dir,mu)];
-						if (cabs(z) < MIN_VALUE) j = 1;
-						else j = 0;
-						}
+					j = i;
 					break;
 					}
 				}

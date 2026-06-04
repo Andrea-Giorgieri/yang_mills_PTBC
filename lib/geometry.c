@@ -39,19 +39,16 @@ void init_geometry(Geometry *geo, GParam const * const param)
 		allocate_array_long(&(geo->d_nnm[r]), STDIM, __FILE__, __LINE__);
 		}
 
-	allocate_array_int( &(geo->d_timeslice), param->d_volume, __FILE__, __LINE__);
-	allocate_array_long(&(geo->d_spacecomp), param->d_volume, __FILE__, __LINE__);
-
-	allocate_array_long_pointer(&(geo->d_tsp), param->d_size[0], __FILE__, __LINE__);
-	for(long r=0; r<param->d_size[0]; r++)
-		allocate_array_long(&(geo->d_tsp[r]), param->d_space_vol[0], __FILE__, __LINE__);
-
-	allocate_array_long_pointer_pointer(&(geo->d_musp), STDIM, __FILE__, __LINE__);
+	allocate_array_int_pointer( &(geo->d_mucomp), STDIM, __FILE__, __LINE__);
+	allocate_array_long_pointer(&(geo->d_muorth), STDIM, __FILE__, __LINE__);
+	allocate_array_long_pointer_pointer(&(geo->d_mutimespace), STDIM, __FILE__, __LINE__);
 	for(int i=0; i<STDIM; i++)
 		{
-		allocate_array_long_pointer(&(geo->d_musp[i]), param->d_size[i], __FILE__, __LINE__);
+		allocate_array_int( &(geo->d_mucomp[i]), param->d_volume, __FILE__, __LINE__);
+		allocate_array_long(&(geo->d_muorth[i]), param->d_volume, __FILE__, __LINE__);
+		allocate_array_long_pointer(&(geo->d_mutimespace[i]), param->d_size[i], __FILE__, __LINE__);
 		for(long r=0; r<param->d_size[i]; r++)
-			allocate_array_long(&(geo->d_musp[i][r]), (param->d_volume)/(param->d_size[i]), __FILE__, __LINE__);
+			allocate_array_long(&(geo->d_mutimespace[i][r]), (param->d_volume)/(param->d_size[i]), __FILE__, __LINE__);
 		}
 
 	// initialize nearest neighbors
@@ -82,16 +79,15 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	#endif
 	for(long r=0; r<param->d_volume; r++)
 		{
-		int value;
-		long rp;
-		si_to_sisp_and_t_compute(&rp, &value, r, param);
-		geo->d_spacecomp[r] = rp;
-		geo->d_timeslice[r] = value;
-		geo->d_tsp[value][rp] = r;
-		for(int i=0; i<STDIM; i++)
+		int x_mu;
+		long r_sp;
+
+		for(int mu=0; mu<STDIM; mu++)
 			{
-			si_to_sisp_and_mu_compute(&rp, &value, r, i, param);
-			geo->d_musp[i][value][rp] = r;
+			si_to_sisp_and_mu_compute(&r_sp, &x_mu, r, mu, param);
+			geo->d_mutimespace[mu][x_mu][r_sp] = r;
+			geo->d_mucomp[mu][r] = x_mu;
+			geo->d_muorth[mu][r] = r_sp;
 			}
 		}
 
@@ -118,22 +114,19 @@ void free_geometry(Geometry *geo, GParam const * const param)
 	free(geo->d_nnp);
 	free(geo->d_nnm);
 
-	free(geo->d_timeslice);
-	free(geo->d_spacecomp);
-	for(r=0; r<param->d_size[0]; r++)
-		{
-		free(geo->d_tsp[r]);
-		}
-	free(geo->d_tsp);
 	for(i=0; i<STDIM; i++)
 		{
 		for(r=0; r<param->d_size[i]; r++)
 			{
-			free(geo->d_musp[i][r]);
+			free(geo->d_mutimespace[i][r]);
 			}
-		free(geo->d_musp[i]);
+		free(geo->d_mutimespace[i]);
+		free(geo->d_muorth[i]);
+		free(geo->d_mucomp[i]);
 		}
-	free(geo->d_musp);
+	free(geo->d_mutimespace);
+	free(geo->d_muorth);
+	free(geo->d_mucomp);
 	}
 
 

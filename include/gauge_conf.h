@@ -83,7 +83,8 @@ typedef struct Meas_Utils {
 	double  *multipolyim;
 	double  *polyre_density;
 	double  *polyim_density;
-	double  *sum_q_timeslices;
+	double  *e_slices;
+	double  *q_slices;
 	double  *chi_prime;
 	double **charge_prime;
 
@@ -96,8 +97,9 @@ typedef struct Meas_Utils {
 	FILE *energydensityfilep;
 	FILE *polyakovdensityfilep[STDIM];
 	FILE *chiprimefilep;
-	FILE *topchar_tcorr_filep;
-	}	Meas_Utils;
+	FILE *e_slices_filep;
+	FILE *q_slices_filep;
+	} Meas_Utils;
 
 // auxiliary arrays and flags for tuning of topo_potential
 typedef struct Tune_Utils {
@@ -327,6 +329,14 @@ void clover_disc_energy(Gauge_Conf const * const GC,
 						GParam const * const param,
 						double * const energy);
 
+void clover_energy_slices(	Gauge_Conf const * const GC,
+							Geometry const * const geo,
+							GParam const * const param,
+							int const mu,
+							double *slices,
+							int meas_count,
+							FILE* filep);
+
 void action(			Gauge_Conf const * const GC,
 						Geometry const * const geo,
 						GParam const * const param,
@@ -390,9 +400,13 @@ double topcharge_prime(		Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param, int const dir);
 
-void topcharge_timeslices(	Gauge_Conf const * const GC,
+void topcharge_slices(		Gauge_Conf const * const GC,
 							Geometry const * const geo,
-							GParam const * const param, double *ris, int ncool, FILE*);
+							GParam const * const param,
+							int const mu,
+							double *slices,
+							int meas_count,
+							FILE* filep);
 
 
 double topo_chi_prime(				Gauge_Conf const * const GC,

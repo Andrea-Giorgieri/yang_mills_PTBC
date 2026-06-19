@@ -5,12 +5,14 @@
 #include"gparam.h"
 
 typedef struct Geometry {
-   long  **d_nnp;          // d_nnp_loc[r][i]    = next neighbour (on the local lattice) in dir.  i of the site r
-   long  **d_nnm;          // d_nnm_loc[r][i]    = next neighbour (on the local lattice) in dir. -i of the site r
-   int   **d_mucomp;       // d_mucomp[mu][r]    = mu component of r
-   long  **d_muorth;       // d_muorth[mu][r]    = mu-orthogonal-space component of r
-   long ***d_mutimespace;  // d_mutimespace[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
-   int     d_orth_dir[STDIM][STDIM-1];  // d_orth_dir[mu][i] = i-th direction orthogonal to mu
+	long  **d_nnp;                           // d_nnp_loc[r][i]    = next neighbour (on the local lattice) in dir.  i of the site r
+	long  **d_nnm;                           // d_nnm_loc[r][i]    = next neighbour (on the local lattice) in dir. -i of the site r
+	int   **d_mucomp;                        // d_mucomp[mu][r]    = mu component of r
+	long  **d_muorth;                        // d_muorth[mu][r]    = mu-orthogonal-space component of r
+	long ***d_mutimespace;                   // d_mutimespace[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
+	int     d_orth_dir[STDIM][STDIM-1];      // d_orth_dir[mu][i] = i-th direction orthogonal to mu
+	int     d_signed_ord_orth_dir[4][4][2];  // (mu, nu, sood[mu][nu][0], sood[mu][nu][1]) is an even permutation of (0,1,2,3)
+	int     d_indep_perm_dir[4][3];          // (ipd[0][i], ipd[1][i], ipd[2][i], ipd[3][i]) is the i-th independent permutation of (0,1,2,3)
 } Geometry;
 
 typedef struct Rectangle {
@@ -121,6 +123,9 @@ void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam co
 void init_rect_utils(Rect_Utils *rect_aux, GParam const * const param);
 void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param);
 
+// for boundary conditions
+int ring_distance(int const i, int const j, int const L);
+int link_ring_distance(int const i, int const j, int const L);
 
 // needed to compute chi'
 double square_distance(long const i, long const j, GParam const * const param);

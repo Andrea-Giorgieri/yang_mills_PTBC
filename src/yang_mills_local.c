@@ -164,27 +164,19 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
-	fp=fopen("template_input.example", "w");
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_cooling_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_cooling_parameters(fp);
+	print_template_output_parameters(fp);
+
+	fclose(fp);
 	}
 
 int main (int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -198,18 +190,11 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			}
-		}
-	real_main(in_file);
+	
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
+	
 	return EXIT_SUCCESS;
 	}
 

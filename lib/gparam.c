@@ -80,10 +80,9 @@ int param_any_string(char * val, char * msg)
 
 void check_required_string(char * val, char * name, int required)
 	{
-	if (strcmp(val, "") == 0 && required == 1)
+	if (required)
 		{
-		fprintf(stderr, "Error: parameter '%s' is required (%s, %d)\n", name, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		REQUIRE(strcmp(val, "") != 0, "parameter '%s' is required", name);
 		}
 	}
 
@@ -94,17 +93,9 @@ void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*c
 	unsigned int temp;
 	int err;
 	char msg[STD_STRING_LENGTH];
-	err=fscanf(fp, "%u", &temp);
-	if(err!=1)
-		{
-		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if (condition(temp, msg) == 1)
-		{
-		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	err = fscanf(fp, "%u", &temp);
+	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
+	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
 	*ptr=temp;
 	}
 
@@ -113,17 +104,9 @@ void set_int_param(FILE* fp, int * ptr, char const * const name, int (*condition
 	int temp;
 	int err;
 	char msg[STD_STRING_LENGTH];
-	err=fscanf(fp, "%d", &temp);
-	if(err!=1)
-		{
-		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if (condition(temp, msg) == 1)
-		{
-		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	err = fscanf(fp, "%d", &temp);
+	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
+	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
 	*ptr=temp;
 	}
 
@@ -132,17 +115,9 @@ void set_double_param(FILE* fp, double * ptr, char const * const name, int (*con
 	double temp;
 	int err;
 	char msg[STD_STRING_LENGTH];
-	err=fscanf(fp, "%lf", &temp);
-	if(err!=1)
-		{
-		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if (condition(temp, msg) == 1)
-		{
-		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	err = fscanf(fp, "%lf", &temp);
+	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
+	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
 	*ptr=temp;
 	}
 
@@ -151,17 +126,9 @@ void set_string_param(FILE* fp, char * ptr, char const * const name, int (*condi
 	char temp[STD_STRING_LENGTH];
 	int err;
 	char msg[STD_STRING_LENGTH];
-	err=fscanf(fp, "%s", temp);
-	if(err!=1)
-		{
-		fprintf(stderr, "Error reading parameter %s from input file (%s, %d)\n", name, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if (condition(temp, msg) == 1)
-		{
-		fprintf(stderr, "Error: %s %s (%s, %d)\n", name, msg, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	err = fscanf(fp, "%s", temp);
+	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
+	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
 	strcpy(ptr, temp);
 	}
 
@@ -199,6 +166,7 @@ void set_defaults(GParam * const param)
 	// twist and open boundary conditions
 	for (i=0; i<STDIM*(STDIM-1)/2; i++) param->d_k_twist[i] = 0;
 	param->d_obc_dir = -1;
+	param->d_obc_bulk = -1;
 
 	// parallel tempering
 	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
@@ -240,6 +208,7 @@ void set_defaults(GParam * const param)
 	param->d_clover_energy_meas    = 0;
 	param->d_energy_density_meas   = 0;
 	param->d_charge_meas           = 0;
+	param->d_charge_density_meas   = 0;
 	param->d_chi_prime_meas        = 0;
 	param->d_charge_prime_meas     = 0;
 	param->d_polyakov_meas         = 0;
@@ -247,7 +216,9 @@ void set_defaults(GParam * const param)
 	param->d_polyakov_density_meas = 0;
 	param->d_energy_slices_meas    = 0;
 	param->d_charge_slices_meas    = 0;
+	param->d_charge_p_slices_meas  = 0;
 	param->d_multipolyakov_order   = 0;
+	param->d_action_meas           = 0;
 
 	// filenames
 	strcpy(param->d_ml_file,               "");
@@ -255,6 +226,7 @@ void set_defaults(GParam * const param)
 	strcpy(param->d_twist_file,            "");
 	strcpy(param->d_data_file,             "");
 	strcpy(param->d_energydensity_file,    "");
+	strcpy(param->d_chargedensity_file,    "");
 	strcpy(param->d_polyakovdensity_file,  "");
 	strcpy(param->d_chiprime_file,         "");
 	strcpy(param->d_energy_slices_file,    "");
@@ -277,12 +249,8 @@ void readinput(char const * const in_file, GParam * const param)
 	set_defaults(param);
 
 	// open the input file
-	input=fopen(in_file, "r");
-	if(input==NULL)
-		{
-		fprintf(stderr, "Error opening input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	input = fopen(in_file, "r");
+	REQUIRE(input != NULL, "failed to open input file %s", in_file);
 
 	// slide the input file
 	for(;;)
@@ -294,12 +262,8 @@ void readinput(char const * const in_file, GParam * const param)
 		ungetc(i, input);
 
 		// read the name of a parameter in str
-		err=fscanf(input, "%s", str);
-		if(err!=1)
-			{
-			fprintf(stderr, "Error reading input file %s (%s, %d)\n", in_file, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		err = fscanf(input, "%s", str);
+		REQUIRE(err == 1, "error reading the name of a parameter from input file");
 
 		// look for the parameter and set its value
 
@@ -346,6 +310,13 @@ void readinput(char const * const in_file, GParam * const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_obc_dir), param_name, &param_any_int);
+			continue;
+			}
+		
+		strcpy(param_name, "obc_bulk");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_obc_bulk), param_name, &param_nonnegative_int);
 			continue;
 			}
 
@@ -484,6 +455,13 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_charge_meas), param_name, &param_bool_int);
 			continue;
 			}
+		
+		strcpy(param_name, "charge_density_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_charge_density_meas), param_name, &param_bool_int);
+			continue;
+			}
 
 		strcpy(param_name, "polyakov_meas");
 		if(strcmp(str, param_name) == 0)
@@ -520,6 +498,13 @@ void readinput(char const * const in_file, GParam * const param)
 			continue;
 			}
 		
+		strcpy(param_name, "action_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_action_meas), param_name, &param_bool_int);
+			continue;
+			}
+		
 		strcpy(param_name, "energy_slices_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -531,6 +516,13 @@ void readinput(char const * const in_file, GParam * const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_charge_slices_meas), param_name, &param_bool_int);
+			continue;
+			}
+		
+		strcpy(param_name, "charge_p_slices_meas");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_charge_p_slices_meas), param_name, &param_bool_int);
 			continue;
 			}
 
@@ -701,6 +693,13 @@ void readinput(char const * const in_file, GParam * const param)
 			set_string_param(input, param->d_energydensity_file, param_name, &param_any_string);
 			continue;
 			}
+		
+		strcpy(param_name, "charge_density_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_chargedensity_file, param_name, &param_any_string);
+			continue;
+			}
 
 		strcpy(param_name, "polyakov_density_file");
 		if(strcmp(str, param_name) == 0)
@@ -848,8 +847,7 @@ void readinput(char const * const in_file, GParam * const param)
 			}
 
 		// raise error if parameter is unrecognized
-		fprintf(stderr, "Error: unrecognized option %s in input file %s (%s, %d)\n", str, in_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		REQUIRE(0, "unrecognized parameter '%s' in input file %s", str, in_file);
 		}
 
 	// close the input file
@@ -861,27 +859,23 @@ void readinput(char const * const in_file, GParam * const param)
 	// Further checks
 
 	// multilevel
-	if(param->d_ml_step[0]!=0)
+	if (param->d_ml_step[0] != 0)
 		{
 		check_required_string(param->d_ml_file, "ml_file", 1);
-		if(param->d_size[0] % param->d_ml_step[0] || param->d_size[0] < param->d_ml_step[0])
-			{
-			fprintf(stderr, "Error: size[0] has to be divisible by ml_step[0] and satisfy ml_step[0]<=size[0] (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+
+		REQUIRE(param->d_size[0] % param->d_ml_step[0] == 0 &&
+				param->d_size[0] >= param->d_ml_step[0],
+				"size[0] must be divisible by ml_step[0] and >= ml_step[0]");
+
 		for(i=1; i<NLEVELS; i++)
 			{
-			if(param->d_ml_step[i-1] % param->d_ml_step[i] || param->d_ml_step[i-1] <= param->d_ml_step[i])
-				{
-				fprintf(stderr, "Error: ml_step[%d] has to be divisible by ml_step[%d] and larger than it (%s, %d)\n", i-1, i, __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			REQUIRE(param->d_ml_step[i-1] % param->d_ml_step[i] == 0 &&
+					param->d_ml_step[i-1] > param->d_ml_step[i],
+					"ml_step[%d] must divide ml_step[%d] and be smaller",
+					i, i-1);
 			}
-		if(param->d_ml_step[NLEVELS-1]==1)
-			{
-			fprintf(stderr, "Error: ml_step[%d] has to be larger than 1 (%s, %d)\n", NLEVELS-1, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+
+		REQUIRE(param->d_ml_step[NLEVELS-1] > 1, "ml_step[%d] must be > 1", NLEVELS-1);
 		}
 
 	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
@@ -890,93 +884,77 @@ void readinput(char const * const in_file, GParam * const param)
 	#ifdef OPENMP_MODE
 	for(i=0; i<STDIM; i++)
 		{
-		if((param->d_size[i] % 2) !=0)
-			{
-			fprintf(stderr, "Error: size[%d] is not even.\n", i);
-			fprintf(stderr, "When using OpenMP all the sides of the lattice have to be even! (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		REQUIRE((param->d_size[i] % 2) == 0, "when using OpenMP all lattice sizes must be even");
 		}
 	#endif
 
 	// sizes
-	err=0;
 	for(i=0; i<STDIM; i++)
-		if(param->d_size[i]==1)
-			{
-			fprintf(stderr, "Error: all sizes have to be larger than 1 (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		{
+		REQUIRE(param->d_size[i] > 1, "all lattice sizes must be larger than 1");
+		}
 
 	// open boundary conditions
-	if(param->d_obc_dir < -1 || param->d_obc_dir >= STDIM)
+	REQUIRE(param->d_obc_dir >= -1 && param->d_obc_dir < STDIM,
+		"direction of open boundary conditions must be -1 (PBC) or in [0, %d)",
+		STDIM);
+	if(param->d_obc_dir != -1 && param->d_obc_bulk == -1)
 		{
-		fprintf(stderr, "Error: direction of open boundary conditions must be -1 (pbc) or a valid space-time dimension (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		param->d_obc_bulk = param->d_size[param->d_obc_dir];
 		}
 
 	// parallel tempering
-	if(param->d_defect_dir >= STDIM)
+	REQUIRE(param->d_defect_dir >= 0 && param->d_defect_dir < STDIM,
+		"defect_dir must be in [0, %d)",
+		STDIM);
+	for(i=0; i<STDIM-1; i++)
 		{
-		fprintf(stderr, "Error: defect_dir must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(param->d_L_defect[0]>param->d_size[0])
-		{
-		fprintf(stderr, "Error: defect's t-length is greater than lattice's t-length (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(param->d_L_defect[1]>param->d_size[2])
-		{
-		fprintf(stderr, "Error: defect's y-length is greater than lattice's y-length (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(param->d_L_defect[2]>param->d_size[3])
-		{
-		fprintf(stderr, "Error: defect's z-length is greater than lattice's z-length (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		int j = (i < param->d_defect_dir) ? i : i + 1;
+		REQUIRE(param->d_L_defect[i] <= param->d_size[j],
+			"defect length %d (%d) exceeds lattice size %d (%d)",
+			i,
+			param->d_L_defect[i],
+			j,
+			param->d_size[j]);
 		}
 
 	// check on gradflow parameters
-	if(param->d_agf_meas_each <= param->d_agf_time_bin)
-		{
-		fprintf(stderr, "Error: agf_meas_each must be greater than agf_time_bin (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(param->d_agf_meas_each < param->d_agf_step)
-		{
-		fprintf(stderr, "Error: agf_meas_each must be greater than agf_step (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(param->d_agf_meas_each > 0 && param->d_agf_meas_each <= MIN_VALUE)
-		{
-		fprintf(stderr, "Error: if not zero, agf_meas_each must be greater than MIN_VALUE in /include/macro.h (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(param->d_agf_meas_each > param->d_agf_time_bin,
+			"agf_meas_each must be greater than agf_time_bin");
 
-	// check on topological observables
-	if(!(STDIM==4 && NCOLOR>1) && !(STDIM==2 && NCOLOR==1) )
+	REQUIRE(param->d_agf_meas_each > param->d_agf_step,
+			"agf_meas_each must be greater than agf_step");
+
+	REQUIRE(param->d_agf_meas_each == 0 ||
+			param->d_agf_meas_each > MIN_VALUE,
+			"if nonzero, agf_meas_each must be > MIN_VALUE in macro.h");
+
+	// check on topological observables and theta term
+	if (!((STDIM == 4 && NCOLOR > 1) || (STDIM == 2 && NCOLOR == 1)))
 		{
-		err  = param->d_charge_meas;
+		err = 0;
+		err += param->d_charge_meas;
 		err += param->d_charge_prime_meas;
 		err += param->d_chi_prime_meas;
 		err += param->d_charge_slices_meas;
-		if (err != 0)
-			{
-			fprintf(stderr, "Error: can't measure topological observables with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		err += param->d_charge_p_slices_meas;
+
+		REQUIRE(err == 0, "topological observables not allowed with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
+
 		#ifdef MULTICANONICAL_MODE
-		fprintf(stderr, "Error: can't use multicanonical mode with these space-time dimensions and colors! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		REQUIRE(0, "multicanonical mode not supported with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
 		#endif
 		}
+	#ifdef THETA_MODE
+	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
+	#endif
 	for(i=0; i<param->d_multipolyakov_order; i++)
-		if (param->d_multipolyakov_dirs[i] >= STDIM)
-			{
-			fprintf(stderr, "Error: multipolyakov_dirs must be between 0 and %d (%s, %d)\n", STDIM-1, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		{
+		REQUIRE(param->d_multipolyakov_dirs[i] >= 0 &&
+				param->d_multipolyakov_dirs[i] < STDIM,
+				"multipolyakov_dirs[%d] must be in [0, %d)",
+				i, STDIM);
+		}
 
 	// check on filenames
 	check_required_string(param->d_conf_file,             "conf_file",  1);
@@ -984,10 +962,12 @@ void readinput(char const * const in_file, GParam * const param)
 	check_required_string(param->d_log_file,              "log_file",   1);
 	check_required_string(param->d_data_file,             "data_file",  1);
 	check_required_string(param->d_energydensity_file,    "energy_density_file",   param->d_energy_density_meas);
+	check_required_string(param->d_chargedensity_file,    "charge_density_file",   param->d_charge_density_meas);
 	check_required_string(param->d_polyakovdensity_file,  "polyakov_density_file", param->d_polyakov_density_meas);
 	check_required_string(param->d_chiprime_file,         "chiprime_data_file",    param->d_chi_prime_meas);
 	check_required_string(param->d_energy_slices_file,    "energy_slices_file",    param->d_energy_slices_meas);
 	check_required_string(param->d_charge_slices_file,    "topcharge_tcorr_file",  param->d_charge_slices_meas);
+	check_required_string(param->d_charge_slices_file,    "topcharge_tcorr_file",  param->d_charge_p_slices_meas);
 	check_required_string(param->d_swap_acc_file,         "swap_acc_file",         param->d_N_replica_pt > 1);
 	check_required_string(param->d_swap_tracking_file,    "swap_track_file",       param->d_N_replica_pt > 1);
 
@@ -1004,16 +984,8 @@ void readinput(char const * const in_file, GParam * const param)
 // read topo potential from file
 void read_topo_potential(GParam * const param)
 	{
-	int i, j, a, err;
-	double x, V;
-	FILE *fp;
-
-	fp=fopen(param->d_topo_potential_file, "r");
-	if( fp==NULL )
-		{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", param->d_topo_potential_file, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	FILE *fp = fopen(param->d_topo_potential_file, "r");
+	REQUIRE(fp != NULL, "failed to open topological potential file %s", param->d_topo_potential_file);
 
 	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
 	for (int a=0; a<param->d_N_replica_pt; a++)
@@ -1022,60 +994,44 @@ void read_topo_potential(GParam * const param)
 		}
 
 	// read x and V_a(x) from topo_potential file
-	for (i=0; i<param->d_n_grid; i++)
+	for(int i=0; i<param->d_n_grid; i++)
 		{
+		double x, V;
+		int err;
+
 		// read x
-		err=fscanf(fp, "%lf", &x);
-		if(err!=1)
-			{
-			fprintf(stderr, "Error: can't read the first element of the %d-th row of the file (%s, %d)\n", i,__FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		j=(int)floor((x+param->d_grid_max+(param->d_grid_step/2.0))/param->d_grid_step);
-		if (i!= j)
-			{
-			fprintf(stderr, "Error: found %d (%lf) when expecting %d (%s, %d)\n", j, x, i, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
+		err = fscanf(fp, "%lf", &x);
+		REQUIRE(err == 1, "can't read x at row %d", i);
+		int j = (int)floor((x + param->d_grid_max + (param->d_grid_step / 2.0)) / param->d_grid_step);
+		REQUIRE(i == j, "grid mismatch: found %d for x=%lf, expected %d", j, x, i);
+
 		// read V_a(x)
-		for(a=0; a<param->d_N_replica_pt; a++)
+		for(int a=0; a<param->d_N_replica_pt; a++)
 			{
-			err=fscanf(fp, "%lf", &V);
-			if(err!=1)
-				{
-				fprintf(stderr, "Error: can't read the %d-th element of the %d-th row of the file (%s, %d)\n", a+2, i,__FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			err = fscanf(fp, "%lf", &V);
+			REQUIRE(err == 1, "can't read V_%d at row %d", a, i);
 			param->d_grid[a][i]=V;
 			}
 		}
+
 	fclose(fp);
 	}
 
 // write topo potential to file with name
 void write_topo_potential(GParam const * const param, char * filename)
 	{
-	int i, a;
-	double x;
-	FILE *fp;
-
-	fp=fopen(filename, "w");
-	if( fp==NULL )
-		{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", filename, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	FILE *fp = fopen(filename, "w");
+	REQUIRE(fp != NULL, "failed to open topological potential file %s", filename);
 
 	// write x and V_a(x)
-	for (i=0; i<param->d_n_grid; i++)
+	for(int i=0; i<param->d_n_grid; i++)
 		{
-		x = i * param->d_grid_step - param->d_grid_max;
-
 		// write x
+		double x = i * param->d_grid_step - param->d_grid_max;
 		fprintf(fp, "% 12.6e ", x);
 
 		// write V_a(x)
-		for(a=0; a<param->d_N_replica_pt; a++)
+		for(int a=0; a<param->d_N_replica_pt; a++)
 			{
 			fprintf(fp, "% 12.6e ", param->d_grid[a][i]);
 			}
@@ -1090,16 +1046,20 @@ void init_derived_constants(GParam *param)
 	int i, j;
 
 	// derived constants
-	param->d_volume=1;
-	for(i=0; i<STDIM; i++) param->d_space_vol[i]=1;
+	param->d_max_size = param->d_size[0];
+	param->d_min_size = param->d_size[0];
+	param->d_volume = 1;
+	for(i=0; i<STDIM; i++) param->d_space_vol[i] = 1;
 	for(i=0; i<STDIM; i++)
 		{
-		(param->d_volume)*=(param->d_size[i]);
-		for(j=0; j<STDIM; j++) if (j != i) (param->d_space_vol[j])*=(param->d_size[i]);
+		if (param->d_size[i] > param->d_max_size) param->d_max_size = param->d_size[i];
+		if (param->d_size[i] < param->d_min_size) param->d_min_size = param->d_size[i];
+		(param->d_volume) *= (param->d_size[i]);
+		for(j=0; j<STDIM; j++) if (j != i) (param->d_space_vol[j]) *= (param->d_size[i]);
 		}
 
-	param->d_inv_vol = 1.0/((double) param->d_volume);
-	for(i=0; i<STDIM; i++) param->d_inv_space_vol[i] = 1.0/((double) param->d_space_vol[i]);
+	param->d_inv_vol = 1.0 / ((double)param->d_volume);
+	for(i=0; i<STDIM; i++) param->d_inv_space_vol[i] = 1.0 / ((double)param->d_space_vol[i]);
 
 	// volume of the defect
 	param->d_volume_defect=1;
@@ -1109,10 +1069,10 @@ void init_derived_constants(GParam *param)
 		}
 
 	// number of grid points (multicanonic only)
-	param->d_n_grid = (int)((2.0*param->d_grid_max/param->d_grid_step)+1.0);
+	param->d_n_grid = (int)((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
 
 	// number of planes (twisted boundary conditions only)
-	param->d_n_planes = STDIM*(STDIM-1);
+	param->d_n_planes = STDIM * (STDIM - 1);
 	
 	// default open boundary position
 	param->d_obc_default_pos = 0;
@@ -1213,7 +1173,10 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "\n\n");
 
 	if(param->d_obc_dir != -1)
+		{
 		fprintf(fp, "obc_dir: %d\n", param->d_obc_dir);
+		fprintf(fp, "obc_bulk: %d\n", param->d_obc_bulk);
+		}
 	fprintf(fp, "twist parameters: ");
 	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
 	fprintf(fp,"\n");
@@ -1233,12 +1196,14 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "clover_energy_meas:    %d\n", param->d_clover_energy_meas);
 	fprintf(fp, "energy_density_meas:   %d\n", param->d_energy_density_meas);
 	fprintf(fp, "charge_meas:           %d\n", param->d_charge_meas);
+	fprintf(fp, "charge_density_meas:   %d\n", param->d_charge_density_meas);
 	fprintf(fp, "polyakov_meas:         %d\n", param->d_polyakov_meas);
 	fprintf(fp, "polyakov_powers_meas:  %d\n", param->d_polyakov_powers_meas);
 	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
 	fprintf(fp, "energy_slices_meas:    %d\n", param->d_energy_slices_meas);
 	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_charge_slices_meas);
+	fprintf(fp, "charge_p_slices_meas:  %d\n", param->d_charge_p_slices_meas);
 	fprintf(fp, "\n");
 
 	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
@@ -1800,6 +1765,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "clover_energy_meas    1  # 1=YES, 0=NO\n");
 	fprintf(fp, "energy_density_meas   0  # 1=YES, 0=NO\n");
 	fprintf(fp, "charge_meas           1  # 1=YES, 0=NO\n");
+	fprintf(fp, "charge_density_meas   0  # 1=YES, 0=NO\n");
 	fprintf(fp, "polyakov_meas         0  # 1=YES, 0=NO\n");
 	fprintf(fp, "polyakov_density_meas 0  # 1=YES, 0=NO\n");
 	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
@@ -1904,6 +1870,7 @@ void print_template_output_parameters(FILE *fp)
 	fprintf(fp, "twist_file            twist.dat\n");
 	fprintf(fp, "data_file             dati.dat\n");
 	fprintf(fp, "energy_density_file   energy_density.dat\n");
+	fprintf(fp, "charge_density_file   charge_density.dat\n");
 	fprintf(fp, "polyakov_density_file polyakov_density.dat\n");
 	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
 	fprintf(fp, "energy_slices_file    energy_slices.dat\n");

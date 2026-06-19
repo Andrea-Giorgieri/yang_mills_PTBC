@@ -62,11 +62,7 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// find and init first conf
 	while(init_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
-	if (step > stop_index)
-		{
-		fprintf(stderr, "No configuration found up to update index %ld (%s, %d)\n", stop_index, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(step <= stop_index, "no configuration found up to update index %ld", stop_index);
 	stop_timer(&(timers.init_timer));
 
 	// perform measures and load next conf
@@ -101,34 +97,24 @@ void real_main(char *in_file, long step, long stop_index)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp = fopen("template_input.example", "w");
+	print_template_volume_parameters(fp);
+	print_template_pt_parameters(fp);
+	print_template_twist_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_template_multicanonic_parameters(fp);
+	#endif
+	print_template_simul_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_output_parameters(fp);
 
-	if(fp == NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_pt_parameters(fp);
-		print_template_twist_parameters(fp);
-		#ifdef MULTICANONICAL_MODE
-		print_template_multicanonic_parameters(fp);
-		#endif
-		print_template_simul_parameters(fp);
-		print_template_adaptive_gradflow_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	fclose(fp);
 	}
 
 int main(int argc, char **argv)
 	{
-	char in_file[500];
-
 	if(argc != 4)
 		{
 		int parallel_tempering = 0;
@@ -142,24 +128,22 @@ int main(int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			}
-		}
+	
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	
+	char *end;
 
-	long start_index = strtol(argv[2], NULL, 10);
-	long stop_index = strtol(argv[3], NULL, 10);
-	if(start_index < 0) fprintf(stderr, "argument 'start_index' must be a non-negative integer\n");
-	if(stop_index < 0) fprintf(stderr, "argument 'stop_index' must be a non-negative integer\n");
-	if(stop_index < start_index) fprintf(stderr, "argument 'stop_index' must not be smaller than argument 'start_index' \n");
-	real_main(in_file, start_index, stop_index);
+	long start_index = strtol(argv[2], &end, 10);
+	REQUIRE(*end == '\0', "start_index is not a valid integer");
+
+	long stop_index = strtol(argv[3], &end, 10);
+	REQUIRE(*end == '\0', "stop_index is not a valid integer");
+
+	REQUIRE(start_index >= 0, "start_index must be non-negative");
+	REQUIRE(stop_index >= 0, "stop_index must be non-negative");
+	REQUIRE(stop_index >= start_index, "stop_index must be >= start_index");
+
+	real_main(argv[1], start_index, stop_index);
 
 	return EXIT_SUCCESS;
 	}

@@ -267,7 +267,7 @@ void metropolis_single_swap(Gauge_Conf * const GC, int const a, int const b, dou
 		}
 	}
 
-// translation of one lattice spacing of the configuration, including the twist factors
+// translation of one lattice spacing of the configuration, including the Z factors
 // direction is chosen randomly, verse is always positive
 void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param)
 	{
@@ -282,11 +282,11 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 		if ( (aux_d>=i) && (aux_d<(i+1)) ) dir=i;
 		}
 
-	// translation in direction +dir, including the twist factors and cold lattice
+	// translation in direction +dir, including the Z factors and cold lattice
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
-	for(s=0; s<(param->d_n_planes)*(param->d_volume); s++)
+	for(s=0; s<(param->d_n_planes+1)*(param->d_volume); s++)
 		{
 		// s = j * volume + r
 		long r = s % (param->d_volume);
@@ -313,7 +313,7 @@ void conf_translation(Gauge_Conf * const GC, Geometry const * const geo, GParam 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
-	for(s=0; s<(param->d_n_planes)*(param->d_volume); s++)
+	for(s=0; s<(param->d_n_planes+1)*(param->d_volume); s++)
 		{
 		// s = j * volume + r
 		long r = s % (param->d_volume);

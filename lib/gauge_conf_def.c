@@ -59,40 +59,54 @@ void allocate_Z_with_copy(Gauge_Conf *GC, GParam const * const param)
 	allocate_array_double_complex_pointer(&(GC->Z_copy), param->d_volume, __FILE__, __LINE__);
 	for(long r=0; r<(param->d_volume); r++)
 		{
-		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes, __FILE__, __LINE__);
-		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes, __FILE__, __LINE__);
+		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes+1, __FILE__, __LINE__);
+		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes+1, __FILE__, __LINE__);
 		}
 	}
 
 
 void initialize_Z_with_copy(Gauge_Conf *GC, GParam const * const param, int x_mu, int x_nu, int x_obc)
 	{
+	int const si_bulk = param->d_n_planes; 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	for(long r=0; r<param->d_volume; r++)
 		{
+		int is_on_open_boundary = 0;
+		int cut_obc_dir_link = 0;
 		int cartcoord[STDIM];
-		int is_on_open_boundary;
-		int cut_obc_dir_link;
+		si_to_cart(cartcoord, r, param);
 
 		//for open boundary conditions: the cut is between x_obc and x_obc + 1
-		si_to_cart(cartcoord, r, param);
-		is_on_open_boundary = 0;
-		cut_obc_dir_link = 0;
+		GC->Z[r][si_bulk] = 1.0 + I * 0.0;
 		if(param->d_obc_dir != -1)
 			{
-			if(cartcoord[param->d_obc_dir] == x_obc)
+			int dir_obc = param->d_obc_dir;
+			int r_obc = cartcoord[dir_obc];
+			int L_obc = param->d_size[dir_obc];
+			int obc_distance = link_ring_distance(r_obc, x_obc, L_obc);
+			double bulk_border_distance = (L_obc - param->d_obc_bulk) / 2.0 - obc_distance;
+			if(r_obc == x_obc)
 				{
 				is_on_open_boundary = 1;
 				cut_obc_dir_link = 1;
 				}
-			if(cartcoord[param->d_obc_dir] == periodic_condition(x_obc + 1, param->d_size[param->d_obc_dir]))
+			if(r_obc == periodic_condition(x_obc + 1, L_obc))
 				{
 				is_on_open_boundary = 1;
 				cut_obc_dir_link = 0;
 				}
+			if(bulk_border_distance > 0.01)
+				{
+				GC->Z[r][si_bulk] = 0.5 + I * 0.0;
+				}
+			if(bulk_border_distance > 1.01)
+				{
+				GC->Z[r][si_bulk] = 0.0 + I * 0.0;
+				}
 			}
+		GC->Z_copy[r][si_bulk] = GC->Z[r][si_bulk];
 
 		for(int i = 0; i < STDIM; i++)
 			{
@@ -489,7 +503,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const * const pa
 				}
 			}
 		}
-	equal_lattice(GC->lattice_copy, GC->lattice, param);
+	equal_lattice(GC->lattice_copy, (GAUGE_GROUP const * const *)GC->lattice, param);
 	}
 
 
@@ -1155,7 +1169,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const * const GC
 			equal(&(GC->lattice[r][j]), &(GC2->lattice[r][j]) );
 			equal(&(GC->lattice_copy[r][j]), &(GC2->lattice_copy[r][j]) );
 			}
-		for(int j = 0; j < param->d_n_planes; j++)
+		for(int j = 0; j < param->d_n_planes+1; j++)
 			{
 			GC->Z[r][j] = GC2->Z[r][j];
 			GC->Z_copy[r][j] = GC2->Z_copy[r][j];

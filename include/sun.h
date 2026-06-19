@@ -74,11 +74,7 @@ inline void zero_SuN(SuN *restrict A)
 inline void equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -99,11 +95,7 @@ inline void equal_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -127,11 +119,7 @@ inline void equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void plus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -152,11 +140,7 @@ inline void plus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void plus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -180,11 +164,7 @@ inline void plus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void minus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -205,11 +185,7 @@ inline void minus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void minus_equal_times_real_SuN(SuN *restrict A, SuN const *const restrict B, double r)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -230,11 +206,7 @@ inline void minus_equal_times_real_SuN(SuN *restrict A, SuN const *const restric
 inline void minus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -258,11 +230,9 @@ inline void minus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void lin_comb_SuN(SuN *restrict A, double b, SuN const *const restrict B, double c, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -284,11 +254,9 @@ inline void lin_comb_SuN(SuN *restrict A, double b, SuN const *const restrict B,
 inline void lin_comb_dag1_SuN(SuN *restrict A, double b, SuN const *const restrict B, double c, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -314,11 +282,9 @@ inline void lin_comb_dag2_SuN(SuN *restrict A, double b, SuN const *const restri
 							SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -344,11 +310,9 @@ inline void lin_comb_dag12_SuN(SuN *restrict A, double b, SuN const *const restr
 							SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -405,11 +369,7 @@ inline void times_equal_complex_SuN(SuN *restrict A, double complex r)
 inline void times_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -445,11 +405,7 @@ inline void times_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void times_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -485,11 +441,9 @@ inline void times_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 inline void times_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -520,11 +474,9 @@ inline void times_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *c
 inline void times_dag1_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -555,11 +507,9 @@ inline void times_dag1_SuN(SuN *restrict A, SuN const *const restrict B, SuN con
 inline void times_dag2_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -590,11 +540,9 @@ inline void times_dag2_SuN(SuN *restrict A, SuN const *const restrict B, SuN con
 inline void times_dag12_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -858,6 +806,9 @@ int scheck_SuN(SuN const *const A);
 // sunitarize
 void unitarize_SuN(SuN *A);
 
+// TODO: bugged sunitarize for testing, remove
+double bad_unitarize_SuN(SuN *A, double const beta, FILE *fp, int const print_flag);
+
 
 // takes the traceless antihermitian part
 inline void ta_SuN(SuN *restrict A)
@@ -977,11 +928,7 @@ inline void exp_of_ta_SuN(SuN *restrict A)
 	// exp(x)=1+x(1+x/2(1+x/3*(1+x/4*(1+x/5*....
 
 	#ifdef DEBUG
-	if(ta_check_SuN(A) != 0)
-		{
-		fprintf(stderr, "Trying to exp. a non TA matrix! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(ta_check_SuN(A) == 0, "exponential of a non-TA matrix");
 	#endif
 
 	SuN aux, uno;
@@ -1051,11 +998,7 @@ void read_from_binary_file_bigen_SuN(FILE *fp, SuN *A);
 inline void TensProd_init_SuN(TensProd *restrict TP, SuN const *const restrict A1, SuN const *const restrict A2)
 	{
 	#ifdef DEBUG
-	if(A1 == A2)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A1 != A2, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER

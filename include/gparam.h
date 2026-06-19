@@ -28,6 +28,7 @@ typedef struct GParam {
 	int d_k_twist[STDIM*(STDIM-1)/2];	// twist parameter for each plane
 	int d_obc_dir;                      // direction of obc (-1 if pbc)
 	int d_obc_default_pos;              // default starting position of obc
+	int d_obc_bulk;                     // size of the bulk along d_obc_dir 
 
 	// hierarchical update (parallel tempering)
 	int  d_N_hierarc_levels; // number of hierarchical levels
@@ -58,13 +59,16 @@ typedef struct GParam {
 	int d_clover_energy_meas;
 	int d_energy_density_meas;
 	int d_charge_meas;
+	int d_charge_density_meas;
 	int d_polyakov_meas;
 	int d_polyakov_powers_meas;
 	int d_polyakov_density_meas;
 	int d_chi_prime_meas;
 	int d_charge_prime_meas;
+	int d_action_meas;
 	int d_energy_slices_meas;
 	int d_charge_slices_meas;
+	int d_charge_p_slices_meas;
 
 	int  d_multipolyakov_order;
 	int *d_multipolyakov_dirs;
@@ -104,6 +108,7 @@ typedef struct GParam {
 	char d_energy_slices_file[STD_STRING_LENGTH];    // print energy slices measures
 	char d_charge_slices_file[STD_STRING_LENGTH];    // print topological charge time correlator measures
 	char d_energydensity_file[STD_STRING_LENGTH];    // print energy density measures
+	char d_chargedensity_file[STD_STRING_LENGTH];    // print charge density measures
 	char d_polyakovdensity_file[STD_STRING_LENGTH];  // print polyakov density measures
 	char d_log_file[STD_STRING_LENGTH];              // print program details
 	char d_ml_file[STD_STRING_LENGTH];               //
@@ -115,6 +120,8 @@ typedef struct GParam {
 	unsigned int d_randseed;
 
 	// derived constants
+	int    d_max_size;             // max lattice size
+	int    d_min_size;             // min lattice size
 	long   d_volume;               // total volume
 	double d_inv_vol;              // 1 / total volume
 	long   d_space_vol[STDIM];     // volume without given component

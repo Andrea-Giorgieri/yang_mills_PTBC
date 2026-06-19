@@ -94,6 +94,62 @@ void init_geometry(Geometry *geo, GParam const * const param)
 	for(int mu=0; mu<STDIM; mu++)
 		for(int i=0; i<STDIM-1; i++)
 			geo->d_orth_dir[mu][i] = orthogonal_dir(mu, i);
+	
+	if(STDIM == 4)
+		{
+		// signed ordered orthogonal directions, only needed in 4D to write the theta term as
+		// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood[\mu][\nu][0] sood[\mu][\nu][1]} )
+		// the independent permutations are 0123 0231 0312
+		
+		geo->d_signed_ord_orth_dir[0][1][0] = 2;
+		geo->d_signed_ord_orth_dir[0][1][1] = 3;
+		geo->d_signed_ord_orth_dir[1][0][0] = 3;
+		geo->d_signed_ord_orth_dir[1][0][1] = 2;
+
+		geo->d_signed_ord_orth_dir[0][2][0] = 3;
+		geo->d_signed_ord_orth_dir[0][2][1] = 1;
+		geo->d_signed_ord_orth_dir[2][0][0] = 1;
+		geo->d_signed_ord_orth_dir[2][0][1] = 3;
+
+		geo->d_signed_ord_orth_dir[0][3][0] = 1;
+		geo->d_signed_ord_orth_dir[0][3][1] = 2;
+		geo->d_signed_ord_orth_dir[3][0][0] = 2;
+		geo->d_signed_ord_orth_dir[3][0][1] = 1;
+
+		geo->d_signed_ord_orth_dir[1][2][0] = 0;
+		geo->d_signed_ord_orth_dir[1][2][1] = 3;
+		geo->d_signed_ord_orth_dir[2][1][0] = 3;
+		geo->d_signed_ord_orth_dir[2][1][1] = 0;
+
+		geo->d_signed_ord_orth_dir[1][3][0] = 2;
+		geo->d_signed_ord_orth_dir[1][3][1] = 0;
+		geo->d_signed_ord_orth_dir[3][1][0] = 0;
+		geo->d_signed_ord_orth_dir[3][1][1] = 2;
+
+		geo->d_signed_ord_orth_dir[2][3][0] = 0;
+		geo->d_signed_ord_orth_dir[2][3][1] = 1;
+		geo->d_signed_ord_orth_dir[3][2][0] = 1;
+		geo->d_signed_ord_orth_dir[3][2][1] = 0;
+		
+		// The i-th independent permutation among (0123), (0213) and (0312) is given by
+		// (ipd[0][i], ipd[1][i], ipd[2][i], ipd[3][i])
+		
+		geo->d_indep_perm_dir[0][0] = 0;
+		geo->d_indep_perm_dir[0][1] = 0;
+		geo->d_indep_perm_dir[0][2] = 0;
+
+		geo->d_indep_perm_dir[1][0] = 1;
+		geo->d_indep_perm_dir[1][1] = 2;
+		geo->d_indep_perm_dir[1][2] = 3;
+
+		geo->d_indep_perm_dir[2][0] = 2;
+		geo->d_indep_perm_dir[2][1] = 1;
+		geo->d_indep_perm_dir[2][2] = 1;
+
+		geo->d_indep_perm_dir[3][0] = 3;
+		geo->d_indep_perm_dir[3][1] = 3;
+		geo->d_indep_perm_dir[3][2] = 2;
+		}
 
 	#ifdef DEBUG
 	test_geometry(geo, param);
@@ -1024,7 +1080,22 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const * const param)
 		}
 	}
 
-// compute the square distance between sites i and j on a periodic lattice (toroidal geometry)
+// distance between sites i and j on a 1D-ring with L sites
+int ring_distance(int const i, int const j, int const L)
+	{
+    int d = abs(i - j);
+    return (d < L - d) ? d : L - d;
+	}
+
+// distance of site i from the link j -> j+1 on a 1D-ring with L sites
+int link_ring_distance(int const i, int const j, int const L)
+	{
+    int d0 = ring_distance(i, j, L);
+    int d1 = ring_distance(i, periodic_condition(j+1, L), L);
+    return (d0 < d1) ? d0 : d1;
+	}
+
+// square distance between sites i and j on a periodic lattice
 double square_distance(long const i, long const j, GParam const * const param)
 	{
 	int x[STDIM], y[STDIM];

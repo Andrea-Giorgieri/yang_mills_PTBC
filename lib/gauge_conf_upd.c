@@ -23,31 +23,29 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 						int i,
 						GAUGE_GROUP *M)
 	{
+	#ifdef DEBUG
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	#else
+    (void)param;
+	#endif
+
 	int j, l;
-	long k;
+	long rpi, rpj, rmj, rpimj;
 	double complex factor;
 	GAUGE_GROUP link1, link2, link3, link12, stap;
 
-	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	#else
-	(void) param; // just to avoid warnings
-	#endif
+	zero(M);
+	
+	rpi = nnp(geo, r, i);
 
-	zero(M); // M=0
-
-	for(l=i+1; l< i + STDIM; l++)
+	for(l=i+1; l<i+STDIM; l++)
 		{
-		j = (l % STDIM);
+		j = l % STDIM;
+		
+		rpj   = nnp(geo, r, j);
+		rmj   = nnm(geo, r, j);
+		rpimj = nnm(geo, rpi, j);
 
 //
 //    i ^
@@ -62,18 +60,19 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 //      r    (3)
 //
 
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));               // link3 = (3)
+		// staple
+		equal(&link1, &(GC->lattice[rpi][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rpj][i]));  // link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));    // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2);  // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);   // stap = link12 * stap^{dag}
+		times_dag2(&link12, &link1, &link2);    // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, &link3);     // stap = link12 * link3^{dag}
 
-		//twist (clockwise plaquette) modification
-		factor=GC->Z[r][dirs_to_si(i,j)];    //Z_\mu\nu(x)
+		// twist (clockwise plaquette) modification
+		factor = GC->Z[r][dirs_to_si(i,j)];     // Z_\mu\nu(x)
+		times_equal_complex(&stap, factor);     // Z_\mu\nu(x) * staple
 
-		times_equal_complex(&stap, factor);  // Z_\mu\nu(x) * staple
-
+		// accumulate M
 		plus_equal(M, &stap);
 
 //
@@ -86,23 +85,22 @@ void calcstaples_wilson(Gauge_Conf const * const GC,
 //      |
 //      |           |
 //      +----->-----+--> j
-//      k    (3)    r
+//           (3)    r
 //
 
-		k=nnm(geo, r, j);
+		// staple
+		equal(&link1, &(GC->lattice[rpimj][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rmj][i]));    // link2 = (2)
+		equal(&link3, &(GC->lattice[rmj][j]));    // link3 = (3)
 
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[k][i]));               // link2 = (2)
-		equal(&link3, &(GC->lattice[k][j]));               // link3 = (3)
+		times_dag12(&link12, &link1, &link2);     // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, &link3);            // stap = link12 * link3
 
-		times_dag12(&link12, &link1, &link2);  // link12=link1^{dag}*link2^{dag}
-		times(&stap, &link12, &link3);         // stap=link12*link3
+		// twist (anticlockwise plaquette) modification
+		factor = GC->Z[rmj][dirs_to_si(j,i)];     // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		times_equal_complex(&stap, factor);       // Z_\mu\nu(x-\nu) * staple
 
-		//twist (anticlockwise plaquette) modification
-		factor=GC->Z[k][dirs_to_si(j,i)];    //Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-
-		times_equal_complex(&stap, factor);  // Z_\mu\nu(x-\nu) * staple
-
+		// accumulate M
 		plus_equal(M, &stap);
 		}
 	}
@@ -116,13 +114,13 @@ void calcstaples_tracedef(Gauge_Conf const * const GC,
 						int i,
 						GAUGE_GROUP * M)
 	{
-	if(i!=0)
+	#ifdef DEBUG
+	ASSERT(i == 0, "calcstaples_tracedef for a non-temporal link (mu = %d)", i);
+	#endif
+	
+	if(i != 0)
 		{
 		zero(M);
-		#ifdef DEBUG
-		fprintf(stderr, "Using calcstaples_tracedef for a non-temporal link (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		#endif
 		}
 	else
 		{
@@ -189,79 +187,58 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 							GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	#ifndef THETA_MODE
 	calcstaples_wilson(GC, geo, param, r, i, M);
 	#else
-
-	if(STDIM!=4)
-		{
-		fprintf(stderr, "Error: imaginary theta term can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
+	// the theta term is written as
+	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood[\mu][\nu][0] sood[\mu][\nu][1]} )
+	// the independent permutations are 0123 0231 0312
+	// Q_{\mu\nu} is the clover on the plane (\mu,\nu)
+	// GC->clover_array[r][mu][nu] = (Q - Q^{dag})_{\mu\nu}(r)
+	
 	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
-	const double coeff=(param->d_theta)*((double) NCOLOR)/(param->d_beta*128.0*PI*PI);
-	long k;
-	int j, l;
-	int i0, j0;
-	int sood1[4][4], sood2[4][4];  // signed ordered orthogonal directions
+	GAUGE_GROUP const *CAr, *CArpi, *CArpj, *CArmj, *CArpipj, *CArpimj;
+	
+	int j, l, sood0, sood1;
+	long rpi, rpj, rmj, rpipj, rpimj;
+	
+	double const topo_staple_coeff = (param->d_theta) * ((double) NCOLOR) / (param->d_beta * 128.0 * PI * PI);
+	double Zr, Zrpi, Zrpj, Zrmj, Zrpipj, Zrpimj;
 	double complex factor;
 
-	zero(M);        // M=0
-	zero(&topo_M);  // topo_M=0
-
-	// the theta term is written as
-	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood1[\mu][\nu] sood2[\mu][\nu]} )
-	// the independent permutations are 0123 0231 0312
-
-	sood1[0][1] = 2;
-	sood2[0][1] = 3;
-	sood1[1][0] = 3;
-	sood2[1][0] = 2;
-
-	sood1[0][2] = 3;
-	sood2[0][2] = 1;
-	sood1[2][0] = 1;
-	sood2[2][0] = 3;
-
-	sood1[0][3] = 1;
-	sood2[0][3] = 2;
-	sood1[3][0] = 2;
-	sood2[3][0] = 1;
-
-	sood1[1][2] = 0;
-	sood2[1][2] = 3;
-	sood1[2][1] = 3;
-	sood2[2][1] = 0;
-
-	sood1[1][3] = 2;
-	sood2[1][3] = 0;
-	sood1[3][1] = 0;
-	sood2[3][1] = 2;
-
-	sood1[2][3] = 0;
-	sood2[2][3] = 1;
-	sood1[3][2] = 1;
-	sood2[3][2] = 0;
-
-	for(l=i+1; l< i + STDIM; l++)
+	zero(M);
+	zero(&topo_M);
+	
+	rpi = nnp(geo, r, i);
+	Zr = creal(GC->Z[r][param->d_n_planes]);
+	Zrpi = creal(GC->Z[rpi][param->d_n_planes]);
+	
+	for(l=i+1; l<i+STDIM; l++)
 		{
-		j = (l % STDIM);
-
-		i0=sood1[i][j];
-		j0=sood2[i][j];
+		j  = l % STDIM;
+		sood0 = geo->d_signed_ord_orth_dir[i][j][0];
+		sood1 = geo->d_signed_ord_orth_dir[i][j][1];
+		
+		rpj   = nnp(geo, r, j);
+		rmj   = nnm(geo, r, j);
+		rpipj = nnp(geo, rpi, j);
+		rpimj = nnm(geo, rpi, j);
+		
+		Zrpj   = creal(GC->Z[rpj][param->d_n_planes]);
+		Zrmj   = creal(GC->Z[rmj][param->d_n_planes]);
+		Zrpipj = creal(GC->Z[rpipj][param->d_n_planes]);
+		Zrpimj = creal(GC->Z[rpimj][param->d_n_planes]);
+		
+	    CAr     = &(GC->clover_array[r][sood0][sood1]);
+		CArpi   = &(GC->clover_array[rpi][sood0][sood1]);
+		CArpj   = &(GC->clover_array[rpj][sood0][sood1]);
+		CArmj   = &(GC->clover_array[rmj][sood0][sood1]);
+		CArpipj = &(GC->clover_array[rpipj][sood0][sood1]);
+		CArpimj = &(GC->clover_array[rpimj][sood0][sood1]);
 
 	//
 	//    i ^
@@ -276,40 +253,43 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 	//      r    (3)   (d)
 	//
 
-		zero(&topo_stap);  // topo_stap=0
-
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));               // link3 = (3)
+		equal(&link1, &(GC->lattice[rpi][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rpj][i]));  // link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));    // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2);  // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);   // stap = link12 * stap^{dag}
+		times_dag2(&link12, &link1, &link2);    // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, &link3);     // stap = link12 * link3^{dag}
 
 		// clover insertion in (a)
-		times(&aux, &stap, &(GC->clover_array[r][i0][j0]));  // stap * clover
-		plus_equal(&topo_stap, &aux);
+		times(&aux, &stap, CAr);                // stap * clover
+		times_equal_real(&aux, Zr);             // bulk factor
+		equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover * stap
+		times(&aux, CArpi, &stap);              // clover * stap
+		times_equal_real(&aux, Zrpi);           // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0]));  // link1 * clover
-		times_equal_dag(&aux, &link2);  // *= link2^{dag}
-		times_equal_dag(&aux, &link3);  // *= link3^{dag}
+		times(&aux, &link1, CArpipj);           // link1 * clover
+		times_equal_dag(&aux, &link2);          // *= link2^{dag}
+		times_equal_dag(&aux, &link3);          // *= link3^{dag}
+		times_equal_real(&aux, Zrpipj);         // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0]));  // link1*link2*quadri
-		times_equal_dag(&aux, &link3);  // *=link3^{dag}
+		times(&aux, &link12, CArpj);            // link1 * link2 * clover
+		times_equal_dag(&aux, &link3);          // *= link3^{dag}
+		times_equal_real(&aux, Zrpj);           // bulk factor
 		plus_equal(&topo_stap, &aux);
 
-		//twist modification (clockwise plaquette)
-		factor=GC->Z[r][dirs_to_si(i,j)];         // Z_\mu\nu(x)
-		times_equal_complex(&topo_stap, factor);  // Z_\mu\nu(x) * staple
+		// twist modification (clockwise plaquette)
+		factor = GC->Z[r][dirs_to_si(i,j)];       // Z_\mu\nu(x)
+		times_equal_complex(&topo_stap, factor);  // Z_\mu\nu(x) * topo_staple
 		times_equal_complex(&stap, factor);       // Z_\mu\nu(x) * staple
 
+		// accumulate M and topo_M
 		plus_equal(M, &stap);
 		plus_equal(&topo_M, &topo_stap);
 
@@ -323,49 +303,52 @@ void calcstaples_with_topo(Gauge_Conf const * const GC,
 	//     |
 	//     |           | (b)
 	// (c) +------>----+---> j
-	//     k     (3)   r
+	//           (3)   r
 	//
 
-		k=nnm(geo, r, j);
-		zero(&topo_stap);  // topo_stap = 0
-
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[k][i]));               // link2 = (2)
-		equal(&link3, &(GC->lattice[k][j]));               // link3 = (3)
+		equal(&link1, &(GC->lattice[rpimj][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rmj][i]));    // link2 = (2)
+		equal(&link3, &(GC->lattice[rmj][j]));    // link3 = (3)
 
-		times_dag12(&link12, &link1, &link2);  // link12 = link1^{dag} * link2^{dag}
-		times(&stap, &link12, &link3);         // stap = link12 * link3
+		times_dag12(&link12, &link1, &link2);     // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, &link3);            // stap = link12 * link3
 
 		// clover insertion in (a)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover * stap
-		minus_equal(&topo_stap, &aux);
+		times(&aux, CArpi, &stap);                // clover * stap
+		times_equal_real(&aux, Zrpi);             // bulk factor
+		equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &stap, &(GC->clover_array[r][i0][j0]));  // stap * clover
-		minus_equal(&topo_stap, &aux);
+		times(&aux, &stap, CAr);                  // stap * clover
+		times_equal_real(&aux, Zr);               // bulk factor
+		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link12, &(GC->clover_array[k][i0][j0]));  // link1^{dag} * link2^{dag} * clover
-		times_equal(&aux, &link3);                             // *= link3
-		minus_equal(&topo_stap, &aux);
+		times(&aux, &link12, CArmj);              // link1^{dag} * link2^{dag} * clover
+		times_equal(&aux, &link3);                // *= link3
+		times_equal_real(&aux, Zrmj);             // bulk factor
+		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times_dag1(&aux, &link1, &(GC->clover_array[nnp(geo, k, i)][i0][j0]));  // link1^{dag} * clover
-		times_equal_dag(&aux, &link2);  // *= link2^{dag}
-		times_equal(&aux, &link3);      // *= link3
-		minus_equal(&topo_stap, &aux);
+		times_dag1(&aux, &link1, CArpimj);        // link1^{dag} * clover
+		times_equal_dag(&aux, &link2);            // *= link2^{dag}
+		times_equal(&aux, &link3);                // *= link3
+		times_equal_real(&aux, Zrpimj);           // bulk factor
+		plus_equal(&topo_stap, &aux);
 
 		// twist modification (anticlockwise plaquette)
-		factor=GC->Z[k][dirs_to_si(j,i)];         // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		times_equal_complex(&topo_stap, factor);  // Z_\nu\mu(x-\nu) * staple
+		factor = GC->Z[rmj][dirs_to_si(j,i)];     // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		times_equal_complex(&topo_stap, factor);  // Z_\nu\mu(x-\nu) * topo_staple
 		times_equal_complex(&stap, factor);       // Z_\nu\mu(x-\nu) * staple
 
+		// accumulate M and topo_M (with minus sign from definition of topological charge)
 		plus_equal(M, &stap);
-		plus_equal(&topo_M, &topo_stap);
+		minus_equal(&topo_M, &topo_stap);
 		}
 
-	times_equal_real(&topo_M, coeff);
+	// multiply topo_staple by theta coefficient and sum to staple
+	times_equal_real(&topo_M, topo_staple_coeff);
 	plus_equal(M, &topo_M);
 
 	#endif
@@ -459,94 +442,93 @@ void calcstaples_wilson_with_defect(Gauge_Conf const * const GC,
 						int i,
 						GAUGE_GROUP *M)
 	{
+	#ifdef DEBUG
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	#else
+    (void)param;
+	#endif
+	
 	int j, l;
-	long k;
+	long rpi, rpj, rmj, rpimj;
 	double complex factor;
 	GAUGE_GROUP link1, link2, link3, link12, stap;
 
-	#ifdef DEBUG
-		if(r >= param->d_volume)
-			{
-			fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		if(i >= STDIM)
-			{
-			fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-	#else
-		(void) param; // just to avoid warnings
-	#endif
+	zero(M);
+	
+	rpi = nnp(geo, r, i);
 
-	zero(M); // M=0
-
-	for(l=i+1; l< i + STDIM; l++)
+	for(l=i+1; l<i+STDIM; l++)
 		{
-		j = (l % STDIM);
+		j = l % STDIM;
+		
+		rpj   = nnp(geo, r, j);
+		rmj   = nnm(geo, r, j);
+		rpimj = nnm(geo, rpi, j);
 
-	//
-	//	i	^
-	//		|	(1)
-	//		+----->-----+
-	//		|			|
-	//					|
-	//		|			V (2)
-	//					|
-	//		|			|
-	//		+-----<-----+-->	j
-	//		r	(3)
-	//
+//
+//    i ^
+//      |    (1)
+//      +----->-----+
+//      |           |
+//                  |
+//      |           V (2)
+//                  |
+//      |           |
+//		+-----<-----+--> j
+//      r    (3)
+//
 
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));  // link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));  // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
+		// staple
+		equal(&link1, &(GC->lattice[rpi][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rpj][i]));  // link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));    // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2);  // link12=link1*link2^{dag}
-		times_dag2(&stap, &link12, &link3);	// stap=link12*stap^{dag}
-
+		times_dag2(&link12, &link1, &link2);    // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, &link3);     // stap = link12 * link3^{dag}
+		
 		// boundary condition and twist (clockwise plaquette) modification
-		factor=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-		factor*=GC->Z[r][dirs_to_si(i,j)];		//Z_\mu\nu(x)
+		factor = GC->Z[r][dirs_to_si(i,j)];                                           // Z_\mu\nu(x)
+		factor *= (GC->C[r][i]) * (GC->C[rpi][j]) * (GC->C[rpj][i]) * (GC->C[r][j]);  // *= K_\mu\nu(x)
+		times_equal_complex(&stap, factor);                                           // K_\mu\nu(x) * Z_\mu\nu(x) * staple
 
-		times_equal_complex(&stap, factor); //K_\mu\nu(x) * Z_\mu\nu(x) * staple
-
+		// accumulate M
 		plus_equal(M, &stap);
 
-	//
-	//	i	^
-	//		|	(1)
-	//		|----<------+
-	//		|			|
-	//		|
-	//	(2) V			|
-	//		|
-	//		|			|
-	//		+------>----+--->j
-	//		k	(3)	r
-	//
+//
+//    i ^
+//      |    (1)
+//      |-----<-----+
+//      |           |
+//      |
+//  (2) V           |
+//      |
+//      |           |
+//      +----->-----+--> j
+//           (3)    r
+//
 
-		k=nnm(geo, r, j);
+		// staple
+		equal(&link1, &(GC->lattice[rpimj][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rmj][i]));    // link2 = (2)
+		equal(&link3, &(GC->lattice[rmj][j]));    // link3 = (3)
 
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));	// link1 = (1)
-		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
-		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
-
-		times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-		times(&stap, &link12, &link3);		// stap=link12*link3
-
+		times_dag12(&link12, &link1, &link2);     // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, &link3);            // stap = link12 * link3
+		
 		// boundary condition and twist (anticlockwise plaquette) modification
-		factor=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
-		factor*=GC->Z[k][dirs_to_si(j,i)];	//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		factor = GC->Z[rmj][dirs_to_si(j,i)];                                             // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		factor *= (GC->C[rmj][i]) * (GC->C[rpimj][j]) * (GC->C[r][i]) * (GC->C[rmj][j]);  // *= K_\mu\nu(x-\nu)
+		times_equal_complex(&stap, factor);                                               // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 
-		times_equal_complex(&stap, factor); //K_\mu\nu(x-\nu) * Z_\mu\nu(x-\nu) * staple
-
+		// accumulate M
 		plus_equal(M, &stap);
 		}
 	}
 
-// evauate topo staples with defect on the non-topo contributions
-// in psition r and direction i and save it in M
+
+// evaluate topo staples with defect on the non-topo contributions
+// in position r and direction i and save it in M
 void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 							Geometry const * const geo,
 							GParam const * const param,
@@ -555,187 +537,170 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const * const GC,
 							GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	#ifndef THETA_MODE
 	calcstaples_wilson_with_defect(GC, geo, param, r, i, M);
 	#else
-
-	if(STDIM!=4)
-		{
-		fprintf(stderr, "Error: imaginary theta term can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
+	// the theta term is written as
+	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood[\mu][\nu][0] sood[\mu][\nu][1]} )
+	// the independent permutations are 0123 0231 0312
+	// Q_{\mu\nu} is the clover on the plane (\mu,\nu)
+	// GC->clover_array[r][mu][nu] = (Q - Q^{dag})_{\mu\nu}(r)
+	
 	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
-	const double coeff=(param->d_theta)*((double) NCOLOR)/(param->d_beta*128.0*PI*PI);
-	long k;
-	int j, l;
-	int i0, j0;
-	int sood1[4][4], sood2[4][4]; // signed ordered orthogonal directions
+	GAUGE_GROUP const *CAr, *CArpi, *CArpj, *CArmj, *CArpipj, *CArpimj;
+	
+	int j, l, sood0, sood1;
+	long rpi, rpj, rmj, rpipj, rpimj;
+	
+	double const topo_staple_coeff = (param->d_theta) * ((double) NCOLOR) / (param->d_beta * 128.0 * PI * PI);
+	double Zr, Zrpi, Zrpj, Zrmj, Zrpipj, Zrpimj;
 	double complex factor;
 
-	zero(M);			// M=0
-	zero(&topo_M);		// topo_M=0
-
-	// the theta term is written as
-	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood1[\mu][\nu] sood2[\mu][\nu]} )
-	// the independent permutations are 0123 0231 0312
-
-	sood1[0][1] = 2;
-	sood2[0][1] = 3;
-	sood1[1][0] = 3;
-	sood2[1][0] = 2;
-
-	sood1[0][2] = 3;
-	sood2[0][2] = 1;
-	sood1[2][0] = 1;
-	sood2[2][0] = 3;
-
-	sood1[0][3] = 1;
-	sood2[0][3] = 2;
-	sood1[3][0] = 2;
-	sood2[3][0] = 1;
-
-	sood1[1][2] = 0;
-	sood2[1][2] = 3;
-	sood1[2][1] = 3;
-	sood2[2][1] = 0;
-
-	sood1[1][3] = 2;
-	sood2[1][3] = 0;
-	sood1[3][1] = 0;
-	sood2[3][1] = 2;
-
-	sood1[2][3] = 0;
-	sood2[2][3] = 1;
-	sood1[3][2] = 1;
-	sood2[3][2] = 0;
-
-	for(l=i+1; l< i + STDIM; l++)
+	zero(M);
+	zero(&topo_M);
+	
+	rpi = nnp(geo, r, i);
+	Zr = creal(GC->Z[r][param->d_n_planes]);
+	Zrpi = creal(GC->Z[rpi][param->d_n_planes]);
+	
+	for(l=i+1; l<i+STDIM; l++)
 		{
-		j = (l % STDIM);
-
-		i0=sood1[i][j];
-		j0=sood2[i][j];
+		j  = l % STDIM;
+		sood0 = geo->d_signed_ord_orth_dir[i][j][0];
+		sood1 = geo->d_signed_ord_orth_dir[i][j][1];
+		
+		rpj   = nnp(geo, r, j);
+		rmj   = nnm(geo, r, j);
+		rpipj = nnp(geo, rpi, j);
+		rpimj = nnm(geo, rpi, j);
+		
+		Zrpj   = creal(GC->Z[rpj][param->d_n_planes]);
+		Zrmj   = creal(GC->Z[rmj][param->d_n_planes]);
+		Zrpipj = creal(GC->Z[rpipj][param->d_n_planes]);
+		Zrpimj = creal(GC->Z[rpimj][param->d_n_planes]);
+		
+	    CAr     = &(GC->clover_array[r][sood0][sood1]);
+		CArpi   = &(GC->clover_array[rpi][sood0][sood1]);
+		CArpj   = &(GC->clover_array[rpj][sood0][sood1]);
+		CArmj   = &(GC->clover_array[rmj][sood0][sood1]);
+		CArpipj = &(GC->clover_array[rpipj][sood0][sood1]);
+		CArpimj = &(GC->clover_array[rpimj][sood0][sood1]);
 
 	//
-	//		i ^
-	//		|	(1)
-	//	(b) +----->-----+ (c)
-	//		|			|
-	//					|
-	//		|			V (2)
-	//					|
-	//		|			|
-	//	(a) +-----<-----+-->	j
-	//		r	(3)	(d)
+	//    i ^
+	//      |    (1)
+	//  (b) +----->-----+ (c)
+	//      |			|
+	//                  |
+	//      |           V (2)
+	//                  |
+	//      |           |
+	//  (a) +-----<-----+--> j
+	//      r    (3)   (d)
 	//
-
-		zero(&topo_stap);	// topo_stap=0
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j]));	// link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i]));	// link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));				// link3 = (3)
+		equal(&link1, &(GC->lattice[rpi][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rpj][i]));  // link2 = (2)
+		equal(&link3, &(GC->lattice[r][j]));    // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2);	// link12=link1*link2^{dag}
-		times_dag2(&stap, &link12, &link3);		// stap=link12*stap^{dag}
+		times_dag2(&link12, &link1, &link2);    // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, &link3);     // stap = link12 * link3^{dag}
 
 		// clover insertion in (a)
-		times(&aux, &stap, &(GC->clover_array[r][i0][j0])); // stap*clover
-		plus_equal(&topo_stap, &aux);
+		times(&aux, &stap, CAr);                // stap * clover
+		times_equal_real(&aux, Zr);             // bulk factor
+		equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);  // clover*stap
+		times(&aux, CArpi, &stap);              // clover * stap
+		times_equal_real(&aux, Zrpi);           // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link1, &(GC->clover_array[nnp(geo, nnp(geo, r, i), j)][i0][j0]));  // link1*clover
-		times_equal_dag(&aux, &link2);		// *=link2^{dag}
-		times_equal_dag(&aux, &link3);		// *=link3^{dag}
+		times(&aux, &link1, CArpipj);           // link1 * clover
+		times_equal_dag(&aux, &link2);          // *= link2^{dag}
+		times_equal_dag(&aux, &link3);          // *= link3^{dag}
+		times_equal_real(&aux, Zrpipj);         // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times(&aux, &link12, &(GC->clover_array[nnp(geo, r, j)][i0][j0]));  // link1*link2*quadri
-		times_equal_dag(&aux, &link3);		// *=link3^{dag}
+		times(&aux, &link12, CArpj);            // link1 * link2 * clover
+		times_equal_dag(&aux, &link3);          // *= link3^{dag}
+		times_equal_real(&aux, Zrpj);           // bulk factor
 		plus_equal(&topo_stap, &aux);
+		
+		// boundary condition (only affects non-topo staple) and twist (clockwise plaquette) modification
+		factor = GC->Z[r][dirs_to_si(i,j)];			                                  // Z_\mu\nu(x)
+		times_equal_complex(&topo_stap, factor);	                                  // Z_\mu\nu(x) * topo_staple
+		factor *= (GC->C[r][i]) * (GC->C[rpi][j]) * (GC->C[rpj][i]) * (GC->C[r][j]);  // *= K_\mu\nu(x)
+		times_equal_complex(&stap, factor);			                                  // K_\mu\nu(x) * Z_\mu\nu(x) * staple
 
-		// boundary condition modification (only affects non-topo staple) and twist (clockwise plaquette)
-		factor=GC->Z[r][dirs_to_si(i,j)];			//Z_\mu\nu(x)
-		times_equal_complex(&topo_stap, factor);	//Z_\mu\nu(x) * staple
-
-		factor*=(GC->C[r][i])*(GC->C[nnp(geo, r, i)][j])*(GC->C[nnp(geo, r, j)][i])*(GC->C[r][j]); //K_\mu\nu(x)
-		times_equal_complex(&stap, factor);			//K_\mu\nu(x) * Z_\mu\nu(x) * staple
-
+		// accumulate M and topo_M
 		plus_equal(M, &stap);
 		plus_equal(&topo_M, &topo_stap);
 
 	//
-	//		i ^
-	//		|	(1)
-	//	(d) +----<------+ (a)
-	//		|			|
-	//		|
-	//	(2) V			|
-	//		|
-	//		|			| (b)
-	//	(c) +------>----+--->j
-	//		k	(3)	r
+	//    i ^
+	//      |	(1)
+	// (d) +----<------+ (a)
+	//     |           |
+	//     |
+	// (2) V           |
+	//     |
+	//     |           | (b)
+	// (c) +------>----+---> j
+	//           (3)   r
 	//
 
-		k=nnm(geo, r, j);
-		zero(&topo_stap);	// topo_stap=0
-
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j]));	// link1 = (1)
-		equal(&link2, &(GC->lattice[k][i]));				// link2 = (2)
-		equal(&link3, &(GC->lattice[k][j]));				// link3 = (3)
+		equal(&link1, &(GC->lattice[rpimj][j]));  // link1 = (1)
+		equal(&link2, &(GC->lattice[rmj][i]));    // link2 = (2)
+		equal(&link3, &(GC->lattice[rmj][j]));    // link3 = (3)
 
-		times_dag12(&link12, &link1, &link2);	// link12=link1^{dag}*link2^{dag}
-		times(&stap, &link12, &link3);			// stap=link12*link3
+		times_dag12(&link12, &link1, &link2);     // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, &link3);            // stap = link12 * link3
 
 		// clover insertion in (a)
-		times(&aux, &(GC->clover_array[nnp(geo, r, i)][i0][j0]), &stap);	// clover*stap
-		minus_equal(&topo_stap, &aux);
+		times(&aux, CArpi, &stap);                // clover * stap
+		times_equal_real(&aux, Zrpi);             // bulk factor
+		equal(&topo_stap, &aux);
 
 		// clover insertion in (b)
-		times(&aux, &stap, &(GC->clover_array[r][i0][j0]));	// stap*clover
-		minus_equal(&topo_stap, &aux);
+		times(&aux, &stap, CAr);                  // stap * clover
+		times_equal_real(&aux, Zr);               // bulk factor
+		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link12, &(GC->clover_array[k][i0][j0]));	// link1^{dag}*link2^{dag}*clover
-		times_equal(&aux, &link3);								// *=link3
-		minus_equal(&topo_stap, &aux);
+		times(&aux, &link12, CArmj);              // link1^{dag} * link2^{dag} * clover
+		times_equal(&aux, &link3);                // *= link3
+		times_equal_real(&aux, Zrmj);             // bulk factor
+		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times_dag1(&aux, &link1, &(GC->clover_array[nnp(geo, k, i)][i0][j0]));  // link1^{dag}*clover
-		times_equal_dag(&aux, &link2);			// *=link2^{dag}
-		times_equal(&aux, &link3);				// *=link3
-		minus_equal(&topo_stap, &aux);
+		times_dag1(&aux, &link1, CArpimj);        // link1^{dag} * clover
+		times_equal_dag(&aux, &link2);            // *= link2^{dag}
+		times_equal(&aux, &link3);                // *= link3
+		times_equal_real(&aux, Zrpimj);           // bulk factor
+		plus_equal(&topo_stap, &aux);
 
-		// boundary condition modification (only affects non-topo staple) and twist (anticlockwise plaquette)
-		factor=GC->Z[k][dirs_to_si(j,i)];			//Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		times_equal_complex(&topo_stap, factor);	//K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
+		// boundary condition (only affects non-topo staple) and twist (anticlockwise plaquette) modification
+		factor = GC->Z[rmj][dirs_to_si(j,i)];			                                  // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		times_equal_complex(&topo_stap, factor);	                                      // Z_\nu\mu(x-\nu) * topo_staple
+		factor *= (GC->C[rmj][i]) * (GC->C[rpimj][j]) * (GC->C[r][i]) * (GC->C[rmj][j]);  // *= K_\mu\nu(x-\nu)
+		times_equal_complex(&stap, factor);			                                      // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 
-		factor*=(GC->C[k][i])*(GC->C[nnp(geo, k, i)][j])*(GC->C[nnp(geo, k, j)][i])*(GC->C[k][j]); // K_\mu\nu(x-\nu)
-		times_equal_complex(&stap, factor);			//K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
-
+		// accumulate M and topo_M (with minus sign from definition of topological charge)
 		plus_equal(M, &stap);
-		plus_equal(&topo_M, &topo_stap);
+		minus_equal(&topo_M, &topo_stap);
 		}
 
-	times_equal_real(&topo_M, coeff);
+	// multiply topo_staple by theta coefficient and sum to staple
+	times_equal_real(&topo_M, topo_staple_coeff);
 	plus_equal(M, &topo_M);
 
 	#endif
@@ -750,16 +715,8 @@ void heatbath(Gauge_Conf * const GC,
 			int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -782,18 +739,9 @@ void overrelaxation(Gauge_Conf * const GC,
 					int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
-	(void) param; // just to avoid warnings
 
 	GAUGE_GROUP stap;
 
@@ -851,16 +799,8 @@ int metropolis(Gauge_Conf * const GC,
 				int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap, new_link, tmp_matrix, rnd_matrix;
@@ -919,16 +859,8 @@ int metropolis_with_tracedef(Gauge_Conf * const GC,
 							int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap_w, stap_td, new_link, tmp_matrix, rnd_matrix, poly;
@@ -1015,16 +947,8 @@ void heatbath_with_defect(Gauge_Conf * const GC,
 			int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -1047,18 +971,9 @@ void overrelaxation_with_defect(Gauge_Conf * const GC,
 					int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
-	(void) param; // just to avoid warnings
 
 	GAUGE_GROUP stap;
 
@@ -1078,14 +993,9 @@ void update(Gauge_Conf * const GC,
 			GParam const * const param,
 			Acc_Utils *acc_counters)
 	{
-	for(int i=0; i<STDIM; i++)
-		{
-		if(param->d_size[i]==1)
-			{
-			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		}
+	#ifdef DEBUG
+    ASSERT(param->d_min_size > 1, "this function cannot be used in the completely reduced case");
+	#endif
 
 	long s, num_even;
 	int j, dir;
@@ -1168,14 +1078,9 @@ void update(Gauge_Conf * const GC,
 // update all replica in the presence of a defect
 void update_with_defect(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param, Acc_Utils *acc_counters)
 	{
-	for(int i=0; i<STDIM; i++)
-		{
-		if(param->d_size[i]==1)
-			{
-			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		}
+	#ifdef DEBUG
+    ASSERT(param->d_min_size > 1, "this function cannot be used in the completely reduced case");
+	#endif
 
 	long s, num_even, num_odd;
 	int j, dir;
@@ -1737,7 +1642,7 @@ void gradflow_RKstep(Gauge_Conf * const GC,
 	Gauge_Conf helper;
 
 	// initialize
-	equal_lattice(meas_aux->lattice_aux[0], GC->lattice, param);
+	equal_lattice(meas_aux->lattice_aux[0], (GAUGE_GROUP const * const *)GC->lattice, param);
 
 	// just to call calcstaples_wilson on aux lattice 0
 	helper.lattice = meas_aux->lattice_aux[0];
@@ -1815,7 +1720,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf * const GC,
 	Gauge_Conf helper;
 
 	// initialize
-	equal_equal_lattice(meas_aux->lattice_aux[0], meas_aux->lattice_aux[3], GC->lattice, param);
+	equal_equal_lattice(meas_aux->lattice_aux[0], meas_aux->lattice_aux[3], (GAUGE_GROUP const * const *)GC->lattice, param);
 	for (j=0; j<NTHREADS; j++) meas_aux->local_max_dist[j] = 0.0;
 
 	// just to call calcstaples_wilson on aux lattice 0
@@ -1950,7 +1855,7 @@ void gradflow_RKstep_adaptive(Gauge_Conf * const GC,
 	else
 		{
 		*accepted = 0;
-		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
+		equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)meas_aux->lattice_aux[3], param);
 		}
 
 	//TODO: remove, debug only
@@ -2004,20 +1909,20 @@ void gradflow_RKstep_adaptive_check(Gauge_Conf * const GC,
 							Gauge_Conf * const GC_reset,
 							Gauge_Conf * const conf_rk3dth)
 			{
-			double max_dist, dt_new, dth;
+			double dt_new, dth;
 			double dist_rk2dt_rk3dt, dist_rk2dth_rk3dth_1, dist_rk2dth_rk3dth_2, dist_rk3dth_rk3dt;
 
-			//dth = *(dt)/2;
-			equal_lattice(GC_reset->lattice, GC->lattice, param);
-			//dist_rk2dth_rk3dth_1 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
-			//dist_rk2dth_rk3dth_2 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
-			//equal_lattice(conf_rk3dth->lattice, GC->lattice, param);
-			//equal_lattice(GC->lattice, GC_reset->lattice, param);
+			dth = *(dt)/2;
+			equal_lattice(GC_reset->lattice, (GAUGE_GROUP const * const *)GC->lattice, param);
+			dist_rk2dth_rk3dth_1 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
+			dist_rk2dth_rk3dth_2 = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, &dth, &dt_new, accepted, meas_aux);
+			equal_lattice(conf_rk3dth->lattice, (GAUGE_GROUP const * const *)GC->lattice, param);
+			equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)GC_reset->lattice, param);
 			dist_rk2dt_rk3dt = gradflow_RKstep_adaptive_no_advance(GC, geo, param, t, dt, &dt_new, accepted, meas_aux);
-			//dist_rk3dth_rk3dt = lattice_max_dist(GC->lattice, conf_rk3dth->lattice, param);
+			dist_rk3dth_rk3dt = lattice_max_dist((GAUGE_GROUP const * const *)GC->lattice, (GAUGE_GROUP const * const *)conf_rk3dth->lattice, param);
 
 			fprintf(stdout, "%ld %d %18.12e %18.12e %18.12e\n", GC->update_index, *accepted, *t, *dt, dist_rk2dt_rk3dt);
-			//fprintf(stdout, "%ld %d %18.12g %18.12g %18.12g %18.12g %18.12g %18.12g\n", GC->update_index, *accepted, *t, *dt, dist_rk2dt_rk3dt, dist_rk2dth_rk3dth_1, dist_rk2dth_rk3dth_2, dist_rk3dth_rk3dt);
+			fprintf(stdout, "%ld %d %18.12g %18.12g %18.12g %18.12g %18.12g %18.12g\n", GC->update_index, *accepted, *t, *dt, dist_rk2dt_rk3dt, dist_rk2dth_rk3dth_1, dist_rk2dth_rk3dth_2, dist_rk3dth_rk3dt);
 			fflush(stdout);
 
 			//if (*accepted == 1)
@@ -2058,7 +1963,7 @@ void gradflow_RKstep_adaptive_debug(Gauge_Conf * const GC,
 	else
 		{
 		*accepted = 0;
-		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
+		equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)meas_aux->lattice_aux[3], param);
 		*dt -= param->d_agf_meas_each;
 		}
 	}
@@ -2088,7 +1993,7 @@ void gradflow_RKstep_adaptive_debug2(Gauge_Conf * const GC,
 	else
 		{
 		*accepted = 0;
-		equal_lattice(GC->lattice, meas_aux->lattice_aux[3], param);
+		equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)meas_aux->lattice_aux[3], param);
 		//*dt = *dt-param->d_agf_meas_each;
 		}
 	}

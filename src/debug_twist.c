@@ -39,7 +39,8 @@ int main(void)
 	param.d_charge_meas=1;
 	param.d_chi_prime_meas = 1;
 	param.d_polyakov_meas = 1;
-	param.d_topcharge_tcorr_meas = 1;
+	param.d_energy_slices_meas = 1;
+	param.d_charge_slices_meas = 1;
 
 	initrand(param.d_randseed);
 	init_indexing_lexeo();
@@ -321,7 +322,7 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const * const geo, GParam con
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) private(s)
 	#endif
-	for(s=0;s<(param->d_n_planes)*(param->d_volume);s++)
+	for(s=0;s<(param->d_n_planes+1)*(param->d_volume);s++)
 	{
 		// s = j * volume + r
 		long r = s % (param->d_volume);

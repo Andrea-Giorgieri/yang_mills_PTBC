@@ -316,64 +316,54 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 							GParam const * const param,
 							long r)
 	{
-	double ris;
-
 	#if (STDIM==4 && NCOLOR>1)
 	GAUGE_GROUP aux1, aux2, aux3;
 	double real1, real2, loc_charge;
-	const double chnorm=1.0/(128.0*PI*PI);
-	int i, dir[4][3], sign;
+	double const chnorm1 = creal(GC1->Z[r][param->d_n_planes]) / (128.0 * PI * PI);
+	double const chnorm2 = creal(GC2->Z[r][param->d_n_planes]) / (128.0 * PI * PI);
+	int i, mu, nu, rho, sigma, sign;
 
-	dir[0][0] = 0;
-	dir[0][1] = 0;
-	dir[0][2] = 0;
-
-	dir[1][0] = 1;
-	dir[1][1] = 2;
-	dir[1][2] = 3;
-
-	dir[2][0] = 2;
-	dir[2][1] = 1;
-	dir[2][2] = 1;
-
-	dir[3][0] = 3;
-	dir[3][1] = 3;
-	dir[3][2] = 2;
-
-	sign=-1;
-	loc_charge=0.0;
+	sign = -1;
+	loc_charge = 0.0;
+	
 	for(i=0; i<3; i++)
 		{
+		mu    = geo->d_indep_perm_dir[0][i];
+		nu    = geo->d_indep_perm_dir[1][i];
+		rho   = geo->d_indep_perm_dir[2][i];
+		sigma = geo->d_indep_perm_dir[3][i];	
+		
 		// GC1 contribution (with +)
-		clover(GC1, geo, param, r, dir[0][i], dir[1][i], &aux1);
-		clover(GC1, geo, param, r, dir[2][i], dir[3][i], &aux2);
+		clover(GC1, geo, param, r, mu, nu, &aux1);
+		clover(GC1, geo, param, r, rho, sigma, &aux2);
 
-		times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
-		real1=retr(&aux3)*NCOLOR;
+		times_dag2(&aux3, &aux2, &aux1);  // aux3 = aux2 * (aux1^{dag})
+		real1 = retr(&aux3) * NCOLOR;
 
-		times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
-		real2=retr(&aux3)*NCOLOR;
+		times(&aux3, &aux2, &aux1);       // aux3 = aux2 * aux1
+		real2 = retr(&aux3) * NCOLOR;
 
-		loc_charge+=((double) sign*(real1-real2));
+		loc_charge += (double)sign * (real1 - real2) * chnorm1;
 
 		// GC2 contribution (with -)
-		clover(GC2, geo, param, r, dir[0][i], dir[1][i], &aux1);
-		clover(GC2, geo, param, r, dir[2][i], dir[3][i], &aux2);
+		clover(GC2, geo, param, r, mu, nu, &aux1);
+		clover(GC2, geo, param, r, rho, sigma, &aux2);
 
-		times_dag2(&aux3, &aux2, &aux1); // aux3=aux2*(aux1^{dag})
-		real1=retr(&aux3)*NCOLOR;
+		times_dag2(&aux3, &aux2, &aux1);  // aux3 = aux2 * (aux1^{dag})
+		real1 = retr(&aux3) * NCOLOR;
 
-		times(&aux3, &aux2, &aux1); // aux3=aux2*aux1
-		real2=retr(&aux3)*NCOLOR;
+		times(&aux3, &aux2, &aux1);       // aux3 = aux2 * aux1
+		real2 = retr(&aux3) * NCOLOR;
 
-		loc_charge-=((double) sign*(real1-real2));
+		loc_charge -= (double)sign * (real1 - real2) * chnorm2;
 
-		sign=-sign;
+		sign = -sign;
 		}
-	ris = (loc_charge*chnorm);
+	
+	return loc_charge;
 
 	// TODO: debug, remove
-	//fprintf(stderr, "%ld % f ", r, ris);
+	//fprintf(stderr, "%ld % f ", r, loc_charge);
 
 	#elif (STDIM==2 && NCOLOR==1)
 	GAUGE_GROUP u1matrix;
@@ -381,13 +371,13 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 
 	// GC1 contribution (with +)
 	plaquettep_matrix(GC1, geo, param, r, 0, 1, &u1matrix);
-	angle = atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
+	angle = atan2(cimag(u1matrix.comp), creal(u1matrix.comp)) / PI2;
 
 	// GC2 contribution (with -)
 	plaquettep_matrix(GC2, geo, param, r, 0, 1, &u1matrix);
-	angle -= atan2(cimag(u1matrix.comp), creal(u1matrix.comp))/PI2;
+	angle -= atan2(cimag(u1matrix.comp), creal(u1matrix.comp)) / PI2;
 
-	ris = angle;
+	return angle;
 	
 	#else
 	(void) GC1;
@@ -398,8 +388,6 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const * const GC1,
 	fprintf(stderr, "Wrong number of dimensions or number of colors! (%s, %d)\n", __FILE__, __LINE__);
 	exit(EXIT_FAILURE);
 	#endif
-
-	return ris;
 	}
 
 
@@ -664,26 +652,18 @@ void compute_single_clover_insertion(GAUGE_GROUP * clover_insertion, Gauge_Conf 
 	}
 
 // compute staple of topological charge relative to link (r,i)
-void compute_topostaple_alone(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param, long r, int i, GAUGE_GROUP * topo_stap)
+void compute_topostaple_alone(Gauge_Conf const * const GC,
+								Geometry const * const geo,
+								GParam const * const param,
+								long r,
+								int i,
+								GAUGE_GROUP * topo_stap)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT(STDIM == 4, "compute_topostaple_alone can be used only in 4 dimensions");
 	#endif
-
-	if(STDIM!=4)
-		{
-		fprintf(stderr, "Error: topological charge can be used only in 4 dimensions! (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
 
 	GAUGE_GROUP link1, link2, link3, link12, stap, aux, clover_insertion;
 	const double coeff = 1.0/(128.0*PI*PI);
@@ -836,7 +816,12 @@ void compute_topostaple_alone(Gauge_Conf const * const GC, Geometry const * cons
 	}
 
 // compute the variation of the clover topological charge when the link (r,i) is updated starting from <old_link>
-double delta_Q_upd(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param, long r, int i, GAUGE_GROUP old_link)
+double delta_Q_upd(Gauge_Conf const * const GC,
+					Geometry const * const geo,
+					GParam const * const param,
+					long r,
+					int i,
+					GAUGE_GROUP const * const old_link)
 	{
 	// compute delta_Q
 	GAUGE_GROUP q, topo_stap;
@@ -850,7 +835,7 @@ double delta_Q_upd(Gauge_Conf const * const GC, Geometry const * const geo, GPar
 	delta_Q += retr(&q)*((double) NCOLOR); 			// delta_Q += [ retr(topo_stap * new_link) / NCOLOR ] * NCOLOR (retr automatically adds a 1/NCOLOR factor)
 
 	// compute contribution of old_link
-	times(&q, &topo_stap, &old_link); // q = (topo_stap * old_link)
+	times(&q, &topo_stap, old_link); // q = (topo_stap * old_link)
 	delta_Q -= retr(&q)*((double) NCOLOR); // delta_Q -= [ retr(topo_stap * old_link) / NCOLOR ] * NCOLOR
 
 	return delta_Q;
@@ -1162,7 +1147,7 @@ void multicanonic_agf_update_with_defect(Gauge_Conf * const GC, Geometry const *
 
 //	Metropolis test with p_metro=exp(- delta topo_potential)
 int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-												long r, int i, GAUGE_GROUP old_link)
+												long r, int i, GAUGE_GROUP const * const old_link)
 	{
 	// perform multicanonic Metropolis test
 	double Q_old = GC->stored_topcharge;
@@ -1177,8 +1162,8 @@ int multicanonic_metropolis_step_single_link(Gauge_Conf * const GC, Geometry con
 		if(random_number > p) acc = 0;
 		}
 
-	if (acc == 0) GC->lattice[r][i] = old_link; // if Metropolis is refused go back to original link
-	else GC->stored_topcharge = Q_new; 			// if Metropolis is accepted store the new topological charge of the conf
+	if (acc == 0) equal(&(GC->lattice[r][i]), old_link);  // if Metropolis is refused go back to original link
+	else GC->stored_topcharge = Q_new;                    // if Metropolis is accepted store the new topological charge of the conf
 
 	return acc;
 	}
@@ -1515,18 +1500,9 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf * const GC,
 							int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
-	(void) param; // just to avoid warnings
 
 	GAUGE_GROUP stap;
 
@@ -1537,13 +1513,14 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf * const GC,
 	#endif
 
 	// store old link before update
-	GAUGE_GROUP old_link = GC->lattice[r][i];
+	GAUGE_GROUP old_link;
+	equal(&old_link, &(GC->lattice[r][i]));
 
 	// perform usual single-link over-relaxation update
 	single_overrelaxation(&(GC->lattice[r][i]), &stap);
 
 	// accept/reject new link with multicanonic Metropolis step
-	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, old_link);
+	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, &old_link);
 	return acc;
 	}
 
@@ -1552,16 +1529,8 @@ int multicanonic_heatbath_with_defect(Gauge_Conf * const GC, Geometry const * co
 										long r, int i)
 	{
 	#ifdef DEBUG
-	if(r >= param->d_volume)
-		{
-		fprintf(stderr, "r too large: %ld >= %ld (%s, %d)\n", r, param->d_volume, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	if(i >= STDIM)
-		{
-		fprintf(stderr, "i too large: i=%d >= %d (%s, %d)\n", i, STDIM, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -1573,13 +1542,14 @@ int multicanonic_heatbath_with_defect(Gauge_Conf * const GC, Geometry const * co
 	#endif
 
 	// store old link before update
-	GAUGE_GROUP old_link = GC->lattice[r][i];
+	GAUGE_GROUP old_link;
+	equal(&old_link, &(GC->lattice[r][i]));
 
 	// perform usual single-link over-heat-bath update
 	single_heatbath(&(GC->lattice[r][i]), &stap, param);
 
 	// accept/reject new link with multicanonic Metropolis step
-	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, old_link);
+	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, &old_link);
 	return acc;
 	}
 

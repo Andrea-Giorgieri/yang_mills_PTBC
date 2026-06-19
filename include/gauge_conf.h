@@ -30,11 +30,11 @@ typedef struct Gauge_Conf {
 	int conf_label;	// save the label of the configuration to keep track of the swaps
 
 	// for the boundary conditions
-	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)], this factor implements the twsited or open boundary conditions
+	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)+1], this factor implements twsited and open (including the bulk identification) boundary conditions 
 
 	// auxiliary conf for Metropolis tests and translations
 	GAUGE_GROUP **lattice_copy;		// copy of lattice
-	double complex **Z_copy;		// copy of twist
+	double complex **Z_copy;		// copy of boundary conditions
 
 	// for computing the polyakov loop correlator with multilevel
 	TensProd ***ml_polycorr;	// [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
@@ -75,7 +75,6 @@ typedef struct Meas_Utils {
 	// for measurement of localobs
 	double  *meanplaq;
 	double  *clover_energy;
-	double  *energy_density;
 	double  *charge;
 	double **polyre;
 	double **polyim;
@@ -83,10 +82,15 @@ typedef struct Meas_Utils {
 	double  *multipolyim;
 	double  *polyre_density;
 	double  *polyim_density;
-	double  *e_slices;
-	double  *q_slices;
 	double  *chi_prime;
 	double **charge_prime;
+	double  *real_slices;
+	double  *imag_slices;
+	double  *scalar_density;
+	double  *action1;
+	double  *action2;
+	double  *action3;
+	double  *potential;
 
 	// for adaptive gradienf flow
 	GAUGE_GROUP **lattice_aux[4];		// array of 4 lattices
@@ -95,6 +99,7 @@ typedef struct Meas_Utils {
 	// pointers to data files
 	FILE *datafilep;
 	FILE *energydensityfilep;
+	FILE *chargedensityfilep;
 	FILE *polyakovdensityfilep[STDIM];
 	FILE *chiprimefilep;
 	FILE *e_slices_filep;
@@ -381,11 +386,11 @@ double loc_topcharge(		Gauge_Conf const * const GC,
 							GParam const * const param,
 							long r);
 
-double delta_loc_topcharge(		Gauge_Conf const * const GC1,
-								Gauge_Conf const * const GC2,
-								Geometry const * const geo,
-								GParam const * const param,
-								long r);
+void charge_density(	Gauge_Conf const * const GC,
+						Geometry const * const geo,
+						GParam const * const param,
+						Meas_Utils * const meas_aux,
+						int const meas_count);
 
 double topcharge(			Gauge_Conf const * const GC,
 							Geometry const * const geo,
@@ -408,11 +413,17 @@ void topcharge_slices(		Gauge_Conf const * const GC,
 							int meas_count,
 							FILE* filep);
 
+void topcharge_p_slices(	Gauge_Conf const * const GC,
+							Geometry const * const geo,
+							GParam const * const param,
+							int const mu,
+							int const nu,
+							Meas_Utils * const meas_aux,
+							int meas_count);
 
 double topo_chi_prime(				Gauge_Conf const * const GC,
 									Geometry const * const geo,
 									GParam const * const param);
-
 
 void loc_topcharge_corr(				Gauge_Conf * const GC,
 										Geometry const * const geo,
@@ -943,7 +954,7 @@ int multicanonic_metropolis_step_single_link(	Gauge_Conf * const,
 												Geometry const * const,
 												GParam const * const,
 												long, int,
-												GAUGE_GROUP);
+												GAUGE_GROUP const * const);
 
 int multicanonic_metropolis_step_all_links(		Gauge_Conf * const,
 												Geometry const * const,
@@ -973,7 +984,7 @@ double delta_Q_upd(						Gauge_Conf const * const,
 										Geometry const * const,
 										GParam const * const,
 										long, int,
-										GAUGE_GROUP);
+										GAUGE_GROUP const * const);
 
 void multicanonic_parallel_tempering_with_hierarchical_update(	Gauge_Conf *,
 																Geometry const * const,

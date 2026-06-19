@@ -384,6 +384,60 @@ void unitarize_SuN(SuN *restrict A)
 	}
 
 
+// TODO: bad unitarize for testing, remove
+// unitarize with heatbath at beta O(1e20) saving bad links to file fp if print_flag != 0,
+// returns phase gained during unitarization (bad links if != 0)
+double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE *fp, int const print_flag)
+	{
+	double check, aux = 1.0;
+	SuN F;                    // F = A^{dag}, force to unitarize A by cooling
+	SuN G, G_old;             // current and previous guess for unitarized A
+	SuN H, H_copy, H_square;  // helpers to check convergence of unitarization
+	SuN prod;
+
+	// check if A needs re-unitarization: check_SuN(A) passes (=0) if
+	// |A * A^{dag} - 1| < MIN_VALUE and |det(A) - 1| < MIN_VALUE
+	if(scheck_SuN(A) == 1)
+		{
+		// use A^{dag} as force
+		equal_dag_SuN(&F, A);
+
+		// guess initialized to identity
+		one_SuN(&G);
+		check = 1.0;
+		while(check > MIN_VALUE)
+			{
+			// store old guess
+			equal_SuN(&G_old, &G);
+
+			// get new guess by heatbath
+			single_heatbath_aux_SuN(&G, &F, beta); // maximize Tr(G*F) in large-beta limit
+
+			// calculate the distance between old guess G_old and new guess G:
+			// check = sqrt(|ReTr[(G-G_old)^2]|/N^2)
+			equal_SuN(&H, &G);
+			minus_equal_SuN(&H, &G_old);
+			equal_SuN(&H_copy, &H);
+			times_SuN(&H_square, &H, &H_copy);
+			check = sqrt(fabs(retr_SuN(&H_square)) / (double)NCOLOR);
+			}
+		
+		// Maximize ReTr[staple * C *link] for C \in Z(SU(N)) and update link *= C
+		// \phi \equiv carg(Tr[staple * link]) => C = \exp{-i * 2\pi/N * round(\phi / (2*\pi/N))}
+		equal_SuN(&prod, &F);               // prod=staple
+		times_equal_SuN(&prod, &G);         // prod=staple*link
+		aux = argtr_SuN(&prod);             // aux = phi
+		aux = round(aux / PI2_N ) * PI2_N;  // round aux to nearest center phase (PI2_N = 2*pi/N in marco.h)
+		if(print_flag != 0 && fabs(aux) > MIN_VALUE) // bad link: aux != 0
+			print_on_file_SuN(fp, A);
+
+		// replace A with G
+		equal_SuN(A, &G);
+		}
+	return aux;
+	}
+
+
 // takes the traceless antihermitian part
 void ta_SuN(SuN *A);
 

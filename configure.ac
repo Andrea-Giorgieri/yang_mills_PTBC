@@ -8,20 +8,17 @@ AC_CONFIG_HEADERS([config.h])
 # overwrite default values
 if test x${ac_cv_env_CFLAGS_set} != xset; then
   CFLAGS=''
-fi 
+fi
 if test x${ac_cv_env_CPPFLAGS_set} != xset; then
   CPPFLAGS=''
-fi 
-
+fi
 
 
 ### GENERAL CHECKS
 
-
 # Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
-
 
 # Checks for header files.
 AC_CHECK_HEADERS([complex.h], [], [AC_MSG_ERROR([Required header complex.h not found.])])
@@ -30,7 +27,7 @@ AC_CHECK_HEADERS([limits.h], [], [AC_MSG_ERROR([Required header limits.h not fou
 
 AC_CHECK_HEADERS([math.h], [], [AC_MSG_ERROR([Required header math.h not found.])])
 
-AC_CHECK_HEADERS([openssl/md5.h], [has_md5=yes], 
+AC_CHECK_HEADERS([openssl/md5.h], [has_md5=yes],
      [AC_MSG_WARN([
    *****
    openssl/md5.h not found. It will not be possible to asign an hash to a configuration.
@@ -43,16 +40,15 @@ AC_CHECK_HEADERS([stdlib.h], [], [AC_MSG_ERROR([Required header stdlib.h not fou
 
 AC_CHECK_HEADERS([time.h], [], [AC_MSG_ERROR([Required header time.h not found.])])
 
-
 # Checks for libraries.
-AC_SEARCH_LIBS([MD5_Init], [crypto], [has_crypto=yes], 
+AC_SEARCH_LIBS([MD5_Init], [crypto], [has_crypto=yes],
      [AC_MSG_WARN([
    *****
    crypto library not found. It will not be possible to asign an hash to a configuration.
    *****
      ])])
 
-AC_SEARCH_LIBS([sqrt], [m], [], 
+AC_SEARCH_LIBS([sqrt], [m], [],
      [AC_MSG_FAILURE([Required c mathematical library not found.])])
 
 
@@ -64,27 +60,36 @@ AC_TYPE_UINT64_T
 
 
 ### ENABLING & CO
-AC_ARG_ENABLE([use-openmp], 
-              [  --enable-use-openmp     to enable the use of openmp], 
-              [use_openmp=yes], 
+
+AC_ARG_ENABLE([use-openmp],
+              [  --enable-use-openmp     to enable the use of openmp],
+              [use_openmp=yes],
               [use_openmp=no])
 
-AC_ARG_ENABLE([use-theta], 
-              [  --enable-use-theta      to enable the use of an imaginary theta term], 
-              [use_theta=yes], 
+AC_ARG_ENABLE([use-theta],
+              [  --enable-use-theta      to enable the use of an imaginary theta term],
+              [use_theta=yes],
               [use_theta=no])
 
-AC_ARG_ENABLE([use-multicanonical], 
-              [  --enable-use-multicanonical      to enable the use of the multicanonical algorithm], 
-              [use_multicanonical=yes], 
+AC_ARG_ENABLE([use-multicanonical],
+              [  --enable-use-multicanonical      to enable the use of the multicanonical algorithm],
+              [use_multicanonical=yes],
               [use_multicanonical=no])
 
-AC_ARG_ENABLE([meas-replica], 
-              [  --enable-meas-replica      to enable the measurement of observables on parallel tempering replicas], 
-              [meas_replica=yes], 
+AC_ARG_ENABLE([meas-replica],
+              [  --enable-meas-replica      to enable the measurement of observables on parallel tempering replicas],
+              [meas_replica=yes],
               [meas_replica=no])
 
+AC_ARG_ENABLE([debug],
+              [  --enable-debug      to enable debug mode],
+              [debug=yes],
+              [debug=no])
+
+
+
 ### FURTHER CHECKS
+
 if test x${use_openmp} = xyes; then
   #check for openmp options
   AC_OPENMP
@@ -96,6 +101,7 @@ fi
 
 
 ### VARIABLES
+
 AC_ARG_VAR(N_c, the number of colors (default 2))
 
 AC_ARG_VAR(Num_levels, the number of levels in multilevel (default 1))
@@ -107,6 +113,7 @@ AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
 
 ### DEFINE & CO
+
 if test x${has_md5}x${has_crypto} = xyesxyes; then
   AC_DEFINE(HASH_MODE,, [Activate the computation of the hash function of the configuration])
 fi
@@ -127,13 +134,18 @@ if test x${meas_replica} = xyes; then
   AC_DEFINE(REPLICA_MEAS_MODE,, [Enable measurement of observables on parallel tempering replicas])
 fi
 
+if test x${debug} = xyes; then
+  AC_DEFINE(DEBUG,, [Enable debug mode])
+fi
+
+
 
 ### TEST
 if test x${N_c} = x; then
-  AC_MSG_WARN([ 
+  AC_MSG_WARN([
    *****
    No chosen value for N_c: using the default N_c=2
-   ***** 
+   *****
    ])
   AC_DEFINE_UNQUOTED(NCOLOR, 2, [Number of colors])
 else
@@ -141,10 +153,10 @@ else
 fi
 
 if test x${Num_levels} = x; then
-  AC_MSG_WARN([ 
+  AC_MSG_WARN([
    *****
    No chosen value for Num_levels: using the default Num_levels=1
-   ***** 
+   *****
    ])
   AC_DEFINE_UNQUOTED(NLEVELS, 1, [Number of levels])
 else
@@ -167,10 +179,10 @@ else
 fi
 
 if test x${ST_dim} = x; then
-  AC_MSG_WARN([ 
+  AC_MSG_WARN([
    *****
    No chosen value for ST_dim: using the default ST_dim=4
-   ***** 
+   *****
    ])
   AC_DEFINE_UNQUOTED(STDIM, 4, [Spacetime dimensionality])
 else
@@ -184,12 +196,16 @@ if test x${N_c} = x1; then
 else
   if test x${ST_dim} = x4; then
     AC_DEFINE(TOPCHARGE,, [Enable the calculation of topological quantities])
-  fi 
+  fi
 fi
+
+
 
 ### CONDITIONALS
 
 AM_CONDITIONAL([CRYPTO_COMPILATION], [test x${has_crypto}x${has_md5} = xyesxyes])
+
+
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

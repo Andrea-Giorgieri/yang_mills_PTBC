@@ -16,68 +16,37 @@
 // get the spacetime dimension
 void getspacetimedim(char *infile, int *dim)
 	{
-	int err;
-	FILE *fp;
+	FILE *fp = fopen(infile, "r");
+	REQUIRE(fp != NULL, "failed to open input file %s", infile);
 
-	fp=fopen(infile, "r");
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		err=fscanf(fp, "%d", dim);
-		if(err!=1)
-			{
-			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		fclose(fp);
-		}
+	int err = fscanf(fp, "%d", dim);
+	REQUIRE(err == 1, "failed to read number of dimensions from input file %s", infile);
+
+	fclose(fp);
 	}
 
 
 // read the size and the hash of the configuration
 void getsizeandhash(char *infile, int *sides, char *hash)
 	{
-	FILE *fp;
 	long update_index;
-	int dim, err, i;
+	int dim;
 
-	fp=fopen(infile, "r");
-	if(fp==NULL)
+	FILE *fp = fopen(infile, "r");
+	REQUIRE(fp != NULL, "failed to open input file %s", infile);
+	int err = fscanf(fp, "%d", &dim);
+	REQUIRE(err == 1, "failed to read number of dimensions from input file %s", infile);
+
+	for(int i = 0; i < dim; i++)
 		{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
+		err = fscanf(fp, "%d", &(sides[i]));
+		REQUIRE(err == 1, "failed to read %d-th size from input file %s", i, infile);
 		}
-	else
-		{
-		err=fscanf(fp, "%d", &dim);
-		if(err!=1)
-			{
-			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
 
-		for(i=0; i<dim; i++)
-			{
-			err=fscanf(fp, "%d", &(sides[i]) );
-			if(err!=1)
-				{
-				fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
-			}
+	err = fscanf(fp, "%ld %s", &update_index, hash);
+	REQUIRE(err == 2, "failed to read update index or hash from input file %s", infile);
 
-		err=fscanf(fp, "%ld %s", &update_index, hash);
-		if(err!=2)
-			{
-			fprintf(stderr, "Error in reading the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		fclose(fp);
-		}
+	fclose(fp);
 	}
 
 
@@ -85,84 +54,67 @@ void getsizeandhash(char *infile, int *sides, char *hash)
 void computehash(char *infile, int dim, long volume, char *hash)
 	{
 	#ifdef HASH_MODE
-		GAUGE_GROUP link;
-		FILE *fp;
-		long r;
-		int j;
 
-		MD5_CTX mdContext;
-		unsigned char c[MD5_DIGEST_LENGTH];
+	MD5_CTX mdContext;
+	unsigned char c[MD5_DIGEST_LENGTH];
 
-		// open the configuration file in binary
-		fp=fopen(infile, "rb");
-		if(fp==NULL)
+	// open the configuration file in binary
+	FILE *fp = fopen(infile, "rb");
+	REQUIRE(fp != NULL, "failed to open input file %s in binary mode", infile);
+
+	// read again the header:
+	int tmp = 0;
+	while(tmp != '\n')
+		{
+		tmp = fgetc(fp);
+		}
+
+	// read the configuration & compute md5sum
+	MD5_Init(&mdContext);
+	for(long r = 0; r < volume; r++)
+		{
+		for(int i = 0; i < dim; i++)
 			{
-			fprintf(stderr, "Error in opening the file %s (%s, %d)\n", infile, __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
+			GAUGE_GROUP link;
+			read_from_binary_file_bigen(fp, &link);
+			#if NCOLOR == 1
+			MD5_Update(&mdContext, &(link.comp), sizeof(double complex));
+			#elif NCOLOR == 2
+			for(int j = 0; j < 4; j++)
+				{
+				MD5_Update(&mdContext, &(link.comp[j]), sizeof(double));
+				}
+			#else
+			for(int j = 0; j < NCOLOR * NCOLOR; j++)
+				{
+				MD5_Update(&mdContext, &(link.comp[j]), sizeof(double complex));
+				}
+			#endif
 			}
-		else
-			{
-			// read again the header:
-			j=0;
-			while(j!='\n')
-				{
-				j=fgetc(fp);
-				}
+		}
+	MD5_Final(c, &mdContext);
+	for(long r = 0; r < MD5_DIGEST_LENGTH; r++)
+		{
+		sprintf(&(hash[2 * r]), "%02x", c[r]);
+		}
 
-			// read the configuration & compute md5sum
-			MD5_Init(&mdContext);
-			for(r=0; r<volume; r++)
-				{
-				for(j=0; j<dim; j++)
-					{
-					read_from_binary_file_bigen(fp, &link);
-					#if NCOLOR==1
-					MD5_Update(&mdContext, &(link.comp), sizeof(double complex));
-					#elif NCOLOR==2
-					for(int k=0; k<4; k++)
-						{
-						MD5_Update(&mdContext, &(link.comp[k]), sizeof(double));
-						}
-					#else
-					for(int k=0; k<NCOLOR*NCOLOR; k++)
-						{
-						MD5_Update(&mdContext, &(link.comp[k]), sizeof(double complex));
-						}
-					#endif
-					}
-				}
-			MD5_Final(c, &mdContext);
-			for(r = 0; r < MD5_DIGEST_LENGTH; r++)
-				{
-				sprintf(&(hash[2*r]), "%02x", c[r]);
-				}
+	fclose(fp);
 
-			fclose(fp);
-			}
 	#else
-		// just to avoid compile time warnings
-		(void) infile;
-		(void) dim;
-		(void) volume;
-		*hash='0';
+
+	// just to avoid compile time warnings
+	(void) infile;
+	(void) dim;
+	(void) volume;
+	*hash = '0';
+
 	#endif
 	}
 
 
 // MAIN
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char infile[STD_STRING_LENGTH];
-	int dim, *sides;
-
-	#ifdef HASH_MODE
-		long volumel;
-		char md5sum_old[2*MD5_DIGEST_LENGTH+1];
-		char md5sum_new[2*MD5_DIGEST_LENGTH+1];
-	#else
-		char md5sum_old[2*STD_STRING_LENGTH+1]={0};
-	#endif
-
 	if(argc != 2)
 		{
 		printf("Usage: %s conf_file\n\n", argv[0]);
@@ -170,17 +122,21 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(infile, argv[1]);
-			}
-		}
+
+	char infile[STD_STRING_LENGTH];
+	int dim, *sides;
+
+	#ifdef HASH_MODE
+	long volume;
+	char md5sum_old[2 * MD5_DIGEST_LENGTH + 1];
+	char md5sum_new[2 * MD5_DIGEST_LENGTH + 1];
+	#else
+	char md5sum_old[2 * STD_STRING_LENGTH + 1] = {0};
+	#endif
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	strcpy(infile, argv[1]);
 
 	// get spacetime dim
 	getspacetimedim(infile, &dim);
@@ -192,21 +148,20 @@ int main (int argc, char **argv)
 
 	#ifdef HASH_MODE
 	// total volume
-	volumel=1;
-	for(int i=0; i<dim; i++)
+	volume = 1;
+	for(int i = 0; i < dim; i++)
 		{
-		volumel*=sides[i];
+		volume *= sides[i];
 		}
 
 	// compute the hash
-	computehash(infile, dim, volumel, md5sum_new);
+	computehash(infile, dim, volume, md5sum_new);
 
 	// check md5sum computed and stored
-	if(strncmp(md5sum_old, md5sum_new, 2*MD5_DIGEST_LENGTH+1)!=0)
-		{
-		fprintf(stderr, "The configuration %s is corrupted!\n", infile);
-		return EXIT_FAILURE;
-		}
+	int err = strncmp(md5sum_old, md5sum_new, 2 * MD5_DIGEST_LENGTH + 1);
+	REQUIRE(err == 0, "the configuration %s is corrupted!", infile);
+	fprintf(stdout, "Check passed\n");
+
 	#endif
 
 	free(sides);

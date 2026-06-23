@@ -41,8 +41,7 @@ void real_main(char *in_file)
 
 	// check if program was compiled in multicanonical mode
 	#ifndef MULTICANONICAL_MODE
-	fprintf(stderr, "Error: this program can be used only in MULTICANONICAL_MODE (%s, %d)\n", __FILE__, __LINE__);
-	exit(EXIT_FAILURE);
+	REQUIRE(0, "this program can be used only in MULTICANONICAL_MODE");
 	#endif
 
 	// read input file
@@ -81,7 +80,7 @@ void real_main(char *in_file)
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin
-	for(count=0; count < param.d_sample; count++)
+	for(count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -95,15 +94,15 @@ void real_main(char *in_file)
 			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
 
 			#ifdef REPLICA_MEAS_MODE
-			for (int i=1; i<param.d_N_replica_pt; i++)
+			for(int i = 1; i < param.d_N_replica_pt; i++)
 				perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
 			#endif
 			}
 
 		// save configurations for backup
-		if(param.d_saveconf_back_every!=0)
+		if(param.d_saveconf_back_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_back_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_replica_on_file(GC, &param);
@@ -113,9 +112,9 @@ void real_main(char *in_file)
 			}
 
 		// save homogeneous configuration for offline analysis
-		if(param.d_saveconf_analysis_every!=0)
+		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_analysis_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
 				strcat(name, "_step_");
@@ -134,9 +133,9 @@ void real_main(char *in_file)
 		tune_topo_potential(GC, &param, &tune_utils);
 
 		// save current potentials
-		if (param.d_topo_tuning_save_every!=0)
+		if(param.d_topo_tuning_save_every != 0)
 			{
-			if(GC[0].update_index % param.d_topo_tuning_save_every == 0 )
+			if(GC[0].update_index % param.d_topo_tuning_save_every == 0)
 				{
 				strcpy(name, param.d_topo_potential_file);
 				strcat(name, "_step_");
@@ -150,22 +149,22 @@ void real_main(char *in_file)
 		tune_check = update_tuning_stp(&tune_utils, &param);
 
 		stop_timer(&(timers.step_timer));
-		if (tune_check ==  1) print_tuning_stp(GC[0].update_index, &tune_utils, &param);
-		if (tune_check == -1) break;
-		if (wall_time_check(&timers) == 1) break;
+		if(tune_check == 1) print_tuning_stp(GC[0].update_index, &tune_utils, &param);
+		if(tune_check == -1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
 
 	// close swap tracking file
-	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
+	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save topo potential
 	write_topo_potential(&param, param.d_topo_potential_file);
 
 	// save configurations
-	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
+	if(param.d_saveconf_back_every != 0) write_replica_on_file(GC, &param);
 
 	// print simulation details
 	print_parameters_tuning_pt_mc(&param, &timers, count);
@@ -198,33 +197,22 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_pt_parameters(fp);
-		print_template_twist_parameters(fp);
-		print_template_multicanonic_parameters(fp);
-		print_template_multicanonic_tuning_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_adaptive_gradflow_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_pt_parameters(fp);
+	print_template_twist_parameters(fp);
+	print_template_multicanonic_parameters(fp);
+	print_template_multicanonic_tuning_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 1;
@@ -238,25 +226,13 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-			return EXIT_SUCCESS;
-			}
-		else
-			{
-			#if(STDIM==4 && NCOLOR>1)
-				strcpy(in_file, argv[1]);
-				real_main(in_file);
-				return EXIT_SUCCESS;
-			#else
-				fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-				return EXIT_SUCCESS;
-			#endif
-			}
-		}
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	REQUIRE(STDIM == 4 && NCOLOR > 1, "PTBC not implemented for STDIM != 4 or NCOLOR < 2");
+
+	real_main(argv[1]);
+
+	return EXIT_SUCCESS;
 	}
 
 #endif

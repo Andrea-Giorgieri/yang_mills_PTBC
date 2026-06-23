@@ -30,8 +30,6 @@ void real_main(char *in_file)
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *swaptrackfilep;
-	int count;
-
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -72,7 +70,7 @@ void real_main(char *in_file)
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin
-	for(count=0; count < param.d_sample; count++)
+	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -87,9 +85,9 @@ void real_main(char *in_file)
 			}
 
 		// save configurations for backup
-		if(param.d_saveconf_back_every!=0)
+		if(param.d_saveconf_back_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_back_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_replica_on_file(GC, &param);
@@ -99,9 +97,9 @@ void real_main(char *in_file)
 			}
 
 		// save homogeneous configuration for offline analysis
-		if(param.d_saveconf_analysis_every!=0)
+		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_analysis_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
 				strcat(name, "_step_");
@@ -111,7 +109,7 @@ void real_main(char *in_file)
 				}
 			}
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
@@ -121,10 +119,10 @@ void real_main(char *in_file)
 	free_meas_utils_replica(meas_aux, &param);
 
 	// close swap tracking file
-	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
+	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save configurations
-	if (param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_replica_on_file(GC, &param);
 		}
@@ -154,30 +152,19 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_pt_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_cooling_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_pt_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_cooling_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 1;
@@ -191,25 +178,13 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-			return EXIT_SUCCESS;
-			}
-		else
-			{
-			#if(STDIM==4 && NCOLOR>1)
-				strcpy(in_file, argv[1]);
-				real_main(in_file);
-				return EXIT_SUCCESS;
-			#else
-				fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-				return EXIT_SUCCESS;
-			#endif
-			}
-		}
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	REQUIRE(STDIM == 4 && NCOLOR > 1, "PTBC not implemented for STDIM != 4 or NCOLOR < 2");
+
+	real_main(argv[1]);
+
+	return EXIT_SUCCESS;
 	}
 
 #endif

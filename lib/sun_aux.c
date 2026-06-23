@@ -15,8 +15,7 @@
 // (see Kennedy, Pendleton Phys. Lett. B 156, 393 (1985))
 void ennetodue(SuN const *const in, int i, int j, double *xi, Su2 *u)
 	{
-	double s[2][2][2], auxr[2][2], auxi[2][2];
-	double p;
+	double s[2][2][2], aux_re[2][2], aux_im[2][2];
 
 	s[0][0][0] = creal(in->comp[m(i, i)]);
 	s[0][0][1] = cimag(in->comp[m(i, i)]);
@@ -30,34 +29,34 @@ void ennetodue(SuN const *const in, int i, int j, double *xi, Su2 *u)
 	s[1][1][0] = creal(in->comp[m(j, j)]);
 	s[1][1][1] = cimag(in->comp[m(j, j)]);
 
-	auxr[0][0] = s[0][0][0] + s[1][1][0];
-	auxi[0][0] = s[0][0][1] - s[1][1][1];
+	aux_re[0][0] = s[0][0][0] + s[1][1][0];
+	aux_im[0][0] = s[0][0][1] - s[1][1][1];
 
-	auxr[0][1] = s[0][1][0] - s[1][0][0];
-	auxi[0][1] = s[0][1][1] + s[1][0][1];
+	aux_re[0][1] = s[0][1][0] - s[1][0][0];
+	aux_im[0][1] = s[0][1][1] + s[1][0][1];
 
-	auxr[1][0] = s[1][0][0] - s[0][1][0];
-	auxi[1][0] = s[1][0][1] + s[0][1][1];
+	aux_re[1][0] = s[1][0][0] - s[0][1][0];
+	aux_im[1][0] = s[1][0][1] + s[0][1][1];
 
-	auxr[1][1] = s[0][0][0] + s[1][1][0];
-	auxi[1][1] = s[1][1][1] - s[0][0][1];
+	aux_re[1][1] = s[0][0][0] + s[1][1][0];
+	aux_im[1][1] = s[1][1][1] - s[0][0][1];
 
-	p = auxr[0][0] * auxr[1][1] - auxi[0][0] * auxi[1][1] - auxr[0][1] * auxr[1][0] + auxi[0][1] * auxi[1][0];
+	double p = aux_re[0][0] * aux_re[1][1] - aux_im[0][0] * aux_im[1][1] - aux_re[0][1] * aux_re[1][0] + aux_im[0][1] * aux_im[1][0];
 	p = sqrt(p);
 
 	(*xi) = p / 2.0;
 
 	if(*xi > MIN_VALUE)
 		{
-		auxr[0][0] /= p;
-		auxi[0][1] /= p;
-		auxr[0][1] /= p;
-		auxi[0][0] /= p;
+		aux_re[0][0] /= p;
+		aux_im[0][1] /= p;
+		aux_re[0][1] /= p;
+		aux_im[0][0] /= p;
 		}
-	u->comp[0] = auxr[0][0];
-	u->comp[1] = auxi[0][1];
-	u->comp[2] = auxr[0][1];
-	u->comp[3] = auxi[0][0];
+	u->comp[0] = aux_re[0][0];
+	u->comp[1] = aux_im[0][1];
+	u->comp[2] = aux_re[0][1];
+	u->comp[3] = aux_im[0][0];
 	}
 
 // given a 2*2 matrix extend to NCOLOR*NCOLOR with 1 on the diagonal

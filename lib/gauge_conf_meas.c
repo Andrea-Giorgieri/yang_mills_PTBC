@@ -18,22 +18,23 @@
 
 #include<time.h> // DEBUG
 
+
 // return 1/Nc*ReTr[P_ji(r)] with P_ji(r) the plaquette in position r with positive directions (j,i)
-double plaquettep(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					long r,
-					int i,
-					int j)
+double plaquettep(Gauge_Conf const *const GC,
+                  Geometry const *const geo,
+                  GParam const *const param,
+                  long r,
+                  int i,
+                  int j)
 	{
 	#ifdef DEBUG
-    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-    ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
-    (void)param;
+	(void) param;
 	#endif
-	
+
 	GAUGE_GROUP matrix;
 
 	//
@@ -46,7 +47,7 @@ double plaquettep(Gauge_Conf const * const GC,
 	//       +--->---+---> j
 	//       r  (4)
 	//
-	
+
 	// anticlockwise plaquette P_ji
 	equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
 	times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
@@ -54,28 +55,28 @@ double plaquettep(Gauge_Conf const * const GC,
 	times_equal(&matrix, &(GC->lattice[r][j]));
 
 	//twist factor Z_ji = conj(Z_ij)
-	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);
+	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j, i)]);
 
 	return retr(&matrix);
 	}
 
 
 // return 1/Nc*Tr[P_ji(r)] with P_ji(r) the plaquette in position r with positive directions (j,i)
-double complex plaquettep_complex(Gauge_Conf const * const GC,
-											 Geometry const * const geo,
-											 GParam const * const param,
-											 long r,
-											 int j,
-											 int i)
+double complex plaquettep_complex(Gauge_Conf const *const GC,
+                                  Geometry const *const geo,
+                                  GParam const *const param,
+                                  long r,
+                                  int j,
+                                  int i)
 	{
 	#ifdef DEBUG
-    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-    ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
-    (void)param;
+	(void) param;
 	#endif
-	
+
 	GAUGE_GROUP matrix;
 
 	//
@@ -88,7 +89,7 @@ double complex plaquettep_complex(Gauge_Conf const * const GC,
 	//       +--->---+---> j
 	//       r  (4)
 	//
-	
+
 	// anticlockwise plaquette P_ji
 	equal(&matrix, &(GC->lattice[nnp(geo, r, j)][i]));
 	times_equal_dag(&matrix, &(GC->lattice[nnp(geo, r, i)][j]));
@@ -96,27 +97,27 @@ double complex plaquettep_complex(Gauge_Conf const * const GC,
 	times_equal(&matrix, &(GC->lattice[r][j]));
 
 	//twist factor Z_ji = conj(Z_ji)
-	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j,i)]);
+	times_equal_complex(&matrix, GC->Z[r][dirs_to_si(j, i)]);
 
 	return retr(&matrix) + I * imtr(&matrix);
 	}
 
 
 // compute P_ij(r), the plaquette in position r with positive directions (i,j), and save it in matrix
-void plaquettep_matrix(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						long r,
-						int i,
-						int j,
-						GAUGE_GROUP *matrix)
+void plaquettep_matrix(Gauge_Conf const *const GC,
+                       Geometry const *const geo,
+                       GParam const *const param,
+                       long r,
+                       int i,
+                       int j,
+                       GAUGE_GROUP *matrix)
 	{
 	#ifdef DEBUG
-    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-    ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
-    (void)param;
+	(void) param;
 	#endif
 
 	//
@@ -137,29 +138,38 @@ void plaquettep_matrix(Gauge_Conf const * const GC,
 	times_equal_dag(matrix, &(GC->lattice[r][j]));
 
 	//twist factor Z_ij
-	times_equal_complex(matrix, GC->Z[r][dirs_to_si(i,j)]);
+	times_equal_complex(matrix, GC->Z[r][dirs_to_si(i, j)]);
 	}
 
 
 // compute C_ij(r), the four-leaf clover in position r with positive directions (i,j), and save it in M
-void clover(Gauge_Conf const * const GC,
-			Geometry const * const geo,
-			GParam const * const param,
-			long r,
-			int i,
-			int j,
-			GAUGE_GROUP *M)
+void clover(Gauge_Conf const *const GC,
+            Geometry const *const geo,
+            GParam const *const param,
+            long r,
+            int i,
+            int j,
+            GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-    ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-    ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-    ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
-    (void)param;
+	(void) param;
 	#endif
-	
+
 	GAUGE_GROUP aux;
-	long k, p;
+
+	int const si_ij = dirs_to_si(i, j);
+
+	long const rpi = nnp(geo, r, i);
+	long const rmi = nnm(geo, r, i);
+	long const rpj = nnp(geo, r, j);
+	long const rmj = nnm(geo, r, j);
+	long const rpimj = nnm(geo, rpi, j);
+	long const rmipj = nnp(geo, rmi, j);
+	long const rmimj = nnm(geo, rmi, j);
 
 	//
 	//                    j ^
@@ -171,7 +181,7 @@ void clover(Gauge_Conf const * const GC,
 	//     (15) V      (13) ^V (4)       ^ (2)
 	//          |           ||           |
 	//          |    (16)   || r  (1)    |
-	//        p +----->-----++----->-----+------> i
+	//      rmi +----->-----++----->-----+------> i
 	//          +-----<-----++-----<-----+
 	//          |    (9)    ||    (8)    |
 	//          |           ||           |
@@ -179,113 +189,101 @@ void clover(Gauge_Conf const * const GC,
 	//          |           ||           |
 	//          |           ||           |
 	//          +------>----++----->-----+
-	//                (11)   k    (6)
+	//                (11)   rmj  (6)
 	//
 
 	// P_ij(r)
-	equal(&aux, &(GC->lattice[r][i]) );							// 1
-	times_equal(&aux, &(GC->lattice[nnp(geo, r, i)][j]) );		// 2
-	times_equal_dag(&aux, &(GC->lattice[nnp(geo, r, j)][i]) );	// 3
-	times_equal_dag(&aux, &(GC->lattice[r][j]) );				// 4
-	times_equal_complex(&aux, GC->Z[r][dirs_to_si(i,j)]);		// Z_ij
+	equal(&aux, &(GC->lattice[r][i]));             // 1
+	times_equal(&aux, &(GC->lattice[rpi][j]));     // 2
+	times_equal_dag(&aux, &(GC->lattice[rpj][i])); // 3
+	times_equal_dag(&aux, &(GC->lattice[r][j]));   // 4
+	times_equal_complex(&aux, GC->Z[r][si_ij]);    // Z_ij
 	equal(M, &aux);
 
-	k=nnm(geo, r, j);
-
 	// P_-ji(r)
-	equal_dag(&aux, &(GC->lattice[k][j]) );						// 5
-	times_equal(&aux, &(GC->lattice[k][i]) );					// 6
-	times_equal(&aux, &(GC->lattice[nnp(geo, k, i)][j]) );		// 7
-	times_equal_dag(&aux, &(GC->lattice[r][i]) );				// 8
-	times_equal_complex(&aux, GC->Z[k][dirs_to_si(i,j)]);		// Z_-ji
+	equal_dag(&aux, &(GC->lattice[rmj][j]));      // 5
+	times_equal(&aux, &(GC->lattice[rmj][i]));    // 6
+	times_equal(&aux, &(GC->lattice[rpimj][j]));  // 7
+	times_equal_dag(&aux, &(GC->lattice[r][i]));  // 8
+	times_equal_complex(&aux, GC->Z[rmj][si_ij]); // Z_-ji
 	plus_equal(M, &aux);
-
-	p=nnm(geo, r, i);
 
 	// P_-i-j(r)
-	equal_dag(&aux, &(GC->lattice[p][i]) );								// 9
-	times_equal_dag(&aux, &(GC->lattice[nnm(geo, k, i)][j]) );			// 10
-	times_equal(&aux, &(GC->lattice[nnm(geo, k, i)][i]) );				// 11
-	times_equal(&aux, &(GC->lattice[k][j]) );							// 12
-	times_equal_complex(&aux, GC->Z[nnm(geo, k, i)][dirs_to_si(i,j)]);	// Z_-i-j
+	equal_dag(&aux, &(GC->lattice[rmi][i]));         // 9
+	times_equal_dag(&aux, &(GC->lattice[rmimj][j])); // 10
+	times_equal(&aux, &(GC->lattice[rmimj][i]));     // 11
+	times_equal(&aux, &(GC->lattice[rmj][j]));       // 12
+	times_equal_complex(&aux, GC->Z[rmimj][si_ij]);  // Z_-i-j
 	plus_equal(M, &aux);
 
-	// P_i-j(r)
-	equal(&aux, &(GC->lattice[r][j]) );							// 13
-	times_equal_dag(&aux, &(GC->lattice[nnp(geo, p, j)][i]) );	// 14
-	times_equal_dag(&aux, &(GC->lattice[p][j]) );				// 15
-	times_equal(&aux, &(GC->lattice[p][i]) );					// 16
-	times_equal_complex(&aux, GC->Z[p][dirs_to_si(i,j)]);		// Z_i-j
+	// P_j-i(r)
+	equal(&aux, &(GC->lattice[r][j]));               // 13
+	times_equal_dag(&aux, &(GC->lattice[rmipj][i])); // 14
+	times_equal_dag(&aux, &(GC->lattice[rmi][j]));   // 15
+	times_equal(&aux, &(GC->lattice[rmi][i]));       // 16
+	times_equal_complex(&aux, GC->Z[rmi][si_ij]);    // Z_j-i
 	plus_equal(M, &aux);
 	}
 
 
 // compute the mean plaquettes (spatial, temporal)
-void plaquette(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					double *plaqs,
-					double *plaqt)
+void plaquette(Gauge_Conf const *const GC,
+               Geometry const *const geo,
+               GParam const *const param,
+               double *plaqs,
+               double *plaqt)
 	{
-	long r;
-	double ps, pt;
-
-	ps = 0.0;
-	pt = 0.0;
+	double ps = 0.0, pt = 0.0;
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(r) reduction(+ : pt) reduction(+ : ps)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : pt) reduction(+ : ps)
 	#endif
-	for(r=0; r<(param->d_volume); r++)
+	for(long r = 0; r < (param->d_volume); r++)
 		{
-		int i, j;
-		i = 0;
-		for(j=1; j<STDIM; j++)
+		for(int j = 1; j < STDIM; j++)
 			{
-			pt += plaquettep(GC, geo, param, r, i, j);
+			pt += plaquettep(GC, geo, param, r, 0, j);
 			}
 
-		for(i=1; i<STDIM; i++)
+		for(int i = 1; i < STDIM; i++)
 			{
-			for(j=i+1; j<STDIM; j++)
+			for(int j = i + 1; j < STDIM; j++)
 				{
 				ps += plaquettep(GC, geo, param, r, i, j);
 				}
 			}
 		}
 
-	if(STDIM > 2)
-		{
-		ps *= param->d_inv_vol;
-		ps /= ((double)(STDIM-1) * (STDIM - 2) / 2);
-		}
-	else
-		{
-		ps = 0.0;
-		}
+	#if STDIM > 2
+	double const inv_ns = 2.0 / (((double) STDIM - 1) * (STDIM - 2));
+	*plaqs = ps * param->d_inv_vol * inv_ns;
+	#else
+	*plaqs = 0.0;
+	#endif
 
-	pt *= param->d_inv_vol;
-	pt /= ((double)STDIM - 1);
-
-	*plaqs = ps;
-	*plaqt = pt;
+	#if STDIM > 1
+	double const inv_nt = 1.0 / ((double) STDIM - 1);
+	*plaqt = pt * param->d_inv_vol * inv_nt;
+	#else
+	*plaqt = 0.0;
+	#endif
 	}
 
 
 // compute the clover discretization of
-// sum_{\mu\nu}	Tr(F_{\mu\nu}F_{\mu\nu})/2
-double loc_clover_energy(Gauge_Conf const * const GC,
-							Geometry const * const geo,
-							GParam const * const param,
-							long const r)
+// sum_{\mu\nu} Tr(F_{\mu\nu}F_{\mu\nu})/2
+double loc_clover_energy(Gauge_Conf const *const GC,
+                         Geometry const *const geo,
+                         GParam const *const param,
+                         long const r)
 	{
-	GAUGE_GROUP aux1, aux2;
 	double res = 0.0;
 
-	for(int i=0; i<STDIM; i++)
+	for(int i = 0; i < STDIM; i++)
 		{
-		for(int j=i+1; j<STDIM; j++)
+		for(int j = i + 1; j < STDIM; j++)
 			{
+			GAUGE_GROUP aux1, aux2;
 			clover(GC, geo, param, r, i, j, &aux1);
 			ta(&aux1);
 			equal(&aux2, &aux1);
@@ -293,21 +291,22 @@ double loc_clover_energy(Gauge_Conf const * const GC,
 			res += retr(&aux1);
 			}
 		}
-	return -(double)NCOLOR * res / 16; 
+
+	return -(double) NCOLOR * res / 16;
 	}
 
 
-// compute and write to binary file the clover energy density 
-void energy_density(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					Meas_Utils * const meas_aux,
-					int const meas_count)
+// compute and write to binary file the clover energy density
+void energy_density(Gauge_Conf const *const GC,
+                    Geometry const *const geo,
+                    GParam const *const param,
+                    Meas_Utils *const meas_aux,
+                    int const meas_count)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long r=0; r<param->d_volume; r++)
+	for(long r = 0; r < param->d_volume; r++)
 		{
 		meas_aux->scalar_density[r] = loc_clover_energy(GC, geo, param, r);;
 		//TODO: try parallel writing with pwrite() if available
@@ -316,78 +315,76 @@ void energy_density(Gauge_Conf const * const GC,
 	FILE *fp = meas_aux->energydensityfilep;
 	fwrite(&(GC->update_index), sizeof(long), 1, fp);
 	fwrite(&meas_count, sizeof(int), 1, fp);
-	fwrite(meas_aux->scalar_density, sizeof(double), (size_t)param->d_volume, fp);
+	fwrite(meas_aux->scalar_density, sizeof(double), (size_t) param->d_volume, fp);
 	}
 
 
 // compute the average clover energy density
-void clover_disc_energy(Gauge_Conf const * const GC,
-							Geometry const * const geo,
-							GParam const * const param,
-							double * const energy)
+void clover_disc_energy(Gauge_Conf const *const GC,
+                        Geometry const *const geo,
+                        GParam const *const param,
+                        double *const energy)
 	{
 	double res = 0.0;
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
-	for(long r=0; r<param->d_volume; r++) res += loc_clover_energy(GC, geo, param, r);
+	for(long r = 0; r < param->d_volume; r++) res += loc_clover_energy(GC, geo, param, r);
 	*energy = res * param->d_inv_vol;
 	}
 
 
 // compute the clover energy density
 // for all the slices along direction mu
-void clover_energy_slices(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					int const mu,
-					double *slices,
-					int meas_count,
-					FILE *filep)
+void clover_energy_slices(Gauge_Conf const *const GC,
+                          Geometry const *const geo,
+                          GParam const *const param,
+                          int const mu,
+                          double *slices,
+                          int meas_count,
+                          FILE *filep)
 	{
 	int const L_mu = param->d_size[mu];
-	for(int i=0; i<L_mu; i++) slices[i] = 0.0;
+	for(int i = 0; i < L_mu; i++) slices[i] = 0.0;
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+: slices[:L_mu])
 	#endif
-	for(long r=0; r<param->d_volume; r++)
+	for(long r = 0; r < param->d_volume; r++)
 		{
-		int x_mu = geo->d_mucomp[mu][r];
+		int const x_mu = geo->d_mucomp[mu][r];
 		slices[x_mu] += loc_clover_energy(GC, geo, param, r);
 		}
-	for(int i=0; i<L_mu; i++) slices[i] *= param->d_inv_space_vol[mu];
+	for(int i = 0; i < L_mu; i++) slices[i] *= param->d_inv_space_vol[mu];
 
 	fprintf(filep, "%ld %d ", GC->update_index, meas_count);
-	for(int i=0; i<L_mu; i++) fprintf(filep, " % 18.12e", slices[i]);
+	for(int i = 0; i < L_mu; i++) fprintf(filep, " % 18.12e", slices[i]);
 	fprintf(filep, "\n");
 	}
 
 
 // compute the total action (debug only)
-void action(Gauge_Conf const * const GC,
-				Geometry const * const geo,
-				GParam const * const param,
-				double *action1, double *action2, double *action3, double *pot)
+void action(Gauge_Conf const *const GC,
+            Geometry const *const geo,
+            GParam const *const param,
+            double *action1, double *action2, double *action3, double *pot)
 	{
-	double ris1 = 0.0, ris2 = 0.0, ris3 = 0.0, aux;
-	long s;
-	int dir;
+	double res1 = 0.0, res2 = 0.0, res3 = 0.0;
 
-	for(dir=0; dir<STDIM; dir++)
+	for(int dir = 0; dir < STDIM; dir++)
 		{
 		compute_clovers(GC, geo, param, dir);
 		}
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+ : ris1, ris2, ris3)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res1, res2, res3)
 	#endif
-	for(s=0; s<STDIM*(param->d_volume); s++)
+	for(long s = 0; s < STDIM * (param->d_volume); s++)
 		{
 		GAUGE_GROUP stap1, stap2, stap3;
-		long r = s % (param->d_volume);
-		int i = (int) ( (s - r) / (param->d_volume) );
+		long const r = s % (param->d_volume);
+		int const i = (int) ((s - r) / (param->d_volume));
 
 		calcstaples_with_topo(GC, geo, param, r, i, &stap1);
 		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap2);
@@ -397,15 +394,15 @@ void action(Gauge_Conf const * const GC,
 		times_equal(&stap1, &(GC->lattice[r][i]));
 		times_equal(&stap2, &(GC->lattice[r][i]));
 		times_equal(&stap3, &(GC->lattice[r][i]));
-		ris1 += retr(&stap1);
-		ris2 += retr(&stap2);
-		ris3 += retr(&stap3);
+		res1 += retr(&stap1);
+		res2 += retr(&stap2);
+		res3 += retr(&stap3);
 		}
 
-	aux = (double)((param->d_n_planes) * (param->d_volume)) / 2;
-	*action1 = (param->d_beta) * (aux - ris1 * 0.25);
-	*action2 = (param->d_beta) * (aux - ris2 * 0.25);
-	*action3 = (param->d_beta) * (aux - ris3 * 0.25) - (param->d_theta) * topcharge(GC, geo, param);
+	double const aux = (double) ((param->d_n_planes) * (param->d_volume)) / 2;
+	*action1 = (param->d_beta) * (aux - res1 * 0.25);
+	*action2 = (param->d_beta) * (aux - res2 * 0.25);
+	*action3 = (param->d_beta) * (aux - res3 * 0.25) - (param->d_theta) * topcharge(GC, geo, param);
 	*pot = 0.0;
 	#ifdef MULTICANONICAL_MODE
 	*pot = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
@@ -414,26 +411,22 @@ void action(Gauge_Conf const * const GC,
 
 
 // compute the polyakov loop density and write to binary file
-void polyakov_density(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					int mu,
-					Meas_Utils * const meas_aux,
-					int const meas_count)
+void polyakov_density(Gauge_Conf const *const GC,
+                      Geometry const *const geo,
+                      GParam const *const param,
+                      int mu,
+                      Meas_Utils *const meas_aux,
+                      int const meas_count)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long rsp=0; rsp<param->d_space_vol[mu]; rsp++)
+	for(long rsp = 0; rsp < param->d_space_vol[mu]; rsp++)
 		{
-		long r;
-		int i;
+		long r = sisp_and_mu_to_si(geo, rsp, 0, mu);
 		GAUGE_GROUP matrix;
-
-		r = sisp_and_mu_to_si(geo, rsp, 0, mu);
-
 		one(&matrix);
-		for(i=0; i<param->d_size[mu]; i++)
+		for(int i = 0; i < param->d_size[mu]; i++)
 			{
 			times_equal(&matrix, &(GC->lattice[r][mu]));
 			r = nnp(geo, r, mu);
@@ -447,161 +440,146 @@ void polyakov_density(Gauge_Conf const * const GC,
 	FILE *fp = meas_aux->polyakovdensityfilep[mu];
 	fwrite(&(GC->update_index), sizeof(long), 1, fp);
 	fwrite(&meas_count, sizeof(int), 1, fp);
-	fwrite(meas_aux->polyre_density, sizeof(double), (size_t)param->d_space_vol[mu], fp);
-	fwrite(meas_aux->polyim_density, sizeof(double), (size_t)param->d_space_vol[mu], fp);
+	fwrite(meas_aux->polyre_density, sizeof(double), (size_t) param->d_space_vol[mu], fp);
+	fwrite(meas_aux->polyim_density, sizeof(double), (size_t) param->d_space_vol[mu], fp);
 	}
 
 
 // compute the mean trace of the Polyakov loop winding pwr times along direction mu
-void polyakov(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					int mu,
-					int pwr,
-					double *repoly,
-					double *impoly)
+void polyakov(Gauge_Conf const *const GC,
+              Geometry const *const geo,
+              GParam const *const param,
+              int mu,
+              int pwr,
+              double *repoly,
+              double *impoly)
 	{
 	#ifdef DEBUG
 	ASSERT(pwr > 0, "power of Polyakov loop must be at least 1, got %d", pwr);
 	#endif
-	
-	long rsp;
-	double rep, imp;
 
-	rep=0.0;
-	imp=0.0;
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
-	#endif
-	for(rsp=0; rsp<param->d_space_vol[mu]; rsp++)
-		{
-		long r;
-		int i;
-		GAUGE_GROUP matrix;
-
-		r=sisp_and_mu_to_si(geo, rsp, 0, mu);
-
-		one(&matrix);
-		for(i=0; i<param->d_size[mu]; i++)
-			{
-			times_equal(&matrix, &(GC->lattice[r][mu]));
-			r=nnp(geo, r, mu);
-			}
-		if (pwr > 1)
-			{
-			GAUGE_GROUP matrix2;
-
-			equal(&matrix2, &matrix);
-			for(int j=1; j<pwr; j++) times_equal(&matrix, &matrix2);
-			}
-
-		rep+=retr(&matrix);
-		imp+=imtr(&matrix);
-		}
-
-	*repoly=rep*(param->d_inv_space_vol[mu]);
-	*impoly=imp*(param->d_inv_space_vol[mu]);
-	}
-
-// compute the mean trace of the Polyakov loop winding along multiple directions
-void multipolyakov(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					double *repoly,
-					double *impoly)
-	{
-	double rep, imp;
-
-	rep=0.0;
-	imp=0.0;
+	double rep = 0.0, imp = 0.0;
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep) reduction(+ : imp)
 	#endif
-	for(long r=0; r<param->d_volume; r++)
+	for(long rsp = 0; rsp < param->d_space_vol[mu]; rsp++)
 		{
-		int i, j, mu;
+		long r = sisp_and_mu_to_si(geo, rsp, 0, mu);
 		GAUGE_GROUP matrix;
-
 		one(&matrix);
-		for(j=0; j<param->d_multipolyakov_order; j++)
+		for(int i = 0; i < param->d_size[mu]; i++)
 			{
-			mu = param->d_multipolyakov_dirs[j];
-			for(i=0; i<param->d_size[mu]; i++)
+			times_equal(&matrix, &(GC->lattice[r][mu]));
+			r = nnp(geo, r, mu);
+			}
+		if(pwr > 1)
+			{
+			GAUGE_GROUP matrix2;
+
+			equal(&matrix2, &matrix);
+			for(int j = 1; j < pwr; j++) times_equal(&matrix, &matrix2);
+			}
+
+		rep += retr(&matrix);
+		imp += imtr(&matrix);
+		}
+
+	*repoly = rep * (param->d_inv_space_vol[mu]);
+	*impoly = imp * (param->d_inv_space_vol[mu]);
+	}
+
+// compute the mean trace of the Polyakov loop winding along multiple directions
+void multipolyakov(Gauge_Conf const *const GC,
+                   Geometry const *const geo,
+                   GParam const *const param,
+                   double *repoly,
+                   double *impoly)
+	{
+	double rep = 0.0, imp = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep) reduction(+ : imp)
+	#endif
+	for(long r = 0; r < param->d_volume; r++)
+		{
+		GAUGE_GROUP matrix;
+		one(&matrix);
+		for(int j = 0; j < param->d_multipolyakov_order; j++)
+			{
+			int const mu = param->d_multipolyakov_dirs[j];
+			for(int i = 0; i < param->d_size[mu]; i++)
 				{
 				times_equal(&matrix, &(GC->lattice[r][mu]));
-				r=nnp(geo, r, mu);
+				r = nnp(geo, r, mu);
 				}
 			}
 
-		rep+=retr(&matrix);
-		imp+=imtr(&matrix);
+		rep += retr(&matrix);
+		imp += imtr(&matrix);
 		}
 
-	*repoly=rep*(param->d_inv_vol);
-	*impoly=imp*(param->d_inv_vol);
+	*repoly = rep * (param->d_inv_vol);
+	*impoly = imp * (param->d_inv_vol);
 	}
 
 
-// compute the mean trace of the Polyakov loop in the adjoint representation
-void polyakov_adj(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						double *repoly,
-						double *impoly)
+// compute the mean trace of the Polyakov loop in the adjoint representation:
+// Tr_adj(P)/(N^2-1) = (|Tr_F(P)|^2 - 1)/(N^2 - 1) = (|tr_F(P)/N|^2 - 1/N^2)/(1 - 1/N^2)
+void polyakov_adj(Gauge_Conf const *const GC,
+                  Geometry const *const geo,
+                  GParam const *const param,
+                  double *repoly,
+                  double *impoly)
 	{
-	long rsp;
-	double rep, imp;
-	double complex tr;
+	*impoly = 0.0;
 
-	rep=0.0;
-	imp=0.0;
+	#if NCOLOR != 1
+
+	double const inv_n2 = 1.0 / ((double) NCOLOR * NCOLOR);
+	double const adj_tr_norm = 1.0 / (1.0 - inv_n2);
+	double rep = 0.0;
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(rsp) reduction(+ : rep) reduction(+ : imp)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep)
 	#endif
-	for(rsp=0; rsp<param->d_space_vol[0]; rsp++)
+	for(long rsp = 0; rsp < param->d_space_vol[0]; rsp++)
 		{
-		long r;
-		int i;
+		long r = sisp_and_t_to_si(geo, rsp, 0);
+
 		GAUGE_GROUP matrix;
-
-		r=sisp_and_t_to_si(geo, rsp, 0);
-
 		one(&matrix);
-		for(i=0; i<param->d_size[0]; i++)
+		for(int i = 0; i < param->d_size[0]; i++)
 			{
 			times_equal(&matrix, &(GC->lattice[r][0]));
-			r=nnp(geo, r, 0);
+			r = nnp(geo, r, 0);
 			}
-		tr=NCOLOR*retr(&matrix)+NCOLOR*imtr(&matrix)*I;
-
-		#if NCOLOR==1
-			rep+=0.0;
-		#else
-			rep+=(cabs(tr)*cabs(tr)-1)/(NCOLOR*NCOLOR-1);
-		#endif
-
-		imp+=0.0;
+		double const tr_N_re = retr(&matrix);
+		double const tr_N_im = imtr(&matrix);
+		rep += (tr_N_re * tr_N_re + tr_N_im * tr_N_im - inv_n2);
 		}
 
-	*repoly=rep*param->d_inv_space_vol[0];
-	*impoly=imp*param->d_inv_space_vol[0];
+	*repoly = rep * adj_tr_norm * param->d_inv_space_vol[0];
+
+	#else
+
+	*repoly = 0.0;
+
+	#endif
 	}
 
 
 // compute the mean trace of all the powers of the Polyakov loop winding along direction mu
-void polyakov_powers(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					int mu,
-					double *repoly_pwrs,
-					double *impoly_pwrs)
+void polyakov_powers(Gauge_Conf const *const GC,
+                     Geometry const *const geo,
+                     GParam const *const param,
+                     int mu,
+                     double *repoly_pwrs,
+                     double *impoly_pwrs)
 	{
 	double rep[MAX_POLY_PWR], imp[MAX_POLY_PWR];
 
-	for(int i=0; i<MAX_POLY_PWR; i++)
+	for(int i = 0; i < MAX_POLY_PWR; i++)
 		{
 		rep[i] = 0.0;
 		imp[i] = 0.0;
@@ -610,28 +588,25 @@ void polyakov_powers(Gauge_Conf const * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep[:MAX_POLY_PWR]) reduction(+ : imp[:MAX_POLY_PWR])
 	#endif
-	for(long rsp=0; rsp<param->d_space_vol[mu]; rsp++)
+	for(long rsp = 0; rsp < param->d_space_vol[mu]; rsp++)
 		{
-		int i;
-		long r;
+		long r = sisp_and_mu_to_si(geo, rsp, 0, mu);
 		GAUGE_GROUP matrix, matrix2;
-		
-		r = sisp_and_mu_to_si(geo, rsp, 0, mu);
 		one(&matrix);
-		for(i=0; i<param->d_size[mu]; i++)
+		for(int i = 0; i < param->d_size[mu]; i++)
 			{
 			times_equal(&matrix, &(GC->lattice[r][mu]));
 			r = nnp(geo, r, mu);
 			}
 		equal(&matrix2, &matrix);
-		for(i=0; i<MAX_POLY_PWR; i++)
+		for(int i = 0; i < MAX_POLY_PWR; i++)
 			{
 			rep[i] += retr(&matrix);
 			imp[i] += imtr(&matrix);
 			times_equal(&matrix, &matrix2);
 			}
 		}
-	for(int i=0; i<MAX_POLY_PWR; i++)
+	for(int i = 0; i < MAX_POLY_PWR; i++)
 		{
 		repoly_pwrs[i] = rep[i] * param->d_inv_space_vol[mu];
 		impoly_pwrs[i] = imp[i] * param->d_inv_space_vol[mu];
@@ -641,72 +616,73 @@ void polyakov_powers(Gauge_Conf const * const GC,
 
 // compute the local topological charge at point r
 // see readme for more details
-double loc_topcharge(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					long r)
+double loc_topcharge(Gauge_Conf const *const GC,
+                     Geometry const *const geo,
+                     GParam const *const param,
+                     long r)
 	{
-	double ris;
-
 	#if (STDIM==4 && NCOLOR>1)
-	GAUGE_GROUP aux1, aux2, aux3;
-	double real1, real2, loc_charge;
-	double const chnorm = creal(GC->Z[r][param->d_n_planes]) / (128.0 * PI * PI);
-	int i, mu, nu, rho, sigma, sign;
 
-	sign = -1;
-	loc_charge = 0.0;
+	// topcharge normalization: Nc from retr() = 1/N ReTr[], bulk factor Z if using OBC, 1 / (128 * pi ** 2) from definition
+	double const charge_norm = NCOLOR * creal(GC->Z[r][param->d_n_planes]) / (128.0 * PI * PI);
 
-	for(i=0; i<3; i++)
+	int sign = -1;
+	double loc_charge = 0.0;
+
+	for(int i = 0; i < 3; i++)
 		{
-		mu    = geo->d_indep_perm_dir[0][i];
-		nu    = geo->d_indep_perm_dir[1][i];
-		rho   = geo->d_indep_perm_dir[2][i];
-		sigma = geo->d_indep_perm_dir[3][i];
-		clover(GC, geo, param, r, mu, nu, &aux1);
-		clover(GC, geo, param, r, rho, sigma, &aux2);
+		int const mu = g_indep_perm_dir[0][i];
+		int const nu = g_indep_perm_dir[1][i];
+		int const rho = g_indep_perm_dir[2][i];
+		int const sigma = g_indep_perm_dir[3][i];
 
-		times_dag2(&aux3, &aux2, &aux1);  // aux3 = aux2 * (aux1^{dag})
-		real1 = retr(&aux3) * NCOLOR;
+		GAUGE_GROUP C_mu_nu, C_rho_sigma, C_tmp;
 
-		times(&aux3, &aux2, &aux1);       // aux3 = aux2 * aux1
-		real2 = retr(&aux3) * NCOLOR;
+		clover(GC, geo, param, r, mu, nu, &C_mu_nu);
+		clover(GC, geo, param, r, rho, sigma, &C_rho_sigma);
 
-		loc_charge += (double)sign * (real1 - real2);
+		times_dag2(&C_tmp, &C_rho_sigma, &C_mu_nu); // C_tmp = C_rho_sigma * C_mu_nu^{dag}
+		double const real1 = retr(&C_tmp);
+
+		times(&C_tmp, &C_rho_sigma, &C_mu_nu); // C_tmp = C_rho_sigma * C_mu_nu
+		double const real2 = retr(&C_tmp);
+
+		loc_charge += (double) sign * (real1 - real2);
 		sign = -sign;
 		}
-	ris = loc_charge * chnorm;
+	return loc_charge * charge_norm;
 
 	#elif (STDIM==2 && NCOLOR==1)
+
 	GAUGE_GROUP u1matrix;
 
 	plaquettep_matrix(GC, geo, param, r, 0, 1, &u1matrix);
-	ris = atan2(cimag(u1matrix.comp), creal(u1matrix.comp)) / PI2;
-	
+	return atan2(cimag(u1matrix.comp), creal(u1matrix.comp)) / PI2;
+
 	#else
+
 	(void) GC;
 	(void) geo;
 	(void) param;
 	(void) r;
-	ris = 0.0;
 	REQUIRE(0, "unsupported configuration for topological charge: STDIM=%d, NCOLOR=%d", STDIM, NCOLOR);
+	return 0.0;
+
 	#endif
-	
-	return ris;
 	}
 
 
-// compute and write to binary file the charge density 
-void charge_density(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					Meas_Utils * const meas_aux,
-					int const meas_count)
+// compute and write to binary file the charge density
+void charge_density(Gauge_Conf const *const GC,
+                    Geometry const *const geo,
+                    GParam const *const param,
+                    Meas_Utils *const meas_aux,
+                    int const meas_count)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long r=0; r<param->d_volume; r++)
+	for(long r = 0; r < param->d_volume; r++)
 		{
 		meas_aux->scalar_density[r] = loc_topcharge(GC, geo, param, r);;
 		//TODO: try parallel writing with pwrite() if available
@@ -715,150 +691,147 @@ void charge_density(Gauge_Conf const * const GC,
 	FILE *fp = meas_aux->chargedensityfilep;
 	fwrite(&(GC->update_index), sizeof(long), 1, fp);
 	fwrite(&meas_count, sizeof(int), 1, fp);
-	fwrite(meas_aux->scalar_density, sizeof(double), (size_t)param->d_volume, fp);
+	fwrite(meas_aux->scalar_density, sizeof(double), (size_t) param->d_volume, fp);
 	}
 
 
 // compute the topological charge
 // see readme for more details
-double topcharge(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param)
+double topcharge(Gauge_Conf const *const GC,
+                 Geometry const *const geo,
+                 GParam const *const param)
 	{
-	double ris = 0.0;
+	double res = 0.0;
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : ris)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
-	for(long r=0; r<(param->d_volume); r++)
-		{
-		ris += loc_topcharge(GC, geo, param, r);
-		}
+	for(long r = 0; r < (param->d_volume); r++) res += loc_topcharge(GC, geo, param, r);
 
-	return ris;
+	return res;
 	}
 
 
 // sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
-double topcharge_prime(Gauge_Conf const * const GC,
-					Geometry const * const geo,
-					GParam const * const param,
-					int const dir)
+double topcharge_prime(Gauge_Conf const *const GC,
+                       Geometry const *const geo,
+                       GParam const *const param,
+                       int const dir)
 	{
-	int i, cartcoord[STDIM];
-	double ris, *tmp;
+	double res = 0.0;
 
-	ris=0.0;
+	double *tmp;
 	allocate_array_double(&tmp, param->d_size[dir], __FILE__, __LINE__);
-	for(i=0; i<param->d_size[dir]; i++) tmp[i] = 0;
+	for(int i = 0; i < param->d_size[dir]; i++) tmp[i] = 0.0;
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel num_threads(NTHREADS)
 	#endif
-		{
-		int j;
+	{
 		double *tmp_private;
-
 		allocate_array_double(&tmp_private, param->d_size[dir], __FILE__, __LINE__);
-		for(j=0; j<param->d_size[dir]; j++) tmp_private[j] = 0;
+		for(int j = 0; j < param->d_size[dir]; j++) tmp_private[j] = 0;
 
 		#ifdef OPENMP_MODE
-		#pragma omp for private(cartcoord)
+		#pragma omp for
 		#endif
-		for(long r=0; r<(param->d_volume); r++)
+		for(long r = 0; r < (param->d_volume); r++)
 			{
-			si_to_cart(cartcoord,r,param);
-			tmp_private[cartcoord[dir]]+=loc_topcharge(GC, geo, param, r);
+			int cartcoord[STDIM];
+			si_to_cart(cartcoord, r, param);
+			tmp_private[cartcoord[dir]] += loc_topcharge(GC, geo, param, r);
 			}
 		#ifdef OPENMP_MODE
 		#pragma omp critical
 		#endif
-			{
-			for(j=0; j<param->d_size[dir]; j++) tmp[j] += tmp_private[j];
-			free(tmp_private);
-			}
+		{
+			for(int j = 0; j < param->d_size[dir]; j++) tmp[j] += tmp_private[j];
 		}
 
-	for(i=0; i<param->d_size[dir]; i++) ris += fabs(tmp[i]);
+		free(tmp_private);
+	}
+
+	for(int i = 0; i < param->d_size[dir]; i++) res += fabs(tmp[i]);
 	free(tmp);
-	return ris;
+
+	return res;
 	}
 
 
 // chi^\prime = (1/8) int d^4x |x|^2 <q(x)q(0)> = < (1/8) int d^4x |x|^2 q(x) q(0) > = < G2 >
-// This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensamble is a^2 chi^\prime
+// This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensemble is a^2 chi^\prime
 // d(x,y) = lattice distance between sites x and y keeping periodic boundary conditions into account (i.e., the shortest distance between x and y)
-double topo_chi_prime(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param)
+double topo_chi_prime(Gauge_Conf const *const GC,
+                      Geometry const *const geo,
+                      GParam const *const param)
 	{
-	double ris = 0.0;
+	double res = 0.0;
 
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:ris)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+: res)
 	#endif
-	for(long r=0; r<(param->d_volume); r++)
+	for(long r = 0; r < (param->d_volume); r++)
 		{
-		ris += square_distance(r, 0, param) * loc_topcharge(GC, geo, param, r);
+		res += square_distance(r, 0, param) * loc_topcharge(GC, geo, param, r);
 		}
-	ris *=	loc_topcharge(GC, geo, param, 0) / (2 * STDIM); // ris *= q(0) / 8
+	res *= loc_topcharge(GC, geo, param, 0) / (2 * STDIM); // res *= q(0) / 8
 
-	return ris;
+	return res;
 	}
 
 
-void topcharge_slices(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						int const mu,
-						double *slices,
-						int meas_count,
-						FILE *filep)
+void topcharge_slices(Gauge_Conf const *const GC,
+                      Geometry const *const geo,
+                      GParam const *const param,
+                      int const mu,
+                      double *slices,
+                      int meas_count,
+                      FILE *filep)
 	{
 	int const L_mu = param->d_size[mu];
 
-	for(int i=0; i<L_mu; i++) slices[i] = 0.0;
+	for(int i = 0; i < L_mu; i++) slices[i] = 0.0;
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+:slices[:L_mu])
 	#endif
-	for(long r=0; r<(param->d_volume); r++)
+	for(long r = 0; r < (param->d_volume); r++)
 		{
 		int x_mu = geo->d_mucomp[mu][r];
 		slices[x_mu] += loc_topcharge(GC, geo, param, r);
 		}
 
 	fprintf(filep, "%ld %d ", GC->update_index, meas_count);
-	for(int i=0; i<L_mu; i++) fprintf(filep, " % 18.12e", slices[i]);
+	for(int i = 0; i < L_mu; i++) fprintf(filep, " % 18.12e", slices[i]);
 	fprintf(filep, "\n");
 	}
 
 
-void topcharge_p_slices(Gauge_Conf const * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						int const mu,
-						int const nu,
-						Meas_Utils * const meas_aux,
-						int meas_count)
+void topcharge_p_slices(Gauge_Conf const *const GC,
+                        Geometry const *const geo,
+                        GParam const *const param,
+                        int const mu,
+                        int const nu,
+                        Meas_Utils *const meas_aux,
+                        int meas_count)
 	{
 	int const L_mu = param->d_size[mu];
 	int const L_nu = param->d_size[nu];
 	double *slicesre = meas_aux->real_slices;
 	double *slicesim = meas_aux->imag_slices;
-	FILE* const filep = meas_aux->q_slices_filep;
-	
+	FILE *const filep = meas_aux->q_slices_filep;
+
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long r=0; r<param->d_volume; r++)
+	for(long r = 0; r < param->d_volume; r++)
 		meas_aux->scalar_density[r] = loc_topcharge(GC, geo, param, r);
-	double const * const charge = meas_aux->scalar_density;
-	
-	for(int k=0; k<L_nu; k++)
+	double const *const charge = meas_aux->scalar_density;
+
+	for(int k = 0; k < L_nu; k++)
 		{
 		double const p = k * PI2 / L_nu;
-		for(int i=0; i<L_mu; i++)
+		for(int i = 0; i < L_mu; i++)
 			{
 			slicesre[i] = 0.0;
 			slicesim[i] = 0.0;
@@ -867,7 +840,7 @@ void topcharge_p_slices(Gauge_Conf const * const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) reduction(+:slicesre[:L_mu]) reduction(+:slicesim[:L_mu])
 		#endif
-		for(long r=0; r<(param->d_volume); r++)
+		for(long r = 0; r < (param->d_volume); r++)
 			{
 			int x_mu = geo->d_mucomp[mu][r];
 			int x_nu = geo->d_mucomp[nu][r];
@@ -877,27 +850,28 @@ void topcharge_p_slices(Gauge_Conf const * const GC,
 			}
 
 		fprintf(filep, "%ld %d %d ", GC->update_index, meas_count, k);
-		for(int i=0; i<L_mu; i++) fprintf(filep, " % 18.12e % 18.12e", slicesre[i], slicesim[i]);
+		for(int i = 0; i < L_mu; i++) fprintf(filep, " % 18.12e % 18.12e", slicesre[i], slicesim[i]);
 		fprintf(filep, "\n");
 		}
 	}
 
 
 // TODO: just to check how cooling destroys topological correlations, remove
-void check_correlation_decay_cooling(Gauge_Conf const * const GC, Geometry const * const geo, GParam const * const param, double *ratio)
+void check_correlation_decay_cooling(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, double *ratio)
 	{
 	Gauge_Conf helperconf;
-	double Q, satd;
 	init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-	for(int i=0; i<(param->d_coolrepeat); i++)
+
+	for(int i = 0; i < (param->d_coolrepeat); i++)
 		{
 		cooling(&helperconf, geo, param, param->d_coolsteps);
-		Q = fabs(topcharge(&helperconf, geo, param));
-		satd = 0.0;
+		double const Q = fabs(topcharge(&helperconf, geo, param));
+		double satd = 0.0;
+
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS) reduction(+ : satd)
 		#endif
-		for (long r=0; r<(param->d_volume); r++)
+		for(long r = 0; r < (param->d_volume); r++)
 			{
 			satd += fabs(loc_topcharge(&helperconf, geo, param, r));
 			}
@@ -909,17 +883,20 @@ void check_correlation_decay_cooling(Gauge_Conf const * const GC, Geometry const
 
 // compute the correlator of the local topological charge
 // after "ncool" cooling steps up to spatial distance "dist"
-void loc_topcharge_corr(Gauge_Conf * const GC,
-						Geometry const * const geo,
-						GParam const * const param,
-						int ncool,
-						int dist,
-						double *ris)
+void loc_topcharge_corr(Gauge_Conf *const GC,
+                        Geometry const *const geo,
+                        GParam const *const param,
+                        int ncool,
+                        int dist,
+                        double *res)
 	{
-	double *topch;
-
+	#if STDIM < 2
+	for(int i = 0; i < dist; i++)
+		res[i] = 0.0;
+	#else
 	// TODO: refactor with meas_aux
-	allocate_array_double(&topch, param->d_volume, __FILE__, __LINE__);
+	double *charge_array;
+	allocate_array_double(&charge_array, param->d_volume, __FILE__, __LINE__);
 
 	// compute the local topological charge
 	if(ncool > 0) cooling(GC, geo, param, ncool);
@@ -927,7 +904,7 @@ void loc_topcharge_corr(Gauge_Conf * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long r=0; r<param->d_volume; r++) topch[r] = loc_topcharge(GC, geo, param, r);
+	for(long r = 0; r < param->d_volume; r++) charge_array[r] = loc_topcharge(GC, geo, param, r);
 
 	if(ncool > 0) restore_gauge_conf(GC, param);
 
@@ -935,121 +912,122 @@ void loc_topcharge_corr(Gauge_Conf * const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(int i=0; i<dist; i++)
+	for(int i = 0; i < dist; i++)
 		{
 		double corr = 0.0;
-		for(long r1=0; r1<param->d_volume; r1++)
+		for(long r1 = 0; r1 < param->d_volume; r1++)
 			{
 			double aux = 0.0;
-			for(int dir=1; dir<STDIM; dir++)
+			for(int dir = 1; dir < STDIM; dir++)
 				{
 				long r2 = r1;
-				for(int j=0; j<i; j++) r2 = nnp(geo, r2, dir);
-				aux += topch[r2];
+				for(int j = 0; j < i; j++) r2 = nnp(geo, r2, dir);
+				aux += charge_array[r2];
 				}
-			corr += aux * topch[r1];
+			corr += aux * charge_array[r1];
 			}
-		ris[i] = corr * param->d_inv_vol / (double)(STDIM - 1);
+		res[i] = corr * param->d_inv_vol / (double) (STDIM - 1);
 		}
 
 	// free memory
-	free(topch);
+	free(charge_array);
+	#endif
 	}
 
 
-void perform_measures_aux(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-							int const meas_count, Meas_Utils *meas_aux)
+void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                          int const meas_count, Meas_Utils *meas_aux)
 	{
-	if (param->d_plaquette_meas == 1 )
+	if(param->d_plaquette_meas == 1)
 		{
 		double plaqs, plaqt;
 		plaquette(GC, geo, param, &plaqs, &plaqt);
-		#if(STDIM==4)
-		meas_aux->meanplaq[meas_count]=0.5*(plaqs+plaqt);
+		#if STDIM == 4
+		meas_aux->meanplaq[meas_count] = 0.5 * (plaqs + plaqt);
 		#else
-		meas_aux->meanplaq[meas_count]=plaqt;
+		meas_aux->meanplaq[meas_count] = plaqt;
 		#endif
 		}
-	if (param->d_clover_energy_meas    == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
-	if (param->d_energy_density_meas   == 1) energy_density(GC, geo, param, meas_aux, meas_count+1);
-	if (param->d_charge_meas           == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
-	if (param->d_charge_density_meas   == 1) charge_density(GC, geo, param, meas_aux, meas_count+1);
-	if (param->d_polyakov_meas         == 1) for (int i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
-	if (param->d_multipolyakov_order   >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
-	if (param->d_polyakov_density_meas == 1) for (int i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count+1);
-	if (param->d_energy_slices_meas    == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count+1, meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas    == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count+1, meas_aux->q_slices_filep);
-	if (param->d_charge_p_slices_meas  == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, meas_count+1);
-	if (param->d_chi_prime_meas        == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas     == 1) for (int i=0; i<STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
-	if (param->d_action_meas           == 1) action(GC, geo, param, &(meas_aux->action1[meas_count]), &(meas_aux->action2[meas_count]), &(meas_aux->action3[meas_count]), &(meas_aux->potential[meas_count]));
+	if(param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
+	if(param->d_energy_density_meas == 1) energy_density(GC, geo, param, meas_aux, meas_count + 1);
+	if(param->d_charge_meas == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
+	if(param->d_charge_density_meas == 1) charge_density(GC, geo, param, meas_aux, meas_count + 1);
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
+	if(param->d_multipolyakov_order >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
+	if(param->d_polyakov_density_meas == 1) for(int i = 0; i < STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count + 1);
+	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->q_slices_filep);
+	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, meas_count + 1);
+	if(param->d_chi_prime_meas == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
+	if(param->d_action_meas == 1) action(GC, geo, param, &(meas_aux->action1[meas_count]), &(meas_aux->action2[meas_count]), &(meas_aux->action3[meas_count]), &(meas_aux->potential[meas_count]));
 	}
 
 
-void perform_measures_localobs_hot(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-									Meas_Utils *meas_aux)
+void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                                   Meas_Utils *meas_aux)
 	{
 	int i;
-	double plaqs=0.0, plaqt=0.0, clover_energy=0.0, charge=0.0, chi_prime=0.0, multipolyre=0.0, multipolyim=0.0; // =0.0 to suppress gcc warning
+	double plaqs = 0.0, plaqt = 0.0, clover_energy = 0.0, charge = 0.0, chi_prime = 0.0, multipolyre = 0.0, multipolyim = 0.0; // =0.0 to suppress gcc warning
 	double polyre[STDIM], polyim[STDIM], polyre_pwrs[MAX_POLY_PWR], polyim_pwrs[MAX_POLY_PWR], charge_prime[STDIM];
-	double action1=0.0, action2=0.0, action3=0.0, potential=0.0;
+	double action1 = 0.0, action2 = 0.0, action3 = 0.0, potential = 0.0;
 
 	// perform meas
-	if (param->d_plaquette_meas        == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
-	if (param->d_clover_energy_meas    == 1) clover_disc_energy(GC, geo, param, &clover_energy);
-	if (param->d_energy_density_meas   == 1) energy_density(GC, geo, param, meas_aux, 0);
-	if (param->d_charge_meas           == 1) charge = topcharge(GC, geo, param);
-	if (param->d_charge_density_meas   == 1) charge_density(GC, geo, param, meas_aux, 0);
-	if (param->d_polyakov_meas         == 1) for (i=0; i<STDIM; i++) polyakov(GC, geo, param, i, 1, &(polyre[i]), &(polyim[i]));
-	if (param->d_polyakov_powers_meas  == 1) polyakov_powers(GC, geo, param, 0, polyre_pwrs, polyim_pwrs);
-	if (param->d_multipolyakov_order   >= 1) multipolyakov(GC, geo, param, &(multipolyre), &(multipolyim));
-	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, 0);
-	if (param->d_chi_prime_meas        == 1) chi_prime = topo_chi_prime(GC, geo, param);
-	if (param->d_charge_prime_meas     == 1) for (i=0; i<STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
-	if (param->d_energy_slices_meas    == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas    == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->q_slices_filep);
-	if (param->d_charge_p_slices_meas  == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, 0);
-	if (param->d_action_meas           == 1) action(GC, geo, param, &action1, &action2, &action3, &potential);
+	if(param->d_plaquette_meas == 1) plaquette(GC, geo, param, &plaqs, &plaqt);
+	if(param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &clover_energy);
+	if(param->d_energy_density_meas == 1) energy_density(GC, geo, param, meas_aux, 0);
+	if(param->d_charge_meas == 1) charge = topcharge(GC, geo, param);
+	if(param->d_charge_density_meas == 1) charge_density(GC, geo, param, meas_aux, 0);
+	if(param->d_polyakov_meas == 1) for(i = 0; i < STDIM; i++) polyakov(GC, geo, param, i, 1, &(polyre[i]), &(polyim[i]));
+	if(param->d_polyakov_powers_meas == 1) polyakov_powers(GC, geo, param, 0, polyre_pwrs, polyim_pwrs);
+	if(param->d_multipolyakov_order >= 1) multipolyakov(GC, geo, param, &(multipolyre), &(multipolyim));
+	if(param->d_polyakov_density_meas == 1) for(i = 0; i < STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, 0);
+	if(param->d_chi_prime_meas == 1) chi_prime = topo_chi_prime(GC, geo, param);
+	if(param->d_charge_prime_meas == 1) for(i = 0; i < STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
+	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->q_slices_filep);
+	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, 0);
+	if(param->d_action_meas == 1) action(GC, geo, param, &action1, &action2, &action3, &potential);
 
 	// print meas (density profiles already printed)
 	fprintf(meas_aux->datafilep, "%ld ", GC->update_index);
-	if (param->d_plaquette_meas       == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
-	if (param->d_clover_energy_meas   == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
-	if (param->d_charge_meas          == 1) fprintf(meas_aux->datafilep, "% 18.12e ", charge);
-	if (param->d_polyakov_meas        == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
-	if (param->d_polyakov_powers_meas == 1) for (i=0; i<MAX_POLY_PWR; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre_pwrs[i], polyim_pwrs[i]);
-	if (param->d_multipolyakov_order  >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", multipolyre, multipolyim);
-	if (param->d_chi_prime_meas       == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
-	if (param->d_charge_prime_meas    == 1) for (i=0; i<STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
-	if (param->d_action_meas          == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, potential);
+	if(param->d_plaquette_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", plaqs, plaqt);
+	if(param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", clover_energy);
+	if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", charge);
+	if(param->d_polyakov_meas == 1) for(i = 0; i < STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
+	if(param->d_polyakov_powers_meas == 1) for(i = 0; i < MAX_POLY_PWR; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre_pwrs[i], polyim_pwrs[i]);
+	if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", multipolyre, multipolyim);
+	if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
+	if(param->d_charge_prime_meas == 1) for(i = 0; i < STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
+	if(param->d_action_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, potential);
 
 	// flush data files
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_density_meas   == 1) fflush(meas_aux->energydensityfilep);
-	if (param->d_charge_density_meas   == 1) fflush(meas_aux->chargedensityfilep);
-	if (param->d_polyakov_density_meas == 1) for (i=0; i<STDIM; i++) fflush(meas_aux->polyakovdensityfilep[i]);
-	if (param->d_energy_slices_meas    == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas    == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas        == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_density_meas == 1) fflush(meas_aux->energydensityfilep);
+	if(param->d_charge_density_meas == 1) fflush(meas_aux->chargedensityfilep);
+	if(param->d_polyakov_density_meas == 1) for(i = 0; i < STDIM; i++) fflush(meas_aux->polyakovdensityfilep[i]);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
-void perform_measures_localobs(Gauge_Conf * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								Meas_Utils *meas_aux)
+void perform_measures_localobs(Gauge_Conf *const GC,
+                               Geometry const *const geo,
+                               GParam const *const param,
+                               Meas_Utils *meas_aux)
 	{
 	// measures without smoothing
 	perform_measures_localobs_hot(GC, geo, param, meas_aux);
 
 	// measures with adaptive gradient flow
-	if (param->d_agf_num_meas > 0) perform_measures_localobs_adaptive_gradflow(GC, geo, param, meas_aux);
-	
+	if(param->d_agf_num_meas > 0) perform_measures_localobs_adaptive_gradflow(GC, geo, param, meas_aux);
+
 	// measures with fixed-step gradient flow
-	if (param->d_gf_num_meas > 0) perform_measures_localobs_gradflow(GC, geo, param, meas_aux);
-	
+	if(param->d_gf_num_meas > 0) perform_measures_localobs_gradflow(GC, geo, param, meas_aux);
+
 	// measures with cooling
-	if (param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux);
+	if(param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux);
 
 	// multicanonical topcharge and weight
 	#ifdef MULTICANONICAL_MODE
@@ -1061,18 +1039,18 @@ void perform_measures_localobs(Gauge_Conf * const GC,
 	// newline and flush data files
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
-void perform_measures_localobs_cooling(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_cooling(Gauge_Conf *const GC,
+                                       Geometry const *const geo,
+                                       GParam const *const param,
+                                       Meas_Utils *meas_aux)
 	{
-	for(int meas_count=0; meas_count < param->d_coolrepeat; meas_count++)
+	for(int meas_count = 0; meas_count < param->d_coolrepeat; meas_count++)
 		{
 		cooling(GC, geo, param, param->d_coolsteps);
 		perform_measures_aux(GC, geo, param, meas_count, meas_aux);
@@ -1083,7 +1061,7 @@ void perform_measures_localobs_cooling(Gauge_Conf * const GC,
 
 	// print meas cooling
 	print_measures_aux(param->d_coolrepeat, GC->update_index, param, meas_aux);
-	
+
 	//TODO: remove, debug only
 	//for(int meas_count=0; meas_count < param->d_coolrepeat; meas_count++)
 	//	{
@@ -1095,20 +1073,18 @@ void perform_measures_localobs_cooling(Gauge_Conf * const GC,
 	}
 
 
-void perform_measures_localobs_gradflow(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_gradflow(Gauge_Conf *const GC,
+                                        Geometry const *const geo,
+                                        GParam const *const param,
+                                        Meas_Utils *meas_aux)
 	{
-	int meas_count;
-
 	// count starts from 1 to avoid problems with %
-	for(int count=1; count < (param->d_ngfsteps+1); count++)
+	for(int count = 1; count < (param->d_ngfsteps + 1); count++)
 		{
 		gradflow_RKstep(GC, geo, param, param->d_gfstep, meas_aux);
-		if (count % param->d_gf_meas_each == 0)
+		if(count % param->d_gf_meas_each == 0)
 			{
-			meas_count = count/param->d_gf_meas_each-1;
+			int const meas_count = count / param->d_gf_meas_each - 1;
 			perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 			}
 		}
@@ -1121,32 +1097,31 @@ void perform_measures_localobs_gradflow(Gauge_Conf * const GC,
 	}
 
 
-void perform_measures_localobs_adaptive_gradflow(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_adaptive_gradflow(Gauge_Conf *const GC,
+                                                 Geometry const *const geo,
+                                                 GParam const *const param,
+                                                 Meas_Utils *meas_aux)
 	{
-	int meas_count, accepted;
-	double gftime, gftime_step;
-	
-	gftime = 0.0;
-	gftime_step = param->d_agf_step;
-	meas_count = 0;
+	int accepted;
+	double gftime = 0.0;
+	double gftime_step = param->d_agf_step;
+	int meas_count = 0;
+
 	while(meas_count < param->d_agf_num_meas)
 		{
 		gradflow_RKstep_adaptive(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux);
-		
+
 		// if step accepted, perform measures
-		if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+		if(accepted == 1 && fabs(gftime - param->d_agf_meas_each * (meas_count + 1)) - param->d_agf_time_bin < MIN_VALUE)
 			{
 			perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 			meas_count = meas_count + 1;
 			}
-		
+
 		// adapt step to the time of next measure if this would be skipped
-		if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+		if((gftime + gftime_step - param->d_agf_meas_each * (meas_count + 1)) > param->d_agf_time_bin)
 			{
-			gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+			gftime_step = param->d_agf_meas_each * (meas_count + 1) - gftime;
 			}
 		}
 
@@ -1159,44 +1134,42 @@ void perform_measures_localobs_adaptive_gradflow(Gauge_Conf * const GC,
 
 
 // Compare different definitions of the local integration error
-void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf *const GC,
+                                                             Geometry const *const geo,
+                                                             GParam const *const param,
+                                                             Meas_Utils *meas_aux)
 	{
 	// meas no gradflow
 	perform_measures_localobs_hot(GC, geo, param, meas_aux);
 
 	// meas gradflow
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
-		int meas_count, accepted;
-		double gftime, gftime_step;
-		Gauge_Conf helper1, helper2;
-
 		// allocate memory
+		Gauge_Conf helper1, helper2;
 		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
 		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
 
 		// gradflow starts
-		gftime = 0.0;
-		gftime_step = param->d_agf_step;
-		meas_count = 0;
+		int accepted;
+		double gftime = 0.0;
+		double gftime_step = param->d_agf_step;
+		int meas_count = 0;
 		while(meas_count < param->d_agf_num_meas)
 			{
 			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
 
 			// if step accepted, perform measures
-			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+			if(accepted == 1 && fabs(gftime - param->d_agf_meas_each * (meas_count + 1)) - param->d_agf_time_bin < MIN_VALUE)
 				{
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
 
 			// adapt step to the time of next if this would be skipped
-			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+			if((gftime + gftime_step - param->d_agf_meas_each * (meas_count + 1)) > param->d_agf_time_bin)
 				{
-				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				gftime_step = param->d_agf_meas_each * (meas_count + 1) - gftime;
 				}
 			}
 
@@ -1220,57 +1193,55 @@ void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
 // Test the local error of the adaptive integration along a fixed-step integration
-void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *const GC,
+                                                             Geometry const *const geo,
+                                                             GParam const *const param,
+                                                             Meas_Utils *meas_aux)
 	{
 	// meas no gradflow
 	perform_measures_localobs_hot(GC, geo, param, meas_aux);
 
 	// meas gradflow
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
-		int meas_count, accepted;
-		double gftime, gftime_step, gftime_step_max, gftime_step_min;
-		Gauge_Conf helper1, helper2;
-
 		// allocate memory
+		Gauge_Conf helper1, helper2;
 		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
 		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
 
 		// gradflow starts
-		gftime = 0.0;
-		meas_count = 0;
-		gftime_step_max = 0.40;
-		gftime_step_min = 0.01;
+		double gftime = 0.0;
+		double gftime_step_max = 0.40;
+		double gftime_step_min = 0.01;
+		int accepted;
+		int meas_count = 0;
 		while(meas_count < param->d_agf_num_meas)
 			{
-			gftime_step = gftime_step_max;
+			double gftime_step = gftime_step_max;
 			while(gftime_step > gftime_step_min)
 				{
 				gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
-				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)helper1.lattice, param);
+				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *) helper1.lattice, param);
 				gftime_step *= 0.8;
 				}
 			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step_min, &accepted, meas_aux, &helper1, &helper2);
 			gftime += gftime_step_min;
 
 			// perform measures
-			if (gftime - param->d_agf_meas_each*(meas_count+1) > - gftime_step_min / 2)
+			if(gftime - param->d_agf_meas_each * (meas_count + 1) > -gftime_step_min / 2)
 				{
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
-			
-			if (gftime_step_min < gftime / 50.0)
+
+			if(gftime_step_min < gftime / 50.0)
 				{
 				gftime_step_min = gftime / 50.0;
 				}
@@ -1296,58 +1267,57 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
 // Test the local error of the adaptive integration along an adaptive-step integration
-void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf *const GC,
+                                                             Geometry const *const geo,
+                                                             GParam const *const param,
+                                                             Meas_Utils *meas_aux)
 	{
 	// meas no gradflow
 	perform_measures_localobs_hot(GC, geo, param, meas_aux);
 
 	// meas gradflow
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
-		int meas_count, accepted, accepted_flag;
-		double gftime, gftime_step, gftime_step_max, gftime_step_min, gftime_step_accepted;
-		Gauge_Conf helper1, helper2, accepted_conf;
-
 		// allocate memory
+		Gauge_Conf helper1, helper2, accepted_conf;
 		init_gauge_conf_from_gauge_conf(&helper1, GC, param);
 		init_gauge_conf_from_gauge_conf(&helper2, GC, param);
 		init_gauge_conf_from_gauge_conf(&accepted_conf, GC, param);
 
 		// gradflow starts
-		gftime = 0.0;
-		meas_count = 0;
-		gftime_step_max = 0.4;
-		gftime_step_min = 0.01;
+		double gftime = 0.0;
+		double gftime_step_max = 0.4;
+		double gftime_step_min = 0.01;
+		double gftime_step_accepted = 0.0;
+		int accepted;
+		int meas_count = 0;
 		while(meas_count < param->d_agf_num_meas)
 			{
-			accepted_flag = 0;
-			gftime_step = gftime_step_max;
+			int accepted_flag = 0;
+			double gftime_step = gftime_step_max;
 			while(gftime_step > gftime_step_min)
 				{
 				gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux, &helper1, &helper2);
-				if (accepted == 1 && accepted_flag == 0)
+				if(accepted == 1 && accepted_flag == 0)
 					{
-					equal_lattice(accepted_conf.lattice, (GAUGE_GROUP const * const *)GC->lattice, param);
+					equal_lattice(accepted_conf.lattice, (GAUGE_GROUP const * const *) GC->lattice, param);
 					gftime_step_accepted = gftime_step;
 					accepted_flag = 1;
 					}
-				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)helper1.lattice, param);
+				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *) helper1.lattice, param);
 				gftime_step *= 0.8;
 				}
 			gradflow_RKstep_adaptive_check(GC, geo, param, &gftime, &gftime_step_min, &accepted, meas_aux, &helper1, &helper2);
-			if (accepted_flag == 1)
+			if(accepted_flag == 1)
 				{
-				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *)accepted_conf.lattice, param);
+				equal_lattice(GC->lattice, (GAUGE_GROUP const * const *) accepted_conf.lattice, param);
 				}
 			else
 				{
@@ -1356,13 +1326,13 @@ void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf * const 
 			gftime += gftime_step_accepted;
 
 			// perform measures
-			if (gftime - param->d_agf_meas_each*(meas_count+1) > param->d_agf_meas_each / 10000. )
+			if(gftime - param->d_agf_meas_each * (meas_count + 1) > param->d_agf_meas_each / 10000.)
 				{
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
 
-			if (gftime_step_min < gftime / 50.0)
+			if(gftime_step_min < gftime / 50.0)
 				{
 				gftime_step_min = gftime / 50.0;
 				}
@@ -1388,62 +1358,60 @@ void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
 // Compare the total error of the adaptive integration with a fixed-step integration
-void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const GC,
-											Geometry const * const geo,
-											GParam const * const param,
-											Meas_Utils *meas_aux)
+void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const GC,
+                                                             Geometry const *const geo,
+                                                             GParam const *const param,
+                                                             Meas_Utils *meas_aux)
 	{
 	// meas no gradflow
 	perform_measures_localobs_hot(GC, geo, param, meas_aux);
 
 	// meas gradflow
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
-		int meas_count, accepted;
-		double gftime, gftime_step, max_dist;
-		GAUGE_GROUP ***helper_confs;
-
 		// allocate memory
+		GAUGE_GROUP ***helper_confs;
 		allocate_array_GAUGE_GROUP_pointer_pointer(&helper_confs, param->d_agf_num_meas, __FILE__, __LINE__);
-		for(int i=0; i<param->d_agf_num_meas; i++)
+		for(int i = 0; i < param->d_agf_num_meas; i++)
 			{
 			allocate_array_GAUGE_GROUP_pointer(&(helper_confs[i]), param->d_volume, __FILE__, __LINE__);
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r=0; r<(param->d_volume); r++)
+			for(long r = 0; r < (param->d_volume); r++)
 				{
 				allocate_array_GAUGE_GROUP(&(helper_confs[i][r]), STDIM, __FILE__, __LINE__);
 				}
 			}
 
 		// adaptive step integration
-		gftime_step = param->d_agf_step;
-		gftime = 0.0;
-		meas_count = 0;
+		double gftime_step = param->d_agf_step;
+		double gftime = 0.0;
+		int accepted = 0;
+		int meas_count = 0;
 		while(meas_count < param->d_agf_num_meas)
 			{
 			gradflow_RKstep_adaptive(GC, geo, param, &gftime, &gftime_step, &accepted, meas_aux);
 
 			// if step accepted, save conf
-			if (accepted == 1 && fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+			if(accepted == 1 && fabs(gftime - param->d_agf_meas_each * (meas_count + 1)) - param->d_agf_time_bin < MIN_VALUE)
 				{
-				equal_lattice(helper_confs[meas_count], (GAUGE_GROUP const * const *)GC->lattice, param);
+				equal_lattice(helper_confs[meas_count], (GAUGE_GROUP const * const *) GC->lattice, param);
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 				}
 
 			// adapt step to the time of next measure if this would be skipped
-			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+			if((gftime + gftime_step - param->d_agf_meas_each * (meas_count + 1)) > param->d_agf_time_bin)
 				{
-				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				gftime_step = param->d_agf_meas_each * (meas_count + 1) - gftime;
 				}
 			}
 
@@ -1464,9 +1432,9 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const 
 			gftime_step = 0.01;
 
 			// save conf
-			if (fabs(gftime - param->d_agf_meas_each*(meas_count+1)) - param->d_agf_time_bin < MIN_VALUE )
+			if(fabs(gftime - param->d_agf_meas_each * (meas_count + 1)) - param->d_agf_time_bin < MIN_VALUE)
 				{
-				max_dist = lattice_max_dist((GAUGE_GROUP const * const *)GC->lattice, (GAUGE_GROUP const * const *)helper_confs[meas_count], param);
+				double max_dist = lattice_max_dist((GAUGE_GROUP const * const *) GC->lattice, (GAUGE_GROUP const * const *) helper_confs[meas_count], param);
 				perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 				meas_count = meas_count + 1;
 
@@ -1475,9 +1443,9 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const 
 				}
 
 			// adapt step to the time of next measure if this would be skipped
-			if ((gftime + gftime_step - param->d_agf_meas_each*(meas_count+1)) > param->d_agf_time_bin )
+			if((gftime + gftime_step - param->d_agf_meas_each * (meas_count + 1)) > param->d_agf_time_bin)
 				{
-				gftime_step = param->d_agf_meas_each*(meas_count+1) - gftime;
+				gftime_step = param->d_agf_meas_each * (meas_count + 1) - gftime;
 				}
 			}
 
@@ -1488,12 +1456,12 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const 
 		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
 
 		// free memory
-		for(int i=0; i<param->d_agf_num_meas; i++)
+		for(int i = 0; i < param->d_agf_num_meas; i++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r=0; r<(param->d_volume); r++)
+			for(long r = 0; r < (param->d_volume); r++)
 				{
 				free(helper_confs[i][r]);
 				}
@@ -1511,29 +1479,22 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf * const 
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
-	if (param->d_energy_slices_meas   == 1) fflush(meas_aux->e_slices_filep);
-	if (param->d_charge_slices_meas   == 1) fflush(meas_aux->q_slices_filep);
-	if (param->d_chi_prime_meas       == 1) fflush(meas_aux->chiprimefilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
 // to optimize the number of hits to be used in multilevel
-void optimize_multihit_polycorr(Gauge_Conf * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								FILE *datafilep)
+void optimize_multihit_polycorr(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param,
+                                FILE *datafilep)
 	{
-	const int max_hit=50;
-	const int dir=1;
+	const int max_hit = 50;
+	const int dir = 1;
 
-	int i, mh, t_tmp;
-	long r, r1, r2;
-	double complex poly_corr;
-	double poly_corr_abs, poly_corr_fluct, diff_sec;
 	double complex *poly_array;
-	time_t time1, time2;
-	GAUGE_GROUP matrix, tmp;
-
 	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 
 	#ifdef THETA_MODE
@@ -1543,65 +1504,63 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 	fprintf(datafilep, "Multihit optimization: \n");
 	fprintf(datafilep, "the smaller the value the better the multihit\n");
 
-	for(mh=1; mh<max_hit; mh++)
+	for(int mh = 1; mh < max_hit; mh++)
 		{
+		time_t time1, time2;
 		time(&time1);
 
 		// polyakov loop computation
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
+			GAUGE_GROUP matrix, tmp;
 			one(&matrix);
-			for(i=0; i<param->d_size[0]; i++)
+			for(int i = 0; i < param->d_size[0]; i++)
 				{
-				multihit(GC,
-							geo,
-							param,
-							sisp_and_t_to_si(geo, r, i),
-							0,
-							mh,
-							&tmp);
+				multihit(GC, geo, param, sisp_and_t_to_si(geo, r, i), 0, mh, &tmp);
 				times_equal(&matrix, &tmp);
 				}
-			poly_array[r]=retr(&matrix)+I*imtr(&matrix);
+			poly_array[r] = retr(&matrix) + I * imtr(&matrix);
 			}
 
 		// average correlator computation
-		poly_corr=0.0+I*0.0;
-		poly_corr_abs=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
+		double complex poly_corr = 0.0 + I * 0.0;
+		double poly_corr_abs = 0.0;
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			r1=sisp_and_t_to_si(geo, r, 0);
-			for(i=0; i<param->d_dist_poly; i++)
+			long r1 = sisp_and_t_to_si(geo, r, 0);
+			for(int i = 0; i < param->d_dist_poly; i++)
 				{
-				r1=nnp(geo, r1, dir);
+				r1 = nnp(geo, r1, dir);
 				}
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
+			long r2;
+			int t_tmp;
+			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
 
-			poly_corr += poly_array[r]*conj(poly_array[r2]);
-			poly_corr_abs += cabs(poly_array[r]*conj(poly_array[r2]));
+			poly_corr += poly_array[r] * conj(poly_array[r2]);
+			poly_corr_abs += cabs(poly_array[r] * conj(poly_array[r2]));
 			}
-		poly_corr*=param->d_inv_space_vol[0];
-		poly_corr_abs*=param->d_inv_space_vol[0];
+		poly_corr *= param->d_inv_space_vol[0];
+		poly_corr_abs *= param->d_inv_space_vol[0] * sqrt(mh);
 
 		// fluctuation of the average correlator computation
-		poly_corr_fluct=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
+		double poly_corr_fluct = 0.0;
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			r1=sisp_and_t_to_si(geo, r, 0);
-			for(i=0; i<param->d_dist_poly; i++)
+			long r1 = sisp_and_t_to_si(geo, r, 0);
+			for(int i = 0; i < param->d_dist_poly; i++)
 				{
-				r1=nnp(geo, r1, dir);
+				r1 = nnp(geo, r1, dir);
 				}
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
-			poly_corr_fluct+=cabs( poly_array[r]*conj(poly_array[r2]) - poly_corr );
+			long r2;
+			int t_tmp;
+			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
+			poly_corr_fluct += cabs(poly_array[r] * conj(poly_array[r2]) - poly_corr);
 			}
-		poly_corr_fluct*=param->d_inv_space_vol[0];
-
+		poly_corr_fluct *= param->d_inv_space_vol[0] * sqrt(mh);
 
 		time(&time2);
-		diff_sec = difftime(time2, time1);
-
-		fprintf(datafilep, "%d	% 18.12e	% 18.12e (time:%g)\n", mh, poly_corr_abs*sqrt(mh), poly_corr_fluct*sqrt(mh), diff_sec);
+		double const diff_sec = difftime(time2, time1);
+		fprintf(datafilep, "%d	% 18.12e	% 18.12e (time:%g)\n", mh, poly_corr_abs, poly_corr_fluct, diff_sec);
 
 		fflush(datafilep);
 		}
@@ -1611,69 +1570,62 @@ void optimize_multihit_polycorr(Gauge_Conf * const GC,
 
 
 // to optimize the multilevel
-void optimize_multilevel_polycorr(Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									FILE *datafilep)
+void optimize_multilevel_polycorr(Gauge_Conf *const GC,
+                                  Geometry const *const geo,
+                                  GParam const *const param,
+                                  FILE *datafilep)
 	{
-	int i;
-	long r;
-	double complex poly_corr;
-	double poly_corr_abs, poly_corr_fluct;
 	double complex *poly_array;
-
 	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
 
-	multilevel_polycorr(GC,
-								geo,
-								param,
-								param->d_size[0]);
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	multilevel_polycorr(GC, geo, param, param->d_size[0]);
+
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
 		}
 
 	// averages
-	poly_corr=0.0+I*0.0;
-	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double complex poly_corr = 0.0 + I * 0.0;
+	double poly_corr_abs = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		poly_array[r]=retr_TensProd(&(GC->ml_polycorr[0][0][r]))+I*imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		poly_array[r] = retr_TensProd(&(GC->ml_polycorr[0][0][r])) + I * imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 
-		poly_corr+=poly_array[r];
-		poly_corr_abs+=cabs(poly_array[r]);
+		poly_corr += poly_array[r];
+		poly_corr_abs += cabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol[0];
-	poly_corr_abs*=param->d_inv_space_vol[0];
+	poly_corr *= param->d_inv_space_vol[0];
+	poly_corr_abs *= param->d_inv_space_vol[0];
 
 	// fluctuations
-	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
-		{
-		poly_corr_fluct += cabs(poly_array[r]-poly_corr);
-		}
-	poly_corr_fluct*=param->d_inv_space_vol[0];
+	// double poly_corr_fluct = 0.0;
+	// for(long r = 0; r < param->d_space_vol[0]; r++)
+	// 	{
+	// 	poly_corr_fluct += cabs(poly_array[r] - poly_corr);
+	// 	}
+	// poly_corr_fluct *= param->d_inv_space_vol[0];
 
 	// normalizations
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
-		poly_corr_abs*= sqrt(param->d_ml_upd[i]);
-		poly_corr_fluct*= sqrt(param->d_ml_upd[i]);
+		poly_corr_abs *= sqrt(param->d_ml_upd[i]);
+		// poly_corr_fluct *= sqrt(param->d_ml_upd[i]);
 		}
-	poly_corr_abs*=sqrt(param->d_multihit);
-	poly_corr_fluct*=sqrt(param->d_multihit);
+	poly_corr_abs *= sqrt(param->d_multihit);
+	// poly_corr_fluct *= sqrt(param->d_multihit);
 
 	fprintf(datafilep, "% 18.12e ", poly_corr_abs);
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
 		fprintf(datafilep, "(%d, %d) ", param->d_ml_step[i], param->d_ml_upd[i]);
 		}
@@ -1686,72 +1638,59 @@ void optimize_multilevel_polycorr(Gauge_Conf * const GC,
 
 
 // perform the computation of the polyakov loop correlator with the multilevel algorithm
-void perform_measures_polycorr(Gauge_Conf * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								Meas_Utils *meas_aux)
+void perform_measures_polycorr(Gauge_Conf *const GC,
+                               Geometry const *const geo,
+                               GParam const *const param,
+                               Meas_Utils *meas_aux)
 	{
 	#ifndef OPT_MULTIHIT
 	#ifndef OPT_MULTILEVEL
-		double ris;
-		long r;
-		int i;
+	multilevel_polycorr(GC, geo, param, param->d_size[0]);
 
-		multilevel_polycorr(GC,
-					 geo,
-					 param,
-					 param->d_size[0]);
-
-		for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_space_vol[0]; r++)
-				{
-				times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
-				}
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
+		}
 
-		ris=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
-			{
-			ris+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
-			}
-		ris*=param->d_inv_space_vol[0];
+	double res = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
+		{
+		res += retr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		}
+	res *= param->d_inv_space_vol[0];
 
-		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
-		fflush(meas_aux->datafilep);
+	fprintf(meas_aux->datafilep, "% 18.12e\n", res);
+	fflush(meas_aux->datafilep);
 	#endif
 	#endif
 
 	#ifdef OPT_MULTIHIT
-		optimize_multihit_polycorr(GC, geo, param, meas_aux->datafilep);
+	optimize_multihit_polycorr(GC, geo, param, meas_aux->datafilep);
 	#endif
 
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorr(GC, geo, param, meas_aux->datafilep);
+	optimize_multilevel_polycorr(GC, geo, param, meas_aux->datafilep);
 	#endif
 	}
 
 
 // to optimize the number of hits to be used in multilevel for the adjoint representation
-void optimize_multihit_polycorradj(Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									FILE *datafilep)
+void optimize_multihit_polycorradj(Gauge_Conf *const GC,
+                                   Geometry const *const geo,
+                                   GParam const *const param,
+                                   FILE *datafilep)
 	{
-	const int max_hit=50;
-	const int dir=1;
+	int const max_hit = 50;
+	int const dir = 1;
+	double const inv_n2 = 1.0 / ((double)NCOLOR * NCOLOR);
 
-	int i, mh, t_tmp;
-	long r, r1, r2;
-	double poly_corr, poly_corr_abs, poly_corr_fluct, diff_sec;
-	double complex tr;
 	double *poly_array;
-	time_t time1, time2;
-	GAUGE_GROUP matrix, tmp;
-
 	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 
 	#ifdef THETA_MODE
@@ -1761,74 +1700,76 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 	fprintf(datafilep, "Multihit optimization: \n");
 	fprintf(datafilep, "the smaller the value the better the multihit\n");
 
-	for(mh=1; mh<max_hit; mh++)
+	for(int mh = 1; mh < max_hit; mh++)
 		{
+		time_t time1, time2;
 		time(&time1);
 
 		// polyakov loop in the adjoint representation computation
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
+			#if NCOLOR == 1
+			ASSERT(0, "adjoint representation is trivial for NCOLOR == 1 ");
+			poly_array[r] = 0.0;
+			#else
+			GAUGE_GROUP matrix, tmp;
 			one(&matrix);
-			for(i=0; i<param->d_size[0]; i++)
+			for(int i = 0; i < param->d_size[0]; i++)
 				{
-				multihit(GC,
-							geo,
-							param,
-							sisp_and_t_to_si(geo, r, i),
-							0,
-							mh,
-							&tmp);
+				multihit(GC, geo, param, sisp_and_t_to_si(geo, r, i), 0, mh, &tmp);
 				times_equal(&matrix, &tmp);
 				}
 
-			//trace of the matix in the fundamental representation
-			tr=NCOLOR*(retr(&matrix)+I*imtr(&matrix));
+			//trace of the matrix in the fundamental representation
+			double const tr_N_re = retr(&matrix);
+			double const tr_N_im = imtr(&matrix);
+			double const tr2_N2 = tr_N_re * tr_N_re + tr_N_im * tr_N_im;
 
 			//trace of the matrix in adjoint representation
-			poly_array[r]=cabs(tr*conj(tr))-1.0;
-			#if NCOLOR != 1
-			 poly_array[r]/=(NCOLOR*NCOLOR-1);
+			poly_array[r] = (tr2_N2 - inv_n2) / (1.0 - inv_n2);
 			#endif
 			}
 
 		// average correlator computation
-		poly_corr=0.0;
-		poly_corr_abs=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
+		double poly_corr = 0.0;
+		double poly_corr_abs = 0.0;
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			r1=sisp_and_t_to_si(geo, r, 0);
-			for(i=0; i<param->d_dist_poly; i++)
+			long r1 = sisp_and_t_to_si(geo, r, 0);
+			for(int i = 0; i < param->d_dist_poly; i++)
 				{
-				r1=nnp(geo, r1, dir);
+				r1 = nnp(geo, r1, dir);
 				}
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
+			int t_tmp;
+			long r2;
+			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
 
-			poly_corr+= poly_array[r]*poly_array[r2];
-			poly_corr_abs+=fabs(poly_array[r]*poly_array[r2]);
+			poly_corr += poly_array[r] * poly_array[r2];
+			poly_corr_abs += fabs(poly_array[r] * poly_array[r2]);
 			}
-		poly_corr*=param->d_inv_space_vol[0];
-		poly_corr_abs*=param->d_inv_space_vol[0];
+		poly_corr *= param->d_inv_space_vol[0];
+		poly_corr_abs *= param->d_inv_space_vol[0];
 
 		// fluctuation of the average correlator computation
-		poly_corr_fluct=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
+		double poly_corr_fluct = 0.0;
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			r1=sisp_and_t_to_si(geo, r, 0);
-			for(i=0; i<param->d_dist_poly; i++)
+			long r1 = sisp_and_t_to_si(geo, r, 0);
+			for(int i = 0; i < param->d_dist_poly; i++)
 				{
-				r1=nnp(geo, r1, dir);
+				r1 = nnp(geo, r1, dir);
 				}
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
+			int t_tmp;
+			long r2;
+			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
 
-			poly_corr_fluct+=fabs(poly_array[r]*poly_array[r2]-poly_corr);
+			poly_corr_fluct += fabs(poly_array[r] * poly_array[r2] - poly_corr);
 			}
-		poly_corr_fluct*=param->d_inv_space_vol[0];
+		poly_corr_fluct *= param->d_inv_space_vol[0];
 
 		time(&time2);
-		diff_sec = difftime(time2, time1);
-
-		fprintf(datafilep, "%d	% 18.12e	% 18.12e (time:%g)\n", mh, poly_corr_abs*sqrt(mh), poly_corr_fluct*sqrt(mh), diff_sec);
-
+		double const diff_sec = difftime(time2, time1);
+		fprintf(datafilep, "%d	% 18.12e	% 18.12e (time:%g)\n", mh, poly_corr_abs * sqrt(mh), poly_corr_fluct * sqrt(mh), diff_sec);
 		fflush(datafilep);
 		}
 
@@ -1837,74 +1778,69 @@ void optimize_multihit_polycorradj(Gauge_Conf * const GC,
 
 
 // to optimize the multilevel (adjoint representation)
-void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									FILE *datafilep)
+void optimize_multilevel_polycorradj(Gauge_Conf *const GC,
+                                     Geometry const *const geo,
+                                     GParam const *const param,
+                                     FILE *datafilep)
 	{
-	int i;
-	long r;
-	double poly_corr, poly_corr_abs, poly_corr_fluct;
 	double *poly_array;
-
 	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
 
 	multilevel_polycorradj(GC,
-									geo,
-									param,
-									param->d_size[0]);
+	                       geo,
+	                       param,
+	                       param->d_size[0]);
 
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
+			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]));
 			}
 		}
 
 	// averages
-	poly_corr=0.0;
-	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double poly_corr = 0.0;
+	double poly_corr_abs = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		poly_array[r]=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
+		poly_array[r] = retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
 
-		poly_corr+=poly_array[r];
-		poly_corr_abs+=fabs(poly_array[r]);
+		poly_corr += poly_array[r];
+		poly_corr_abs += fabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol[0];
-	poly_corr_abs*=param->d_inv_space_vol[0];
+	poly_corr *= param->d_inv_space_vol[0];
+	poly_corr_abs *= param->d_inv_space_vol[0];
 
 	// fluctuations
-	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double poly_corr_fluct = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		poly_corr_fluct+=fabs(poly_array[r]-poly_corr);
+		poly_corr_fluct += fabs(poly_array[r] - poly_corr);
 		}
-	poly_corr_fluct*=param->d_inv_space_vol[0];
+	poly_corr_fluct *= param->d_inv_space_vol[0];
 
 	// normalizations
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
-		poly_corr_abs*=sqrt(param->d_ml_upd[i]);
-		poly_corr_fluct*=sqrt(param->d_ml_upd[i]);
+		poly_corr_abs *= sqrt(param->d_ml_upd[i]);
+		poly_corr_fluct *= sqrt(param->d_ml_upd[i]);
 		}
-	poly_corr_abs*=sqrt(param->d_multihit);
-	poly_corr_fluct*=sqrt(param->d_multihit);
+	poly_corr_abs *= sqrt(param->d_multihit);
+	poly_corr_fluct *= sqrt(param->d_multihit);
 
 	fprintf(datafilep, "% 18.12e % 18.12e ", poly_corr_abs, poly_corr_fluct);
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
 		fprintf(datafilep, "(%d, %d) ", param->d_ml_step[i], param->d_ml_upd[i]);
 		}
-	fprintf(datafilep, "(1, %d) ", param->d_multihit);
-	fprintf(datafilep, "\n");
+	fprintf(datafilep, "(1, %d) \n", param->d_multihit);
 	fflush(datafilep);
 
 	free(poly_array);
@@ -1912,38 +1848,35 @@ void optimize_multilevel_polycorradj(Gauge_Conf * const GC,
 
 
 // perform the computation of the polyakov loop correlator in the adjoint representation with the multilevel algorithm
-void perform_measures_polycorradj(Gauge_Conf * const GC,
-									Geometry const * const geo,
-									GParam const * const param,
-									Meas_Utils *meas_aux)
+void perform_measures_polycorradj(Gauge_Conf *const GC,
+                                  Geometry const *const geo,
+                                  GParam const *const param,
+                                  Meas_Utils *meas_aux)
 	{
 	#ifndef OPT_MULTIHIT
 	#ifndef OPT_MULTILEVEL
-	double ris;
-	long r;
-	int i;
 
 	multilevel_polycorradj(GC, geo, param, param->d_size[0]);
 
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]) );
+			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]));
 			}
 		}
 
-	ris=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double res = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		ris+=retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
+		res += retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
 		}
-	ris*=param->d_inv_space_vol[0];
+	res *= param->d_inv_space_vol[0];
 
-	fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
+	fprintf(meas_aux->datafilep, "% 18.12e\n", res);
 	fflush(meas_aux->datafilep);
 	#endif
 	#endif
@@ -1959,67 +1892,62 @@ void perform_measures_polycorradj(Gauge_Conf * const GC,
 
 
 // to optimize the multilevel
-void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
-										GParam const * const param,
-										FILE *datafilep)
+void optimize_multilevel_polycorr_long(Gauge_Conf *const GC,
+                                       GParam const *const param,
+                                       FILE *datafilep)
 	{
-	int i;
-	long r;
-	double poly_corr_abs, poly_corr_fluct;
-	double complex poly_corr;
 	double complex *poly_array;
-
 	allocate_array_double_complex(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
 
 	fprintf(datafilep, "Multilevel optimization: ");
 	fprintf(datafilep, "the smaller the value the better the update\n");
 
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
 		}
 
 	// average
-	poly_corr=0.0+I*0.0;
-	poly_corr_abs=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double complex poly_corr = 0.0 + I * 0.0;
+	double poly_corr_abs = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		poly_array[r]=retr_TensProd(&(GC->ml_polycorr[0][0][r]))+I*imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		poly_array[r] = retr_TensProd(&(GC->ml_polycorr[0][0][r])) + I * imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 
-		poly_corr+=poly_array[r];
-		poly_corr_abs+=cabs(poly_array[r]);
+		poly_corr += poly_array[r];
+		poly_corr_abs += cabs(poly_array[r]);
 		}
-	poly_corr*=param->d_inv_space_vol[0];
-	poly_corr_abs*=param->d_inv_space_vol[0];
+	poly_corr *= param->d_inv_space_vol[0];
+	poly_corr_abs *= param->d_inv_space_vol[0];
 
 	// fluctuation
-	poly_corr_fluct=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double poly_corr_fluct = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		poly_corr_fluct+=cabs(poly_array[r]-poly_corr);
+		poly_corr_fluct += cabs(poly_array[r] - poly_corr);
 		}
-	poly_corr_fluct*=param->d_inv_space_vol[0];
+	poly_corr_fluct *= param->d_inv_space_vol[0];
 
 	// normalization
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
-		poly_corr_abs*=sqrt(param->d_ml_upd[i]);
-		poly_corr_fluct*=sqrt(param->d_ml_upd[i]);
+		poly_corr_abs *= sqrt(param->d_ml_upd[i]);
+		poly_corr_fluct *= sqrt(param->d_ml_upd[i]);
 		}
-	poly_corr_abs*=sqrt(param->d_ml_level0_repeat);
-	poly_corr_fluct*=sqrt(param->d_ml_level0_repeat);
+	poly_corr_abs *= sqrt(param->d_ml_level0_repeat);
+	poly_corr_fluct *= sqrt(param->d_ml_level0_repeat);
 
-	poly_corr_abs*=sqrt(param->d_multihit);
-	poly_corr_fluct*=sqrt(param->d_multihit);
+	poly_corr_abs *= sqrt(param->d_multihit);
+	poly_corr_fluct *= sqrt(param->d_multihit);
 
 	fprintf(datafilep, "% 18.12e % 18.12e ", poly_corr_abs, poly_corr_fluct);
-	for(i=0; i<NLEVELS; i++)
+	for(int i = 0; i < NLEVELS; i++)
 		{
 		fprintf(datafilep, "(%d, %d) ", param->d_ml_step[i], param->d_ml_upd[i]);
 		}
@@ -2034,87 +1962,79 @@ void optimize_multilevel_polycorr_long(Gauge_Conf * const GC,
 
 
 // print the value of the polyakov loop correlator that has been computed by multilevel
-void perform_measures_polycorr_long(Gauge_Conf * const GC,
-									GParam const * const param,
-									Meas_Utils *meas_aux)
+void perform_measures_polycorr_long(Gauge_Conf *const GC,
+                                    GParam const *const param,
+                                    Meas_Utils *meas_aux)
 	{
 	#ifdef OPT_MULTILEVEL
-		optimize_multilevel_polycorr_long(GC, param, meas_aux->datafilep);
+	optimize_multilevel_polycorr_long(GC, param, meas_aux->datafilep);
 	#else
-		double ris;
-		long r;
-		int i;
-
-		for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(r)
-			#endif
-			for(r=0; r<param->d_space_vol[0]; r++)
-				{
-				times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
-				}
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
+		}
 
-		ris=0.0;
-		for(r=0; r<param->d_space_vol[0]; r++)
-			{
-			ris+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
-			}
-		ris*=param->d_inv_space_vol[0];
+	double res = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
+		{
+		res += retr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		}
+	res *= param->d_inv_space_vol[0];
 
-		fprintf(meas_aux->datafilep, "% 18.12e\n", ris);
-		fflush(meas_aux->datafilep);
+	fprintf(meas_aux->datafilep, "% 18.12e\n", res);
+	fflush(meas_aux->datafilep);
 	#endif
 	}
 
 
 // perform the computation of the string width with the
 // disconnected correlator using the multilevel algorithm
-void perform_measures_tube_disc(Gauge_Conf * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								Meas_Utils *meas_aux)
+void perform_measures_tube_disc(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param,
+                                Meas_Utils *meas_aux)
 	{
-	double risr, risi;
-	long r;
-	int i;
-
 	multilevel_tube_disc(GC, geo, param, param->d_size[0]);
 
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
-			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
+			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
 		}
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double res_re = 0.0;
+	double res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_re += retr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	res_re = 0.0;
+	res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_re += retr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
@@ -2123,196 +2043,187 @@ void perform_measures_tube_disc(Gauge_Conf * const GC,
 
 // perform the computation of the string width with the
 // connected correlator using the multilevel algorithm
-void perform_measures_tube_conn(Gauge_Conf * const GC,
-								Geometry const * const geo,
-								GParam const * const param,
-								Meas_Utils *meas_aux)
+void perform_measures_tube_conn(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param,
+                                Meas_Utils *meas_aux)
 	{
-	double risr, risi;
-	long r;
-	int i;
-
 	multilevel_tube_conn(GC, geo, param, param->d_size[0]);
 
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
-			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
-			times_equal_TensProd(&(GC->ml_polyplaqconn[0][r]), &(GC->ml_polycorr[0][i][r]) );
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
+			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]));
+			times_equal_TensProd(&(GC->ml_polyplaqconn[0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
 		}
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double res_re = 0.0;
+	double res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_re += retr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	res_re = 0.0;
+	res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_re += retr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	res_re = 0.0;
+	res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
+		res_re += retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
 	}
 
 
-// print the value of the the string width with the
+// print the value of the string width with the
 // connected correlator that has been computed by multilevel
-void perform_measures_tube_conn_long(Gauge_Conf * const GC,
-									GParam const * const param,
-									Meas_Utils *meas_aux)
+void perform_measures_tube_conn_long(Gauge_Conf *const GC,
+                                     GParam const *const param,
+                                     Meas_Utils *meas_aux)
 	{
-	double risr, risi;
-	long r;
-	int i;
-
-	for(i=1; i<param->d_size[0]/param->d_ml_step[0]; i++)
+	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
 		{
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(r)
+		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(r=0; r<param->d_space_vol[0]; r++)
+		for(long r = 0; r < param->d_space_vol[0]; r++)
 			{
-			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]) );
-			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]) );
-			times_equal_TensProd(&(GC->ml_polyplaqconn[0][r]), &(GC->ml_polycorr[0][i][r]) );
+			times_equal_TensProd(&(GC->ml_polycorr[0][0][r]), &(GC->ml_polycorr[0][i][r]));
+			times_equal_TensProd(&(GC->ml_polyplaq[0][r]), &(GC->ml_polycorr[0][i][r]));
+			times_equal_TensProd(&(GC->ml_polyplaqconn[0][r]), &(GC->ml_polycorr[0][i][r]));
 			}
 		}
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	double res_re = 0.0;
+	double res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polycorr[0][0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_re += retr_TensProd(&(GC->ml_polycorr[0][0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polycorr[0][0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	res_re = 0.0;
+	res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polyplaq[0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_re += retr_TensProd(&(GC->ml_polyplaq[0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polyplaq[0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
-	risr=0.0;
-	risi=0.0;
-	for(r=0; r<param->d_space_vol[0]; r++)
+	res_re = 0.0;
+	res_im = 0.0;
+	for(long r = 0; r < param->d_space_vol[0]; r++)
 		{
-		risr+=retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
-		risi+=imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
+		res_re += retr_TensProd(&(GC->ml_polyplaqconn[0][r]));
+		res_im += imtr_TensProd(&(GC->ml_polyplaqconn[0][r]));
 		}
-	risr*=param->d_inv_space_vol[0];
-	risi*=param->d_inv_space_vol[0];
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", risr, risi);
+	res_re *= param->d_inv_space_vol[0];
+	res_im *= param->d_inv_space_vol[0];
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", res_re, res_im);
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
 	}
 
 
-int sprintf_header_datafile_aux(char * const header, char * const smoothing_method, GParam const * const param)
+int sprintf_header_datafile_aux(char *const header, char *const smoothing_method, GParam const *const param)
 	{
 	int j = sprintf(header, "( ");
-	if (param->d_plaquette_meas      == 1) j += sprintf(header+j, "plaq ");
-	if (param->d_clover_energy_meas  == 1) j += sprintf(header+j, "clover_energy ");
-	if (param->d_charge_meas         == 1) j += sprintf(header+j, "charge ");
-	if (param->d_polyakov_meas       == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
-	if (param->d_multipolyakov_order >= 1) j += sprintf(header+j, "multipolyre multipolyim ");
-	if (param->d_charge_prime_meas   == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
-	if (param->d_action_meas         == 1)
+	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaq ");
+	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
+	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
+	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
+	if(param->d_action_meas == 1)
 		{
-		for(int i=1; i<4; i++) j += sprintf(header+j, "action_%d ", i);
-		j += sprintf(header+j, "potential ");
+		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
+		j += sprintf(header + j, "potential ");
 		}
-	j += sprintf(header+j, ") x %s ", smoothing_method);
+	j += sprintf(header + j, ") x %s ", smoothing_method);
 	return j;
 	}
 
 
-void header_datafile(char * const header, GParam const * const param)
+void header_datafile(char *const header, GParam const *const param)
 	{
-	int j;
 	char smoothing_method[STD_STRING_LENGTH];
 
-	j = sprintf(header, "# %d ", STDIM);
-	for(int i=0; i<STDIM; i++) j += sprintf(header+j, "%d ", param->d_size[i]);
-	j += sprintf(header+j, "\n# upd_index ");
-	if (param->d_plaquette_meas       == 1) j += sprintf(header+j, "plaqs plaqt ");
-	if (param->d_clover_energy_meas   == 1) j += sprintf(header+j, "clover_energy ");
-	if (param->d_charge_meas          == 1) j += sprintf(header+j, "charge ");
-	if (param->d_polyakov_meas        == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "polyre_%d polyim_%d ", i, i);
-	if (param->d_polyakov_powers_meas == 1) for(int i=0; i<MAX_POLY_PWR; i++) j += sprintf(header+j, "polyre_%d^%d polyim_%d^%d ", 0, i+1, 0, i+1);
-	if (param->d_multipolyakov_order  >= 1) j += sprintf(header+j, "multipolyre multipolyim ");
-	if (param->d_charge_prime_meas    == 1) for(int i=0; i<STDIM; i++) j += sprintf(header+j, "charge_prime_%d ", i);
-	if (param->d_action_meas          == 1)
+	int j = sprintf(header, "# %d ", STDIM);
+	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
+	j += sprintf(header + j, "\n# upd_index ");
+	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaqs plaqt ");
+	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
+	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
+	if(param->d_polyakov_powers_meas == 1) for(int i = 0; i < MAX_POLY_PWR; i++) j += sprintf(header + j, "polyre_%d^%d polyim_%d^%d ", 0, i + 1, 0, i + 1);
+	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
+	if(param->d_action_meas == 1)
 		{
-		for(int i=1; i<4; i++) j += sprintf(header+j, "action_%d ", i);
-		j += sprintf(header+j, "potential ");
+		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
+		j += sprintf(header + j, "potential ");
 		}
 
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
 		sprintf(smoothing_method, "%d agfrepeat each dt = %.10lf", param->d_agf_num_meas, param->d_agf_meas_each);
-		j += sprintf_header_datafile_aux(header+j, smoothing_method, param);
+		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
 		}
-	if (param->d_gf_num_meas > 0)
+	if(param->d_gf_num_meas > 0)
 		{
-		sprintf(smoothing_method, "%d gfrepeat each dt = %.10lf", param->d_gf_num_meas, param->d_gf_meas_each*param->d_gfstep);
-		j += sprintf_header_datafile_aux(header+j, smoothing_method, param);
+		sprintf(smoothing_method, "%d gfrepeat each dt = %.10lf", param->d_gf_num_meas, param->d_gf_meas_each * param->d_gfstep);
+		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
 		}
-	if (param->d_coolrepeat > 0)
+	if(param->d_coolrepeat > 0)
 		{
-		sprintf(smoothing_method, "%d coolrepeat each ncool = %d", param->d_coolrepeat, (int)param->d_coolsteps);
-		j += sprintf_header_datafile_aux(header+j, smoothing_method, param);
+		sprintf(smoothing_method, "%d coolrepeat each ncool = %d", param->d_coolrepeat, (int) param->d_coolsteps);
+		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
 		}
-	
+
 	#ifdef MULTICANONICAL_MODE
-	j += sprintf(header+j, "mc_topcharge mc_weight");
+	j += sprintf(header + j, "mc_topcharge mc_weight");
 	#endif
-	j += sprintf(header+j, "\n");
+	j += sprintf(header + j, "\n");
 	}
 
 
 // open data file
-FILE* open_file_with_header_replica(char const * const name, char const * const header,
-									int const replica_index, GParam const * const param,
-									int const binary_flag)
+FILE *open_file_with_header_replica(char const *const name, char const *const header,
+                                    int const replica_index, GParam const *const param,
+                                    int const binary_flag)
 	{
 	FILE *fp;
 	char name_aux[STD_STRING_LENGTH];
@@ -2320,7 +2231,7 @@ FILE* open_file_with_header_replica(char const * const name, char const * const 
 	strcpy(name_aux, name);
 
 	#ifdef REPLICA_MEAS_MODE
-	if (param->d_N_replica_pt > 1)
+	if(param->d_N_replica_pt > 1)
 		{
 		char aux[STD_STRING_LENGTH];
 		sprintf(aux, "_replica_%d", replica_index);
@@ -2331,7 +2242,7 @@ FILE* open_file_with_header_replica(char const * const name, char const * const 
 	(void) replica_index;
 	#endif
 
-	if (param->d_start == 2)
+	if(param->d_start == 2)
 		{
 		// open file in append mode
 		fp = fopen(name_aux, "r");
@@ -2343,9 +2254,9 @@ FILE* open_file_with_header_replica(char const * const name, char const * const 
 			}
 		else
 			{
- 			fp = fopen(name_aux, "w");
+			fp = fopen(name_aux, "w");
 			REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
-			fprintf(fp, header);
+			fputs(header, fp);
 			}
 		}
 	else
@@ -2353,7 +2264,7 @@ FILE* open_file_with_header_replica(char const * const name, char const * const 
 		// open file in write mode
 		fp = fopen(name_aux, "w");
 		REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
-		fprintf(fp, header);
+		fputs(header, fp);
 		}
 
 	fflush(fp);
@@ -2367,58 +2278,57 @@ FILE* open_file_with_header_replica(char const * const name, char const * const 
 	}
 
 // open data files
-void open_data_files(Meas_Utils * meas_aux, int const replica_index, GParam const * const param)
+void open_data_files(Meas_Utils *meas_aux, int const replica_index, GParam const *const param)
 	{
-	int i,j;
-	char header[10*STD_STRING_LENGTH];
+	char header[10 * STD_STRING_LENGTH];
 
 	// data file
 	header_datafile(header, param);
 	meas_aux->datafilep = open_file_with_header_replica(param->d_data_file, header, replica_index, param, 0);
 
 	// header for other files
-	j = sprintf(header, "# %d ", STDIM);
-	for(i=0; i<STDIM; i++) j += sprintf(header+j, "%d ", param->d_size[i]);
-	sprintf(header+j, "\n");
+	int j = sprintf(header, "# %d ", STDIM);
+	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
+	sprintf(header + j, "\n");
 
 	// chiprime file
-	if (param->d_chi_prime_meas == 1)
+	if(param->d_chi_prime_meas == 1)
 		meas_aux->chiprimefilep = open_file_with_header_replica(param->d_chiprime_file, header, replica_index, param, 0);
 
 	// energy_slices file
-	if (param->d_energy_slices_meas == 1)
+	if(param->d_energy_slices_meas == 1)
 		meas_aux->e_slices_filep = open_file_with_header_replica(param->d_energy_slices_file, header, replica_index, param, 0);
 
 	// topcharge_tcorr file
-	if (param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+	if(param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
 		meas_aux->q_slices_filep = open_file_with_header_replica(param->d_charge_slices_file, header, replica_index, param, 0);
 
 	// energy_density file
-	if (param->d_energy_density_meas == 1)
+	if(param->d_energy_density_meas == 1)
 		meas_aux->energydensityfilep = open_file_with_header_replica(param->d_energydensity_file, header, replica_index, param, 1);
 
 	// charge_density file
-	if (param->d_charge_density_meas == 1)
+	if(param->d_charge_density_meas == 1)
 		meas_aux->chargedensityfilep = open_file_with_header_replica(param->d_chargedensity_file, header, replica_index, param, 1);
 
 	// polyakov_density files
-	if (param->d_polyakov_density_meas == 1)
+	if(param->d_polyakov_density_meas == 1)
 		{
-		char filename[2*STD_STRING_LENGTH];
-		for(i=0; i<STDIM; i++)
+		char filename[2 * STD_STRING_LENGTH];
+		for(int i = 0; i < STDIM; i++)
 			{
 			sprintf(filename, "%s_dir%d", param->d_polyakovdensity_file, i);
-			sprintf(header+j, "%d \n", i);
+			sprintf(header + j, "%d \n", i);
 			meas_aux->polyakovdensityfilep[i] = open_file_with_header_replica(filename, header, replica_index, param, 1);
 			}
 		}
 	}
 
 // close data files
-void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const * const param)
+void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const *const param)
 	{
 	#ifndef REPLICA_MEAS_MODE
-	if (replica_index != 0) return;
+	if(replica_index != 0) return;
 	#else
 	(void) replica_index;
 	#endif
@@ -2427,83 +2337,81 @@ void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const
 	fclose(meas_aux.datafilep);
 
 	// chiprime file
-	if (param->d_chi_prime_meas == 1)
+	if(param->d_chi_prime_meas == 1)
 		fclose(meas_aux.chiprimefilep);
 
 	// energy_slices file
-	if (param->d_energy_slices_meas == 1)
+	if(param->d_energy_slices_meas == 1)
 		fclose(meas_aux.e_slices_filep);
 
 	// topcharge_tcorr file
-	if (param->d_charge_slices_meas == 1)
+	if(param->d_charge_slices_meas == 1)
 		fclose(meas_aux.q_slices_filep);
 
 	// clover_energy_density file
-	if (param->d_energy_density_meas == 1)
+	if(param->d_energy_density_meas == 1)
 		fclose(meas_aux.energydensityfilep);
-	
+
 	// charge_density file
-	if (param->d_charge_density_meas == 1)
+	if(param->d_charge_density_meas == 1)
 		fclose(meas_aux.chargedensityfilep);
 
 	// polyakov_density files
-	if (param->d_polyakov_density_meas == 1)
-		for(int i=0; i<STDIM; i++)
+	if(param->d_polyakov_density_meas == 1)
+		for(int i = 0; i < STDIM; i++)
 			fclose(meas_aux.polyakovdensityfilep[i]);
 	}
 
 
-void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const replica_index)
+void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const replica_index)
 	{
-	int num_meas;
-
-	// max number of measures neeeded using any smoothing method
-	num_meas = param->d_agf_num_meas;
-	if (num_meas < param->d_gf_num_meas)
+	// max number of measures needed using any smoothing method
+	int num_meas = param->d_agf_num_meas;
+	if(num_meas < param->d_gf_num_meas)
 		num_meas = param->d_gf_num_meas;
-	if (num_meas < param->d_coolrepeat)
+	if(num_meas < param->d_coolrepeat)
 		num_meas = param->d_coolrepeat;
 
-	if (num_meas > 0)
+	if(num_meas > 0)
 		{
 		// allocate meas arrays
-		if (param->d_plaquette_meas == 1)
+		if(param->d_plaquette_meas == 1)
 			allocate_array_double(&(meas_aux->meanplaq), num_meas, __FILE__, __LINE__);
 
-		if (param->d_clover_energy_meas == 1)
+		if(param->d_clover_energy_meas == 1)
 			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);
 
-		if (param->d_charge_meas == 1)
+		if(param->d_charge_meas == 1)
 			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
 
-		if (param->d_polyakov_meas == 1)
+		if(param->d_polyakov_meas == 1)
 			{
 			allocate_array_double_pointer(&(meas_aux->polyre), num_meas, __FILE__, __LINE__);
 			allocate_array_double_pointer(&(meas_aux->polyim), num_meas, __FILE__, __LINE__);
-			for(int i=0; i<num_meas; i++)
+			for(int i = 0; i < num_meas; i++)
 				{
 				allocate_array_double(&(meas_aux->polyre[i]), STDIM, __FILE__, __LINE__);
 				allocate_array_double(&(meas_aux->polyim[i]), STDIM, __FILE__, __LINE__);
 				}
 			}
 
-		if (param->d_multipolyakov_order >= 1)
+		if(param->d_multipolyakov_order >= 1)
 			{
 			allocate_array_double(&(meas_aux->multipolyre), num_meas, __FILE__, __LINE__);
 			allocate_array_double(&(meas_aux->multipolyim), num_meas, __FILE__, __LINE__);
 			}
 
-		if (param->d_chi_prime_meas == 1)
+		if(param->d_chi_prime_meas == 1)
 			allocate_array_double(&(meas_aux->chi_prime), num_meas, __FILE__, __LINE__);
 
-		if (param->d_charge_prime_meas == 1)
+		if(param->d_charge_prime_meas == 1)
 			{
 			allocate_array_double_pointer(&(meas_aux->charge_prime), num_meas, __FILE__, __LINE__);
-			for(int i=0; i<num_meas; i++)
+			for(int i = 0; i < num_meas; i++)
 				allocate_array_double(&(meas_aux->charge_prime[i]), STDIM, __FILE__, __LINE__);
 			}
-		
-		if (param->d_action_meas == 1)
+
+		if(param->d_action_meas == 1)
 			{
 			allocate_array_double(&(meas_aux->action1), num_meas, __FILE__, __LINE__);
 			allocate_array_double(&(meas_aux->action2), num_meas, __FILE__, __LINE__);
@@ -2512,13 +2420,13 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 			}
 
 		// allocate auxiliary lattices
-		for(int i=0; i<4; i++)
+		for(int i = 0; i < 4; i++)
 			{
 			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r=0; r<(param->d_volume); r++)
+			for(long r = 0; r < (param->d_volume); r++)
 				{
 				allocate_array_GAUGE_GROUP(&(meas_aux->lattice_aux[i][r]), STDIM, __FILE__, __LINE__);
 				}
@@ -2526,19 +2434,19 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 		}
 
 	// allocate arrays for density profiles
-	if (param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
 		allocate_array_double(&(meas_aux->real_slices), param->d_max_size, __FILE__, __LINE__);
-	
-	if (param->d_charge_p_slices_meas == 1)
+
+	if(param->d_charge_p_slices_meas == 1)
 		allocate_array_double(&(meas_aux->imag_slices), param->d_max_size, __FILE__, __LINE__);
-	
-	if (param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
+
+	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
 		allocate_array_double(&(meas_aux->scalar_density), param->d_volume, __FILE__, __LINE__);
 
-	if (param->d_polyakov_density_meas == 1)
+	if(param->d_polyakov_density_meas == 1)
 		{
 		long max_space_vol = 0;
-		for(int i=0; i<STDIM; i++) if (param->d_space_vol[i] > max_space_vol) max_space_vol = param->d_space_vol[i];
+		for(int i = 0; i < STDIM; i++) if(param->d_space_vol[i] > max_space_vol) max_space_vol = param->d_space_vol[i];
 		allocate_array_double(&(meas_aux->polyre_density), max_space_vol, __FILE__, __LINE__);
 		allocate_array_double(&(meas_aux->polyim_density), max_space_vol, __FILE__, __LINE__);
 		}
@@ -2547,7 +2455,7 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const * const param, int const
 	open_data_files(meas_aux, replica_index, param);
 	}
 
-void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const * const param)
+void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const *const param)
 	{
 	allocate_array_Meas_Utils(meas_aux, param->d_N_replica_pt, __FILE__, __LINE__);
 
@@ -2556,35 +2464,34 @@ void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const * const param)
 
 	// init meas utils for other replicas if using replica meas mode
 	#ifdef REPLICA_MEAS_MODE
-	for (int i=1; i<param->d_N_replica_pt; i++)
+	for(int i = 1; i < param->d_N_replica_pt; i++)
 		init_meas_utils(&((*meas_aux)[i]), param, i);
 	#endif
 	}
 
-void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const replica_index)
+void free_meas_utils(Meas_Utils meas_aux, GParam const *const param, int const replica_index)
 	{
-	int num_meas;
-	num_meas = param->d_agf_num_meas;
-	if (num_meas < param->d_gf_num_meas)
+	int num_meas = param->d_agf_num_meas;
+	if(num_meas < param->d_gf_num_meas)
 		num_meas = param->d_gf_num_meas;
-	if (num_meas < param->d_coolrepeat)
+	if(num_meas < param->d_coolrepeat)
 		num_meas = param->d_coolrepeat;
 
-	if (num_meas > 0)
+	if(num_meas > 0)
 		{
 		// free meas arrays
-		if (param->d_plaquette_meas == 1)
+		if(param->d_plaquette_meas == 1)
 			free(meas_aux.meanplaq);
 
-		if (param->d_clover_energy_meas == 1)
+		if(param->d_clover_energy_meas == 1)
 			free(meas_aux.clover_energy);
 
-		if (param->d_charge_meas == 1)
+		if(param->d_charge_meas == 1)
 			free(meas_aux.charge);
 
-		if (param->d_polyakov_meas == 1)
+		if(param->d_polyakov_meas == 1)
 			{
-			for(int i=0; i<num_meas; i++)
+			for(int i = 0; i < num_meas; i++)
 				{
 				free(meas_aux.polyre[i]);
 				free(meas_aux.polyim[i]);
@@ -2593,23 +2500,23 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 			free(meas_aux.polyim);
 			}
 
-		if (param->d_multipolyakov_order >= 1)
+		if(param->d_multipolyakov_order >= 1)
 			{
 			free(meas_aux.multipolyre);
 			free(meas_aux.multipolyim);
 			}
 
-		if (param->d_chi_prime_meas == 1)
+		if(param->d_chi_prime_meas == 1)
 			free(meas_aux.chi_prime);
 
-		if (param->d_charge_prime_meas == 1)
+		if(param->d_charge_prime_meas == 1)
 			{
-			for(int i=0; i<num_meas; i++)
+			for(int i = 0; i < num_meas; i++)
 				free(meas_aux.charge_prime[i]);
 			free(meas_aux.charge_prime);
 			}
-		
-		if (param->d_action_meas == 1)
+
+		if(param->d_action_meas == 1)
 			{
 			free(meas_aux.action1);
 			free(meas_aux.action2);
@@ -2618,12 +2525,12 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 			}
 
 		// free auxiliary lattices
-		for (int i=0; i<4; i++)
+		for(int i = 0; i < 4; i++)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r=0; r<(param->d_volume); r++)
+			for(long r = 0; r < (param->d_volume); r++)
 				{
 				free(meas_aux.lattice_aux[i][r]);
 				}
@@ -2632,16 +2539,16 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 		}
 
 	// free arrays for density profiles
-	if (param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
 		free(meas_aux.real_slices);
-	
-	if (param->d_charge_p_slices_meas == 1)
+
+	if(param->d_charge_p_slices_meas == 1)
 		free(meas_aux.imag_slices);
-	
-	if (param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
+
+	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
 		free(meas_aux.scalar_density);
 
-	if (param->d_polyakov_density_meas == 1)
+	if(param->d_polyakov_density_meas == 1)
 		{
 		free(meas_aux.polyre_density);
 		free(meas_aux.polyim_density);
@@ -2651,37 +2558,37 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const * const param, int const 
 	close_data_files(meas_aux, replica_index, param);
 	}
 
-void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const * const param)
+void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const *const param)
 	{
 	// free meas utils for physical replica
 	free_meas_utils(meas_aux[0], param, 0);
 
 	// free meas utils for other replicas if using replica meas mode
 	#ifdef REPLICA_MEAS_MODE
-	for (int i=1; i<param->d_N_replica_pt; i++)
+	for(int i = 1; i < param->d_N_replica_pt; i++)
 		free_meas_utils(meas_aux[i], param, i);
 	#endif
 
 	free(meas_aux);
 	}
 
-void print_measures_aux(int const num_meas, long const update_index, GParam const * const param,
-							Meas_Utils *meas_aux)
+void print_measures_aux(int const num_meas, long const update_index, GParam const *const param,
+                        Meas_Utils *meas_aux)
 	{
 	double time_step;
-	if (param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
+	if(param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
 	else time_step = param->d_ngfsteps;
 
-	for(int i=0; i<num_meas; i++)
+	for(int i = 0; i < num_meas; i++)
 		{
-		if (param->d_plaquette_meas      == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
-		if (param->d_clover_energy_meas  == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
-		if (param->d_charge_meas         == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
-		if (param->d_polyakov_meas       == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
-		if (param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
-		if (param->d_chi_prime_meas      == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i+1)*time_step, meas_aux->chi_prime[i]);
-		if (param->d_charge_prime_meas   == 1) for (int j=0; j<STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
-		if (param->d_action_meas         == 1)
+		if(param->d_plaquette_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
+		if(param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
+		if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
+		if(param->d_polyakov_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
+		if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
+		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i + 1) * time_step, meas_aux->chi_prime[i]);
+		if(param->d_charge_prime_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
+		if(param->d_action_meas == 1)
 			{
 			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action1[i]);
 			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action2[i]);

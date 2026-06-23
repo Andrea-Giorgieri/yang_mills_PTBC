@@ -3,6 +3,6 @@
 
 #include"../include/aligncheck.h"
 
-void is_aligned(const void * p, size_t byte_align, char* file, int line);
+void is_aligned(void const *p, size_t const byte_align, char *file, int const line);
 
 #endif // ALIGNCHECK_C

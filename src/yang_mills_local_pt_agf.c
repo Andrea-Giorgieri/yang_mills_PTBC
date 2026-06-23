@@ -29,7 +29,6 @@ void real_main(char *in_file)
 	Time_Utils timers;
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	int count;
 	FILE *swaptrackfilep;
 
 	// to disable nested parallelism
@@ -71,7 +70,7 @@ void real_main(char *in_file)
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin
-	for(count=0; count < param.d_sample; count++)
+	for(int count=0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -180,7 +179,7 @@ void print_template_input(void)
 	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
 	if(argc != 2)
 		{

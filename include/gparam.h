@@ -143,7 +143,7 @@ typedef struct GParam {
 	// for tuning
 	int      d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
 	int      d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)
-	double   d_topo_tuning_thr;        // threshold below wich tuning of topo potential is completed
+	double   d_topo_tuning_thr;        // threshold below which tuning of topo potential is completed
 	double   d_topo_tuning_stp;        // initial variation of topo potential during tuning
 	} GParam;
 
@@ -222,6 +222,6 @@ void print_template_output_parameters(FILE *fp);
 
 // print program details
 void print_authors(int parallel_tempering, int twisted_bc);
-void print_compilation_details();
+void print_compilation_details(void);
 
 #endif

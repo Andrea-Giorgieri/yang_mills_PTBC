@@ -8,52 +8,48 @@
 #include<stdlib.h>
 
 int main(void)
-   {
-   int i;
-   unsigned int seme;
+	{
+	unsigned int seed = 1;
+	initrand(seed);
+	printf("seed = %u\n", seed);
+	for(int i = 0; i < 5; i++)
+		{
+		printf("    random[%d] = %.16g\n", i, casuale());
+		}
 
-   printf("\n");
+	printf("\n");
 
-   seme=1;
-   initrand(seme);
-   printf("seed=%u\n", seme);
-   for(i=0; i<5; i++)
-      {
-      printf("  random[%d] = %.16g\n", i, casuale());
-      }
+	seed = 2;
+	initrand(seed);
+	printf("seed = %u\n", seed);
+	for(int i = 0; i < 5; i++)
+		{
+		printf("    random[%d] = %.16g\n", i, casuale());
+		}
 
-   printf("\n");
+	printf("\n");
 
-   seme=2;
-   initrand(seme);
-   printf("seed=%u\n", seme);
-   for(i=0; i<5; i++)
-      {
-      printf("  random[%d] = %.16g\n", i, casuale());
-      }
+	seed = 1;
+	initrand(seed);
+	printf("seed = %u\n", seed);
+	for(int i = 0; i < 5; i++)
+		{
+		printf("    random[%d] = %.16g\n", i, casuale());
+		}
 
-   printf("\n");
+	printf("\n");
 
-   seme=1;
-   initrand(seme);
-   printf("seed=%u\n", seme);
-   for(i=0; i<5; i++)
-      {
-      printf("  random[%d] = %.16g\n", i, casuale());
-      }
+	seed = 0;
+	initrand(seed);
+	printf("seed=time()\n");
+	for(int i = 0; i < 5; i++)
+		{
+		printf("    random[%d] = %.16g\n", i, casuale());
+		}
 
-   printf("\n");
+	printf("\n");
 
-   seme=0;
-   initrand(seme);
-   printf("seed=time()\n");
-   for(i=0; i<5; i++)
-      {
-      printf("  random[%d] = %.16g\n", i, casuale());
-      }
+	return EXIT_SUCCESS;
+	}
 
-   printf("\n");
-
-   return EXIT_SUCCESS;
-   }
 #endif

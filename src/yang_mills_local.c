@@ -28,7 +28,6 @@ void real_main(char *in_file)
 	Time_Utils timers;
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	int count;
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -52,10 +51,10 @@ void real_main(char *in_file)
 	init_geometry(&geo, &param);
 
 	// if measure-only mode is active conf must be read from file => start=2 ignoring the value found in input file
-	if (param.d_sample == 0)
+	if(param.d_sample == 0)
 		{
 		fprintf(stdout, "MEASURE-ONLY MODE: performing measures on configuration read from file %s, no update will be performed\n", param.d_conf_file);
-		param.d_start=2;
+		param.d_start = 2;
 		}
 
 	// initialize gauge configuration
@@ -64,32 +63,10 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
-	// --- TO BE REMOVED ---
-/*	double* ratio;
-	int errs=posix_memalign((void**)&ratio, (size_t)DOUBLE_ALIGN, (size_t) param.d_coolrepeat * sizeof(double));
- 	if(errs!=0)
-	{
-		fprintf(stderr, "Problems in allocating a vector (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-	}
-	check_correlation_decay_cooling(&GC, &geo, &param, ratio);
-	FILE* ratio_fp;
-	ratio_fp=fopen("CHECK_charge_cool.dat", "w");
-	if (ratio_fp == NULL)
-	{
-		fprintf(stderr, "Error in opening the file %s (%s, %d)\n", "CHECK_charge_cool.dat", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-	}
-	for (int iter=0; iter<param.d_coolrepeat; iter++) fprintf(ratio_fp, "%d  % 18.12e\n", (iter+1)*param.d_coolsteps, ratio[iter]);
-	free(ratio);
-	fclose(ratio_fp);
-*/
-	//---------------------------
-
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin
-	if (param.d_sample == 0) // no update is done, only measures are performed on read configuration
+	if(param.d_sample == 0) // no update is done, only measures are performed on read configuration
 		{
 		start_timer(&(timers.step_timer));
 		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
@@ -97,7 +74,7 @@ void real_main(char *in_file)
 		}
 	else
 		{
-		for(count=0; count < param.d_sample; count++)
+		for(int count = 0; count < param.d_sample; count++)
 			{
 			start_timer(&(timers.step_timer));
 
@@ -111,9 +88,9 @@ void real_main(char *in_file)
 				}
 
 			// save configuration for backup
-			if(param.d_saveconf_back_every!=0)
+			if(param.d_saveconf_back_every != 0)
 				{
-				if(GC.update_index % param.d_saveconf_back_every == 0 )
+				if(GC.update_index % param.d_saveconf_back_every == 0)
 					{
 					// simple
 					write_conf_on_file(&GC, &param);
@@ -124,9 +101,9 @@ void real_main(char *in_file)
 				}
 
 			// save configuration for offline analysis
-			if(param.d_saveconf_analysis_every!=0)
+			if(param.d_saveconf_analysis_every != 0)
 				{
-				if(GC.update_index % param.d_saveconf_analysis_every == 0 )
+				if(GC.update_index % param.d_saveconf_analysis_every == 0)
 					{
 					strcpy(name, param.d_conf_file);
 					strcat(name, "_step_");
@@ -136,7 +113,7 @@ void real_main(char *in_file)
 					}
 				}
 			stop_timer(&(timers.step_timer));
-			if (wall_time_check(&timers) == 1) break;
+			if(wall_time_check(&timers) == 1) break;
 			}
 		}
 
@@ -147,7 +124,7 @@ void real_main(char *in_file)
 	free_meas_utils(meas_aux, &param, 0);
 
 	// save configuration
-	if(param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_conf_on_file(&GC, &param);
 		}
@@ -175,7 +152,7 @@ void print_template_input(void)
 	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
 	if(argc != 2)
 		{
@@ -190,11 +167,11 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	
+
 	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
 
 	real_main(argv[1]);
-	
+
 	return EXIT_SUCCESS;
 	}
 

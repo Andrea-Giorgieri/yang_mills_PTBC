@@ -6,13 +6,9 @@
 #include<stdlib.h>
 #include<stdio.h>
 
-inline void is_aligned(const void * p, size_t byte_align, char* file, int line)
-  {
-  if( (unsigned long)p % byte_align != 0)
-    {
-    fprintf(stderr, "Error in alignement (%s, %d)\n", file, line);
-    exit(EXIT_FAILURE);
-    }
-  }
+inline void is_aligned(void const *p, size_t const byte_align, char *file, int const line)
+	{
+	REQUIRE((unsigned long) p % byte_align == 0, "error in alignment at file %s, line %d", file, line);
+	}
 
 #endif // ALIGNCHECK_H

@@ -105,15 +105,14 @@ void times_dag12_SuN(SuN *A, SuN const *const B, SuN const *const C);
 // generated a la Cabibbo Marinari with N(N-1)/2 SU(2) random matrices
 void rand_matrix_SuN(SuN *A)
 	{
-	int i, j, k;
 	double p0, p1, p2, p3, p;
 	double complex aux00, aux01, aux10, aux11, temp0, temp1;
 
 	one_SuN(A);
 
-	for(i = 0; i < NCOLOR - 1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
 			// SU(2) random components
 			p = 2.0;
@@ -136,7 +135,7 @@ void rand_matrix_SuN(SuN *A)
 			aux10 = -p2 + p1 * I;
 			aux11 = p0 - p3 * I;
 
-			for(k = 0; k < NCOLOR; k++)
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				temp0 = A->comp[m(k, i)] * aux00 + A->comp[m(k, j)] * aux10;
 				temp1 = A->comp[m(k, i)] * aux01 + A->comp[m(k, j)] * aux11;
@@ -153,18 +152,17 @@ void rand_matrix_SuN(SuN *A)
 void rand_algebra_gauss_matrix_SuN(SuN *A)
 	{
 	#if NCOLOR == 1
-	(void)A; // just to avoid warnings
+	(void) A; // just to avoid warnings
 	#else
-	int i, j;
 	double d1, d2, dd[NCOLOR - 1];
-	const double nfactor = sqrt(2.0 / (double)(NCOLOR * NCOLOR - NCOLOR));
+	const double factor = sqrt(2.0 / (double) (NCOLOR * NCOLOR - NCOLOR));
 
 	zero_SuN(A);
 
 	// out of diagonal elements
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
 			gauss2(&d1, &d2);
 			A->comp[m(i, j)] = d1 - d2 * I;
@@ -172,33 +170,30 @@ void rand_algebra_gauss_matrix_SuN(SuN *A)
 			}
 		}
 
-	// random numbes to be used in the diagonal
-	for(i = 0; i < NCOLOR - 1; i++)
+	// random numbers to be used in the diagonal
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
 		dd[i] = gauss1();
 		}
 
 	// diagonal
-	if(NCOLOR == 2)
+	#if NCOLOR == 2
+	A->comp[m(0, 0)] = dd[0];
+	A->comp[m(1, 1)] = -dd[0];
+	#else
+	for(int i = 0; i < NCOLOR - 2; i++)
 		{
-		A->comp[m(0, 0)] = dd[0];
-		A->comp[m(1, 1)] = -dd[0];
+		A->comp[m(i, i)] += dd[i];
+		A->comp[m(i + 1, i + 1)] -= dd[i];
 		}
-	else
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(i = 0; i < NCOLOR - 2; i++)
-			{
-			A->comp[m(i, i)] += dd[i];
-			A->comp[m(i + 1, i + 1)] -= dd[i];
-			}
-		for(i = 0; i < NCOLOR - 1; i++)
-			{
-			A->comp[m(i, i)] += nfactor * dd[NCOLOR - 2];
-			}
-		A->comp[m(NCOLOR - 1, NCOLOR - 1)] = nfactor * (1.0 - (double)NCOLOR) * dd[NCOLOR - 2];
+		A->comp[m(i, i)] += factor * dd[NCOLOR - 2];
 		}
+	A->comp[m(NCOLOR - 1, NCOLOR - 1)] = factor * (1.0 - (double) NCOLOR) * dd[NCOLOR - 2];
+	#endif
 
-	times_equal_real_SuN(A, 1. / sqrt(2.0));
+	times_equal_real_SuN(A, 0.7071067811865475244008); // *= 1 / sqrt(2)
 	#endif
 	}
 
@@ -216,11 +211,11 @@ double imtr_SuN(SuN const *const A);
 
 
 // carg() of the trace
-inline double argtr_SuN(SuN const * const A);
+inline double argtr_SuN(SuN const *const A);
 
 
 // trace of A * B^{dag} / N
-inline complex tr_times_dag_SuN(SuN const *const A, SuN const *const B);
+inline double complex tr_times_dag_SuN(SuN const *const A, SuN const *const B);
 
 
 // relative distance between matrices
@@ -229,15 +224,15 @@ double relative_dist_SuN(SuN const *const A, SuN const *const B);
 
 // LU decomposition with partial pivoting
 // from Numerical Recipes in C, pag 46
-void LU_SuN(SuN const *const restrict A, SuN *restrict ris, int *restrict sign)
+void LU_SuN(SuN const *const restrict A, SuN *restrict res, int *restrict sign)
 	{
-	int i, imax, j, k;
+	int i, j, k;
 	double big, temp;
 	double complex sum, dum;
 	double vv[NCOLOR] __attribute__((aligned(DOUBLE_ALIGN)));
 
-	imax = 0;
-	equal_SuN(ris, A);
+	int imax = 0;
+	equal_SuN(res, A);
 
 	(*sign) = 1;
 	for(i = 0; i < NCOLOR; i++)
@@ -245,7 +240,7 @@ void LU_SuN(SuN const *const restrict A, SuN *restrict ris, int *restrict sign)
 		big = 0.0;
 		for(j = 0; j < NCOLOR; j++)
 			{
-			temp = cabs(ris->comp[m(i, j)]);
+			temp = cabs(res->comp[m(i, j)]);
 			if(temp > big) big = temp;
 			}
 		vv[i] = 1.0 / big;
@@ -255,23 +250,23 @@ void LU_SuN(SuN const *const restrict A, SuN *restrict ris, int *restrict sign)
 		{
 		for(i = 0; i < j; i++)
 			{
-			sum = ris->comp[m(i, j)];
+			sum = res->comp[m(i, j)];
 			for(k = 0; k < i; k++)
 				{
-				sum -= (ris->comp[m(i, k)]) * (ris->comp[m(k, j)]);
+				sum -= (res->comp[m(i, k)]) * (res->comp[m(k, j)]);
 				}
-			ris->comp[m(i, j)] = sum;
+			res->comp[m(i, j)] = sum;
 			}
 
 		big = 0.0;
 		for(i = j; i < NCOLOR; i++)
 			{
-			sum = ris->comp[m(i, j)];
+			sum = res->comp[m(i, j)];
 			for(k = 0; k < j; k++)
 				{
-				sum -= (ris->comp[m(i, k)]) * (ris->comp[m(k, j)]);
+				sum -= (res->comp[m(i, k)]) * (res->comp[m(k, j)]);
 				}
-			ris->comp[m(i, j)] = sum;
+			res->comp[m(i, j)] = sum;
 
 			temp = vv[i] * cabs(sum);
 			if(temp >= big)
@@ -285,9 +280,9 @@ void LU_SuN(SuN const *const restrict A, SuN *restrict ris, int *restrict sign)
 			{
 			for(k = 0; k < NCOLOR; k++)
 				{
-				dum = ris->comp[m(imax, k)];
-				ris->comp[m(imax, k)] = ris->comp[m(j, k)];
-				ris->comp[m(j, k)] = dum;
+				dum = res->comp[m(imax, k)];
+				res->comp[m(imax, k)] = res->comp[m(j, k)];
+				res->comp[m(j, k)] = dum;
 				}
 			(*sign) *= (-1);
 			vv[imax] = vv[j];
@@ -295,10 +290,10 @@ void LU_SuN(SuN const *const restrict A, SuN *restrict ris, int *restrict sign)
 
 		if(j != NCOLOR - 1)
 			{
-			dum = (1.0 + 0.0 * I) / (ris->comp[m(j, j)]);
+			dum = (1.0 + 0.0 * I) / (res->comp[m(j, j)]);
 			for(i = j + 1; i < NCOLOR; i++)
 				{
-				(ris->comp[m(i, j)]) *= dum;
+				(res->comp[m(i, j)]) *= dum;
 				}
 			}
 		}
@@ -312,44 +307,40 @@ complex double det_SuN(SuN const *const A);
 // gives 0 if the matrix is in SU(N) and 1 otherwise
 int scheck_SuN(SuN const *const restrict A)
 	{
-	int i, j, k, ris;
-	double complex aux;
+	int res = 0;
 
-	ris = 0;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			aux = 0.0 + 0.0 * I;
-			for(k = 0; k < NCOLOR; k++)
+			double complex aux = 0.0 + 0.0 * I;
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				aux += (A->comp[m(i, k)]) * conj(A->comp[m(j, k)]);
 				}
 			if(i == j) aux -= (1.0 + 0.0 * I);
-			if(cabs(aux) > MIN_VALUE) ris = 1;
+			if(cabs(aux) > MIN_VALUE) res = 1;
 			}
 		}
 
-	if(ris == 0)
+	if(res == 0)
 		{
 		if(cabs(det_SuN(A) - 1) > MIN_VALUE)
 			{
-			ris = 1;
+			res = 1;
 			}
 		}
 
-	return ris;
+	return res;
 	}
 
 
 // sunitarize
 void unitarize_SuN(SuN *restrict A)
 	{
-	double check;
-	SuN F;                    // F = A^{dag}, force to unitarize A by cooling
-	SuN G, G_old;             // current and previous guess for unitarized A
-	SuN H, H_copy, H_square;  // helpers to check convergence of unitarization
+	SuN F;                   // F = A^{dag}, force to unitarize A by cooling
+	SuN G, G_old;            // current and previous guess for unitarized A
+	SuN H, H_copy, H_square; // helpers to check convergence of unitarization
 
 	// check if A needs re-unitarization: check_SuN(A) passes (=0) if
 	// |A * A^{dag} - 1| < MIN_VALUE and |det(A) - 1| < MIN_VALUE
@@ -360,7 +351,7 @@ void unitarize_SuN(SuN *restrict A)
 
 		// guess initialized to identity
 		one_SuN(&G);
-		check = 1.0;
+		double check = 1.0;
 		while(check > MIN_VALUE)
 			{
 			// store old guess
@@ -375,10 +366,10 @@ void unitarize_SuN(SuN *restrict A)
 			minus_equal_SuN(&H, &G_old);
 			equal_SuN(&H_copy, &H);
 			times_SuN(&H_square, &H, &H_copy);
-			check = sqrt(fabs(retr_SuN(&H_square)) / (double)NCOLOR);
+			check = sqrt(fabs(retr_SuN(&H_square)) / (double) NCOLOR);
 			}
 
-		// replace A with G (U if C was applyed)
+		// replace A with G (U if C was applied)
 		equal_SuN(A, &G);
 		}
 	}
@@ -389,10 +380,10 @@ void unitarize_SuN(SuN *restrict A)
 // returns phase gained during unitarization (bad links if != 0)
 double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE *fp, int const print_flag)
 	{
-	double check, aux = 1.0;
-	SuN F;                    // F = A^{dag}, force to unitarize A by cooling
-	SuN G, G_old;             // current and previous guess for unitarized A
-	SuN H, H_copy, H_square;  // helpers to check convergence of unitarization
+	double center_element = 0.0; // k such that gained phase is C = exp(-i 2pi/N k)
+	SuN F;                       // F = A^{dag}, force to unitarize A by cooling
+	SuN G, G_old;                // current and previous guess for unitarized A
+	SuN H, H_copy, H_square;     // helpers to check convergence of unitarization
 	SuN prod;
 
 	// check if A needs re-unitarization: check_SuN(A) passes (=0) if
@@ -404,7 +395,7 @@ double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE *fp, int const
 
 		// guess initialized to identity
 		one_SuN(&G);
-		check = 1.0;
+		double check = 1.0;
 		while(check > MIN_VALUE)
 			{
 			// store old guess
@@ -419,22 +410,22 @@ double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE *fp, int const
 			minus_equal_SuN(&H, &G_old);
 			equal_SuN(&H_copy, &H);
 			times_SuN(&H_square, &H, &H_copy);
-			check = sqrt(fabs(retr_SuN(&H_square)) / (double)NCOLOR);
+			check = sqrt(fabs(retr_SuN(&H_square)) / (double) NCOLOR);
 			}
-		
+
 		// Maximize ReTr[staple * C *link] for C \in Z(SU(N)) and update link *= C
 		// \phi \equiv carg(Tr[staple * link]) => C = \exp{-i * 2\pi/N * round(\phi / (2*\pi/N))}
-		equal_SuN(&prod, &F);               // prod=staple
-		times_equal_SuN(&prod, &G);         // prod=staple*link
-		aux = argtr_SuN(&prod);             // aux = phi
-		aux = round(aux / PI2_N ) * PI2_N;  // round aux to nearest center phase (PI2_N = 2*pi/N in marco.h)
-		if(print_flag != 0 && fabs(aux) > MIN_VALUE) // bad link: aux != 0
+		equal_SuN(&prod, &F);                                   // prod=staple
+		times_equal_SuN(&prod, &G);                             // prod=staple*link
+		center_element = argtr_SuN(&prod);                      // center_element = phi
+		center_element = round(center_element / PI2_N) * PI2_N; // round center_element to nearest center phase (PI2_N = 2*pi/N in marco.h)
+		if(print_flag != 0 && fabs(center_element) > MIN_VALUE) // bad link: center_element != 0
 			print_on_file_SuN(fp, A);
 
 		// replace A with G
 		equal_SuN(A, &G);
 		}
-	return aux;
+	return center_element;
 	}
 
 
@@ -442,7 +433,7 @@ double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE *fp, int const
 void ta_SuN(SuN *A);
 
 
-// eponential of the traceless antihermitian part
+// exponential of the traceless antihermitian part
 void taexp_SuN(SuN *A);
 
 
@@ -457,11 +448,9 @@ void exp_of_ta_SuN(SuN *A);
 // print on screen
 void print_on_screen_SuN(SuN const *const A)
 	{
-	int i, j;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
 			fprintf(stdout, "(% 5.3f % 5.3f) ", creal(A->comp[m(i, j)]), cimag(A->comp[m(i, j)]));
 			}
@@ -474,18 +463,12 @@ void print_on_screen_SuN(SuN const *const A)
 // print on file
 void print_on_file_SuN(FILE *fp, SuN const *const A)
 	{
-	int i, j, err;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			err = fprintf(fp, "% 18.12e % 18.12e ", creal(A->comp[m(i, j)]), cimag(A->comp[m(i, j)]));
-			if(err < 0)
-				{
-				fprintf(stderr, "Problem in writing on file a SuN matrix (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			int err = fprintf(fp, "% 18.12e % 18.12e ", creal(A->comp[m(i, j)]), cimag(A->comp[m(i, j)]));
+			REQUIRE(err >= 0, "failed to write an SU(N) matrix on a file");
 			}
 		}
 	fprintf(fp, "\n");
@@ -495,29 +478,17 @@ void print_on_file_SuN(FILE *fp, SuN const *const A)
 // print on binary file without changing endiannes
 void print_on_binary_file_noswap_SuN(FILE *fp, SuN const *const A)
 	{
-	int i, j;
-	size_t err;
-	double re, im;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			re = creal(A->comp[m(i, j)]);
-			im = cimag(A->comp[m(i, j)]);
+			double re = creal(A->comp[m(i, j)]);
+			double im = cimag(A->comp[m(i, j)]);
 
-			err = fwrite(&re, sizeof(double), 1, fp);
-			if(err != 1)
-				{
-				fprintf(stderr, "Problem in binary writing on file a SuN matrix (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			size_t err = fwrite(&re, sizeof(double), 1, fp);
+			REQUIRE(err == 1, "failed to write an SU(N) matrix on a file in binary mode");
 			err = fwrite(&im, sizeof(double), 1, fp);
-			if(err != 1)
-				{
-				fprintf(stderr, "Problem in binary writing on file a SuN matrix (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			REQUIRE(err == 1, "failed to write an SU(N) matrix on a file in binary mode");
 			}
 		}
 	}
@@ -526,32 +497,20 @@ void print_on_binary_file_noswap_SuN(FILE *fp, SuN const *const A)
 // print on binary file changing endiannes
 void print_on_binary_file_swap_SuN(FILE *fp, SuN const *const A)
 	{
-	int i, j;
-	size_t err;
-	double re, im;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			re = creal(A->comp[m(i, j)]);
-			im = cimag(A->comp[m(i, j)]);
+			double re = creal(A->comp[m(i, j)]);
+			double im = cimag(A->comp[m(i, j)]);
 
 			SwapBytesDouble(&re);
 			SwapBytesDouble(&im);
 
-			err = fwrite(&re, sizeof(double), 1, fp);
-			if(err != 1)
-				{
-				fprintf(stderr, "Problem in binary writing on file a SuN matrix (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			size_t err = fwrite(&re, sizeof(double), 1, fp);
+			REQUIRE(err == 1, "failed to write an SU(N) matrix on a file in binary mode");
 			err = fwrite(&im, sizeof(double), 1, fp);
-			if(err != 1)
-				{
-				fprintf(stderr, "Problem in binary writing on file a SuN matrix (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			REQUIRE(err == 1, "failed to write an SU(N) matrix on a file in binary mode");
 			}
 		}
 	}
@@ -574,19 +533,13 @@ void print_on_binary_file_bigen_SuN(FILE *fp, SuN const *const A)
 // read from file
 void read_from_file_SuN(FILE *fp, SuN *A)
 	{
-	int i, j, err;
-	double re, im;
-
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			err = fscanf(fp, "%lg %lg", &re, &im);
-			if(err != 2)
-				{
-				fprintf(stderr, "Problems reading SuN matrix from file (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			double re, im;
+			int err = fscanf(fp, "%lg %lg", &re, &im);
+			REQUIRE(err == 2, "failed to read the (%d, %d) component of an SU(N) matrix from file", i, j);
 			A->comp[m(i, j)] = re + im * I;
 			}
 		}
@@ -596,62 +549,48 @@ void read_from_file_SuN(FILE *fp, SuN *A)
 // read from binary file without changing endiannes
 void read_from_binary_file_noswap_SuN(FILE *fp, SuN *A)
 	{
-	size_t err;
-	int i, j;
 	double re, im;
 	double aux[2];
 
-	err = 0;
-
-	for(i = 0; i < NCOLOR; i++)
+	size_t err = 0;
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
 			err += fread(&re, sizeof(double), 1, fp);
 			err += fread(&im, sizeof(double), 1, fp);
 			aux[0] = re;
 			aux[1] = im;
 
-			memcpy((void *)&(A->comp[m(i, j)]), (void *)aux, sizeof(aux));
+			memcpy((void *) &(A->comp[m(i, j)]), (void *) aux, sizeof(aux));
 			//equivalent to A->comp[m(i,j)]=re+im*I;
 			}
 		}
-
-	if(err != 2 * NCOLOR * NCOLOR)
-		{
-		fprintf(stderr, "Problems reading SuN matrix from file (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(err == 2 * NCOLOR * NCOLOR, "failed to read an SU(N) matrix from a file in binary mode");
 	}
 
 
 // read from binary file changing endianness
 void read_from_binary_file_swap_SuN(FILE *fp, SuN *A)
 	{
-	int i, j;
-	size_t err;
 	double re, im;
 	double aux[2];
 
-	for(i = 0; i < NCOLOR; i++)
+	for(int i = 0; i < NCOLOR; i++)
 		{
-		for(j = 0; j < NCOLOR; j++)
+		for(int j = 0; j < NCOLOR; j++)
 			{
-			err = 0;
+			size_t err = 0;
 			err += fread(&re, sizeof(double), 1, fp);
 			err += fread(&im, sizeof(double), 1, fp);
-			if(err != 2)
-				{
-				fprintf(stderr, "Problems reading SuN matrix from file (%s, %d)\n", __FILE__, __LINE__);
-				exit(EXIT_FAILURE);
-				}
+			REQUIRE(err == 2, "failed to read the (%d, %d) component of an SU(N) matrix from a file", i, j);
 
 			SwapBytesDouble(&re);
 			SwapBytesDouble(&im);
 			aux[0] = re;
 			aux[1] = im;
 
-			memcpy((void *)&(A->comp[m(i, j)]), (void *)aux, sizeof(aux));
+			memcpy((void *) &(A->comp[m(i, j)]), (void *) aux, sizeof(aux));
 			// equivalent to A->comp[m(i,j)]=re+im*I;
 			}
 		}

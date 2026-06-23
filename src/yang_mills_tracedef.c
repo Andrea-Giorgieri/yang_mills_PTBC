@@ -27,7 +27,6 @@ void real_main(char *in_file)
 	Time_Utils timers;
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	int count;
 	double acc, acc_local;
 
 	// to disable nested parallelism
@@ -58,27 +57,27 @@ void real_main(char *in_file)
 	init_meas_utils(&meas_aux, &param, 0);
 
 	// acceptance of the metropolis update
-	acc=0.0;
+	acc = 0.0;
 
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin (count starts from 1 to avoid problems using %)
-	for(count=1; count < param.d_sample + 1; count++)
+	for(int count = 1; count < param.d_sample + 1; count++)
 		{
 		start_timer(&(timers.step_timer));
 
 		update_with_trace_def(&GC, &geo, &param, &acc_local);
-		acc+=acc_local;
+		acc += acc_local;
 
-		if(count % param.d_measevery ==0 && count >= param.d_thermal)
+		if(count % param.d_measevery == 0 && count >= param.d_thermal)
 			{
 			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 			}
 
 		// save configuration for backup
-		if(param.d_saveconf_back_every!=0)
+		if(param.d_saveconf_back_every != 0)
 			{
-			if(count % param.d_saveconf_back_every == 0 )
+			if(count % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_conf_on_file(&GC, &param);
@@ -89,9 +88,9 @@ void real_main(char *in_file)
 			}
 
 		// save configuration for offline analysis
-		if(param.d_saveconf_analysis_every!=0)
+		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(count % param.d_saveconf_analysis_every == 0 )
+			if(count % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
 				sprintf(aux, "%ld", GC.update_index);
@@ -100,19 +99,19 @@ void real_main(char *in_file)
 				}
 			}
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
 
-	acc/=(double)param.d_sample;
+	acc /= (double) param.d_sample;
 
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
 
 	// save configuration
-	if(param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_conf_on_file(&GC, &param);
 		}
@@ -130,33 +129,22 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		fprintf(fp, "htracedef  1.1\n");
-		fprintf(fp,"\n");
-		print_template_simul_parameters(fp);
-		print_template_metro_parameters(fp);
-		print_template_cooling_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	fprintf(fp, "htracedef  1.1\n");
+	fprintf(fp, "\n");
+	print_template_simul_parameters(fp);
+	print_template_metro_parameters(fp);
+	print_template_cooling_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[50];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -170,16 +158,10 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else strcpy(in_file, argv[1]);
-		}
 
-	real_main(in_file);
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
 
 	return EXIT_SUCCESS;
 	}

@@ -1,13 +1,13 @@
 #ifndef SU2_H
 #define SU2_H
 
-#include "macro.h"
-#include "tens_prod.h"
-#include "tens_prod_adj.h"
+#include"macro.h"
+#include"tens_prod.h"
+#include"tens_prod_adj.h"
 
-#include <complex.h>
-#include <math.h>
-#include <stdio.h>
+#include<complex.h>
+#include<math.h>
+#include<stdio.h>
 
 //
 // An Su2 matrix is represented as comp[0]+i\sum_{j=1}^3 comp[j]\sigma_j where
@@ -70,11 +70,7 @@ inline void zero_Su2(Su2 *restrict A)
 inline void equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -93,11 +89,7 @@ inline void equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -116,11 +108,7 @@ inline void equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void plus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -139,11 +127,7 @@ inline void plus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void plus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -162,11 +146,7 @@ inline void plus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void minus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -185,11 +165,7 @@ inline void minus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void minus_equal_times_real_Su2(Su2 *restrict A, Su2 const *const restrict B, double r)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -208,11 +184,7 @@ inline void minus_equal_times_real_Su2(Su2 *restrict A, Su2 const *const restric
 inline void minus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -231,11 +203,9 @@ inline void minus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void lin_comb_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -255,11 +225,9 @@ inline void lin_comb_Su2(Su2 *restrict A, double b, Su2 const *const restrict B,
 inline void lin_comb_dag1_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -279,11 +247,9 @@ inline void lin_comb_dag1_Su2(Su2 *restrict A, double b, Su2 const *const restri
 inline void lin_comb_dag2_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -303,11 +269,9 @@ inline void lin_comb_dag2_Su2(Su2 *restrict A, double b, Su2 const *const restri
 inline void lin_comb_dag12_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -341,11 +305,7 @@ inline void times_equal_real_Su2(Su2 *restrict A, double r)
 inline void times_equal_complex_Su2(Su2 *restrict A, double complex r)
 	{
 	#ifdef DEBUG
-	if(fabs(cimag(r)) > MIN_VALUE)
-		{
-		fprintf(stderr, "Trying to multiply SU(2) matrix by a non-real number (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(fabs(cimag(r)) < MIN_VALUE, "trying to multiply an SU(2) matrix by a non-real number");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -363,11 +323,7 @@ inline void times_equal_complex_Su2(Su2 *restrict A, double complex r)
 inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -375,12 +331,10 @@ inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	register double a0, a1, a2, a3;
-
-	a0 = A->comp[0];
-	a1 = A->comp[1];
-	a2 = A->comp[2];
-	a3 = A->comp[3];
+	register double a0 = A->comp[0];
+	register double a1 = A->comp[1];
+	register double a2 = A->comp[2];
+	register double a3 = A->comp[3];
 
 	A->comp[0] = a0 * B->comp[0] - a1 * B->comp[1] - a2 * B->comp[2] - a3 * B->comp[3];
 	A->comp[1] = a0 * B->comp[1] + a1 * B->comp[0] - a2 * B->comp[3] + a3 * B->comp[2];
@@ -393,11 +347,7 @@ inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
-	if(A == B)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -405,12 +355,10 @@ inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	register double a0, a1, a2, a3;
-
-	a0 = A->comp[0];
-	a1 = A->comp[1];
-	a2 = A->comp[2];
-	a3 = A->comp[3];
+	register double a0 = A->comp[0];
+	register double a1 = A->comp[1];
+	register double a2 = A->comp[2];
+	register double a3 = A->comp[3];
 
 	A->comp[0] = a0 * B->comp[0] + a1 * B->comp[1] + a2 * B->comp[2] + a3 * B->comp[3];
 	A->comp[1] = -a0 * B->comp[1] + a1 * B->comp[0] + a2 * B->comp[3] - a3 * B->comp[2];
@@ -423,11 +371,9 @@ inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 inline void times_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -447,11 +393,9 @@ inline void times_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *c
 inline void times_dag1_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -471,11 +415,9 @@ inline void times_dag1_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 con
 inline void times_dag2_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -495,11 +437,9 @@ inline void times_dag2_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 con
 inline void times_dag12_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
-	if(A == B || A == C || B == C)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -553,12 +493,10 @@ inline double relative_dist_Su2(Su2 const *const restrict A, Su2 const *const re
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	double aux_AxB, aux_ApB, check;
-
-	aux_ApB = 1.0 - 0.5*(A->comp[0] + B->comp[0]);
-	aux_AxB = 1.0 - (A->comp[0] * B->comp[0] + A->comp[1] * B->comp[1] + A->comp[2] * B->comp[2] + A->comp[3] * B->comp[3]);
-	check = 2.83 * MIN_VALUE;
-	if (aux_ApB <= check || aux_AxB <= check)
+	double aux_ApB = 1.0 - 0.5 * (A->comp[0] + B->comp[0]);
+	double aux_AxB = 1.0 - (A->comp[0] * B->comp[0] + A->comp[1] * B->comp[1] + A->comp[2] * B->comp[2] + A->comp[3] * B->comp[3]);
+	double check = 2.83 * MIN_VALUE;
+	if(aux_ApB <= check || aux_AxB <= check)
 		{
 		return 0.0;
 		}
@@ -573,7 +511,7 @@ inline double retr_Su2(Su2 const *const restrict A) { return A->comp[0]; }
 // imaginary part of the trace /2
 inline double imtr_Su2(Su2 const *const restrict A)
 	{
-	(void)A; // to suppress compilation warning of unused variable
+	(void) A; // to suppress compilation warning of unused variable
 	return 0.0;
 	}
 
@@ -585,9 +523,7 @@ inline void unitarize_Su2(Su2 *restrict A)
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	#endif
 
-	double p;
-
-	p = A->comp[0] * A->comp[0] + A->comp[1] * A->comp[1] + A->comp[2] * A->comp[2] + A->comp[3] * A->comp[3];
+	double p = A->comp[0] * A->comp[0] + A->comp[1] * A->comp[1] + A->comp[2] * A->comp[2] + A->comp[3] * A->comp[3];
 	p = 1.0 / sqrt(p);
 
 	A->comp[0] *= p;
@@ -608,19 +544,17 @@ inline void taexp_Su2(Su2 *restrict A)
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	#endif
 
-	double v1, v2, v3, norm, s;
-
 	// comp[0] is neglected since we consider the ta part
-	norm = (A->comp[1] * A->comp[1]);
+	double norm = (A->comp[1] * A->comp[1]);
 	norm += (A->comp[2] * A->comp[2]);
 	norm += (A->comp[3] * A->comp[3]);
 	norm = sqrt(norm);
 
-	v1 = A->comp[1] / norm;
-	v2 = A->comp[2] / norm;
-	v3 = A->comp[3] / norm;
+	double const v1 = A->comp[1] / norm;
+	double const v2 = A->comp[2] / norm;
+	double const v3 = A->comp[3] / norm;
 
-	s = sin(norm);
+	double const s = sin(norm);
 
 	A->comp[0] = cos(norm);
 	A->comp[1] = v1 * s;
@@ -669,11 +603,7 @@ void read_from_binary_file_bigen_Su2(FILE *fp, Su2 *A);
 inline void TensProd_init_Su2(TensProd *restrict TP, Su2 const *const restrict A1, Su2 const *const restrict A2)
 	{
 	#ifdef DEBUG
-	if(A1 == A2)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A1 != A2, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -682,7 +612,6 @@ inline void TensProd_init_Su2(TensProd *restrict TP, Su2 const *const restrict A
 	__assume_aligned(&(TP->comp), DOUBLE_ALIGN);
 	#endif
 
-	int i, j, k, l;
 	double complex aux1[4] __attribute__((aligned(DOUBLE_ALIGN)));
 	double complex aux2[4] __attribute__((aligned(DOUBLE_ALIGN)));
 
@@ -699,13 +628,13 @@ inline void TensProd_init_Su2(TensProd *restrict TP, Su2 const *const restrict A
 	aux2[m2(1, 0)] = -A2->comp[2] + I * A2->comp[1];
 	aux2[m2(1, 1)] = A2->comp[0] - I * A2->comp[3];
 
-	for(i = 0; i < 2; i++)
+	for(int i = 0; i < 2; i++)
 		{
-		for(j = 0; j < 2; j++)
+		for(int j = 0; j < 2; j++)
 			{
-			for(k = 0; k < 2; k++)
+			for(int k = 0; k < 2; k++)
 				{
-				for(l = 0; l < 2; l++)
+				for(int l = 0; l < 2; l++)
 					{
 					TP->comp[i][j][k][l] = conj(aux1[m2(i, j)]) * aux2[m2(k, l)];
 					}
@@ -737,14 +666,8 @@ inline void fund_to_adj_Su2(Su2Adj *restrict A, Su2 const *const restrict B)
 inline void TensProdAdj_init_Su2(TensProdAdj *restrict TP, Su2 const *const restrict A1, Su2 const *const restrict A2)
 	{
 	#ifdef DEBUG
-	if(A1 == A2)
-		{
-		fprintf(stderr, "The same pointer is used twice in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	ASSERT(A1 != A2, "the same pointer is used twice");
 	#endif
-
-	int i, j, k, l;
 
 	#define m2adj(X, Y) ((X)*3 + (Y))
 
@@ -754,13 +677,13 @@ inline void TensProdAdj_init_Su2(TensProdAdj *restrict TP, Su2 const *const rest
 	fund_to_adj_Su2(&A1adj, A1);
 	fund_to_adj_Su2(&A2adj, A2);
 
-	for(i = 0; i < 3; i++)
+	for(int i = 0; i < 3; i++)
 		{
-		for(j = 0; j < 3; j++)
+		for(int j = 0; j < 3; j++)
 			{
-			for(k = 0; k < 3; k++)
+			for(int k = 0; k < 3; k++)
 				{
-				for(l = 0; l < 3; l++)
+				for(int l = 0; l < 3; l++)
 					{
 					TP->comp[i][j][k][l] = (A1adj.comp[m2adj(i, j)]) * (A2adj.comp[m2adj(k, l)]);
 					}
@@ -770,5 +693,6 @@ inline void TensProdAdj_init_Su2(TensProdAdj *restrict TP, Su2 const *const rest
 
 	#undef m2adj
 	}
+
 
 #endif

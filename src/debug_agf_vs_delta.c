@@ -44,9 +44,9 @@ void real_main(char *in_file)
 	// read input file
 	readinput(in_file, &param);
 	delta0 = param.d_agf_delta;
-	delta1 = delta0/10.0;
-	delta2 = delta1/10.0;
-	delta3 = delta2/10.0;
+	delta1 = delta0 / 10.0;
+	delta2 = delta1 / 10.0;
+	delta3 = delta2 / 10.0;
 
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -73,13 +73,13 @@ void real_main(char *in_file)
 	strcpy(param.d_data_file, aux);
 
 	step_filep0 = fopen("step_file0.dat", "a");
-	if (step_filep0 == NULL) step_filep0 = fopen("step_file0.dat", "w");
+	if(step_filep0 == NULL) step_filep0 = fopen("step_file0.dat", "w");
 	step_filep1 = fopen("step_file1.dat", "a");
-	if (step_filep1 == NULL) step_filep0 = fopen("step_file1.dat", "w");
+	if(step_filep1 == NULL) step_filep0 = fopen("step_file1.dat", "w");
 	step_filep2 = fopen("step_file2.dat", "a");
-	if (step_filep2 == NULL) step_filep0 = fopen("step_file2.dat", "w");
+	if(step_filep2 == NULL) step_filep0 = fopen("step_file2.dat", "w");
 	step_filep3 = fopen("step_file3.dat", "a");
-	if (step_filep3 == NULL) step_filep0 = fopen("step_file3.dat", "w");
+	if(step_filep3 == NULL) step_filep0 = fopen("step_file3.dat", "w");
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
@@ -103,7 +103,7 @@ void real_main(char *in_file)
 	time_agf1 = 0;
 	time_agf2 = 0;
 	time_agf3 = 0;
-	for(count=0; count < param.d_sample; count++)
+	for(count = 0; count < param.d_sample; count++)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
@@ -140,9 +140,9 @@ void real_main(char *in_file)
 			}
 		param.d_agf_delta = delta0;
 		// save configurations for backup
-		if(param.d_saveconf_back_every!=0)
+		if(param.d_saveconf_back_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_back_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_replica_on_file(GC, &param);
@@ -152,9 +152,9 @@ void real_main(char *in_file)
 			}
 
 		// save homogeneous configuration for offline analysis
-		if(param.d_saveconf_analysis_every!=0)
+		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_analysis_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
 				strcat(name, "_step_");
@@ -180,16 +180,16 @@ void real_main(char *in_file)
 	free_meas_utils(meas_aux3, &param, 0);
 
 	// close swap tracking file
-	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
+	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save configurations
-	if (param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_replica_on_file(GC, &param);
 		}
 
 	// print simulation details
-	print_parameters_debug_agf_vs_delta(&param, time_mc_end-time_mc_start, time_agf0, time_agf1, time_agf2, time_agf3);
+	print_parameters_debug_agf_vs_delta(&param, time_mc_end - time_mc_start, time_agf0, time_agf1, time_agf2, time_agf3);
 
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
@@ -213,34 +213,26 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_pt_parameters(fp);
-		print_template_twist_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_adaptive_gradflow_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_pt_parameters(fp);
+	print_template_twist_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
-
 	if(argc != 2)
 		{
-		printf("\nSU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com) within yang-mills package\n");
+		int parallel_tempering = 1;
+		int twisted_bc = 1;
+		print_authors(parallel_tempering, twisted_bc);
+
 		printf("Usage: %s input_file\n\n", argv[0]);
 
 		print_compilation_details();
@@ -248,25 +240,13 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-			return EXIT_SUCCESS;
-			}
-		else
-			{
-			#if(STDIM==4 && NCOLOR>1)
-				strcpy(in_file, argv[1]);
-				real_main(in_file);
-				return EXIT_SUCCESS;
-			#else
-				fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-				return EXIT_SUCCESS;
-			#endif
-			}
-		}
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	REQUIRE(STDIM == 4 && NCOLOR > 1, "PTBC not implemented for STDIM != 4 or NCOLOR < 2");
+
+	real_main(argv[1]);
+
+	return EXIT_SUCCESS;
 	}
 
 #endif

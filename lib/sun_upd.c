@@ -22,33 +22,32 @@ void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const
 	double xi, p0;
 	double complex temp0, temp1;
 	double complex fii, fij, fji, fjj;
-	int i, j, k;
 
-	for(i = 0; i < NCOLOR - 1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			equal_SuN(&aux, staple);	  // aux=staple
-			times_equal_SuN(&aux, link);  // aux=staple*link
+			equal_SuN(&aux, staple);     // aux=staple
+			times_equal_SuN(&aux, link); // aux=staple*link
 			ennetodue(&aux, i, j, &xi, &u);
 
-			xi *= (param->d_beta) * 2.0 / ((double)NCOLOR);
+			xi *= (param->d_beta) * 2.0 / ((double) NCOLOR);
 
 			if(xi > MIN_VALUE)
 				{
 				randheat_Su2(xi, &p0);
 
-				equal_dag_Su2(&w, &u);       // w=u^{dag}
+				equal_dag_Su2(&w, &u); // w=u^{dag}
 				rand_matrix_p0_Su2(p0, &v);
-				times_equal_Su2(&w, &v);     // w*=v
+				times_equal_Su2(&w, &v); // w*=v
 
-				fii =  w.comp[0] + (w.comp[3]) * I;
-				fij =  w.comp[2] + (w.comp[1]) * I;
+				fii = w.comp[0] + (w.comp[3]) * I;
+				fij = w.comp[2] + (w.comp[1]) * I;
 				fji = -w.comp[2] + (w.comp[1]) * I;
-				fjj =  w.comp[0] - (w.comp[3]) * I;
+				fjj = w.comp[0] - (w.comp[3]) * I;
 
 				// link*=final
-				for(k = 0; k < NCOLOR; k++)
+				for(int k = 0; k < NCOLOR; k++)
 					{
 					temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
 					temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
@@ -60,13 +59,13 @@ void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const
 				{
 				rand_matrix_Su2(&w);
 
-				fii =  w.comp[0] + (w.comp[3]) * I;
-				fij =  w.comp[2] + (w.comp[1]) * I;
+				fii = w.comp[0] + (w.comp[3]) * I;
+				fij = w.comp[2] + (w.comp[1]) * I;
 				fji = -w.comp[2] + (w.comp[1]) * I;
-				fjj =  w.comp[0] - (w.comp[3]) * I;
+				fjj = w.comp[0] - (w.comp[3]) * I;
 
 				// link*=final
-				for(k = 0; k < NCOLOR; k++)
+				for(int k = 0; k < NCOLOR; k++)
 					{
 					temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
 					temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
@@ -81,45 +80,44 @@ void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const
 
 // Pseudo-heatbath by Cabibbo-Marinari (Phys. Lett. B 119, p.387 (1982)) in the implementation by
 // Kennedy, Pendleton (Phys. Lett. B 156, p.393 (1985))
-void single_heatbath_aux_SuN(SuN *link, SuN const * const staple, double beta)
+void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, double beta)
 	{
 	SuN aux;
 	Su2 u, v, w;
 	double xi, p0;
 	double complex temp0, temp1;
 	double complex fii, fij, fji, fjj;
-	int i, j, k;
 
-	for(i=0; i<NCOLOR-1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j=i+1; j<NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
 			equal_SuN(&aux, staple);     // aux=staple
 			times_equal_SuN(&aux, link); // aux=staple*link
 			ennetodue(&aux, i, j, &xi, &u);
 
-			xi*=beta*2.0/((double) NCOLOR);
+			xi *= beta * 2.0 / ((double) NCOLOR);
 
-			if(xi>MIN_VALUE)
+			if(xi > MIN_VALUE)
 				{
 				randheat_Su2(xi, &p0);
 
-				equal_dag_Su2(&w, &u);	// w=u^{dag}
+				equal_dag_Su2(&w, &u); // w=u^{dag}
 				rand_matrix_p0_Su2(p0, &v);
 				times_equal_Su2(&w, &v); // w*=v
 
-				fii= w.comp[0] + (w.comp[3])*I;
-				fij= w.comp[2] + (w.comp[1])*I;
-				fji=-w.comp[2] + (w.comp[1])*I;
-				fjj= w.comp[0] - (w.comp[3])*I;
+				fii = w.comp[0] + (w.comp[3]) * I;
+				fij = w.comp[2] + (w.comp[1]) * I;
+				fji = -w.comp[2] + (w.comp[1]) * I;
+				fjj = w.comp[0] - (w.comp[3]) * I;
 
 				// link*=final
-				for(k=0; k<NCOLOR; k++)
+				for(int k = 0; k < NCOLOR; k++)
 					{
-					temp0=link->comp[m(k,i)]*fii + link->comp[m(k,j)]*fji;
-					temp1=link->comp[m(k,i)]*fij + link->comp[m(k,j)]*fjj;
-					link->comp[m(k,i)]=temp0;
-					link->comp[m(k,j)]=temp1;
+					temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
+					temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
+					link->comp[m(k, i)] = temp0;
+					link->comp[m(k, j)] = temp1;
 					}
 				}
 			}
@@ -136,28 +134,27 @@ void single_overrelaxation_SuN(SuN *link, SuN const *const staple)
 	double xi;
 	double complex temp0, temp1;
 	double complex fii, fij, fji, fjj;
-	int i, j, k;
 
-	for(i = 0; i < NCOLOR - 1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			equal_SuN(&prod, staple);	   // prod=staple
-			times_equal_SuN(&prod, link);  // prod=staple*link
+			equal_SuN(&prod, staple);     // prod=staple
+			times_equal_SuN(&prod, link); // prod=staple*link
 			ennetodue(&prod, i, j, &xi, &u);
 
 			if(xi > MIN_VALUE)
 				{
-				equal_dag_Su2(&v, &u);		  // v=u^{dag}
-				times_equal_dag_Su2(&v, &u);  // v=(u^{dag})^2
+				equal_dag_Su2(&v, &u);       // v=u^{dag}
+				times_equal_dag_Su2(&v, &u); // v=(u^{dag})^2
 
-				fii =  v.comp[0] + (v.comp[3]) * I;
-				fij =  v.comp[2] + (v.comp[1]) * I;
+				fii = v.comp[0] + (v.comp[3]) * I;
+				fij = v.comp[2] + (v.comp[1]) * I;
 				fji = -v.comp[2] + (v.comp[1]) * I;
-				fjj =  v.comp[0] - (v.comp[3]) * I;
+				fjj = v.comp[0] - (v.comp[3]) * I;
 
 				//link*=final
-				for(k = 0; k < NCOLOR; k++)
+				for(int k = 0; k < NCOLOR; k++)
 					{
 					temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
 					temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
@@ -178,25 +175,24 @@ void cool_SuN(SuN *link, SuN const *const staple)
 	double complex temp0, temp1;
 	double complex fii, fij, fji, fjj;
 	double aux;
-	int i, j, k;
 
-	equal_SuN(&prod, staple);	   // prod=staple
-	times_equal_SuN(&prod, link);  // prod=staple*link
+	equal_SuN(&prod, staple);     // prod=staple
+	times_equal_SuN(&prod, link); // prod=staple*link
 
-	for(i = 0; i < NCOLOR - 1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			ennetodue(&prod, i, j, &aux, &u);  // aux=xi unused
+			ennetodue(&prod, i, j, &aux, &u); // aux=xi unused
 			equal_dag_Su2(&udag, &u);
 
-			fii =  udag.comp[0] + (udag.comp[3]) * I;
-			fij =  udag.comp[2] + (udag.comp[1]) * I;
+			fii = udag.comp[0] + (udag.comp[3]) * I;
+			fij = udag.comp[2] + (udag.comp[1]) * I;
 			fji = -udag.comp[2] + (udag.comp[1]) * I;
-			fjj =  udag.comp[0] - (udag.comp[3]) * I;
+			fjj = udag.comp[0] - (udag.comp[3]) * I;
 
 			// link*=final
-			for(k = 0; k < NCOLOR; k++)
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
 				temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
@@ -205,7 +201,7 @@ void cool_SuN(SuN *link, SuN const *const staple)
 				}
 
 			// prod*=final
-			for(k = 0; k < NCOLOR; k++)
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				temp0 = prod.comp[m(k, i)] * fii + prod.comp[m(k, j)] * fji;
 				temp1 = prod.comp[m(k, i)] * fij + prod.comp[m(k, j)] * fjj;
@@ -217,9 +213,9 @@ void cool_SuN(SuN *link, SuN const *const staple)
 
 	// Maximize ReTr[staple * C *link] for C \in Z(SU(N)) and update link *= C
 	// \phi \equiv carg(Tr[staple * link]) => C = \exp{-i * 2\pi/N * round(\phi / (2*\pi/N))}
-	aux = argtr_SuN(&prod);                         // aux = phi
-	aux = round(aux / PI2_N ) * PI2_N;              // round aux to nearest center phase (PI2_N = 2*pi/N in marco.h)
-	times_equal_complex_SuN(link, cexp(-I * aux));  // link *= exp(-i * aux)
+	aux = argtr_SuN(&prod);                        // aux = phi
+	aux = round(aux / PI2_N) * PI2_N;              // round aux to nearest center phase (PI2_N = 2*pi/N in marco.h)
+	times_equal_complex_SuN(link, cexp(-I * aux)); // link *= exp(-i * aux)
 	}
 
 // TODO: bugged cooling for testing, remove
@@ -230,25 +226,24 @@ void bad_cool_SuN(SuN *link, SuN const *const staple)
 	double complex temp0, temp1;
 	double complex fii, fij, fji, fjj;
 	double aux;
-	int i, j, k;
 
-	equal_SuN(&prod, staple);	   // prod=staple
-	times_equal_SuN(&prod, link);  // prod=staple*link
+	equal_SuN(&prod, staple);     // prod=staple
+	times_equal_SuN(&prod, link); // prod=staple*link
 
-	for(i = 0; i < NCOLOR - 1; i++)
+	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		for(j = i + 1; j < NCOLOR; j++)
+		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			ennetodue(&prod, i, j, &aux, &u);  // aux=xi unused
+			ennetodue(&prod, i, j, &aux, &u); // aux=xi unused
 			equal_dag_Su2(&udag, &u);
 
-			fii =  udag.comp[0] + (udag.comp[3]) * I;
-			fij =  udag.comp[2] + (udag.comp[1]) * I;
+			fii = udag.comp[0] + (udag.comp[3]) * I;
+			fij = udag.comp[2] + (udag.comp[1]) * I;
 			fji = -udag.comp[2] + (udag.comp[1]) * I;
-			fjj =  udag.comp[0] - (udag.comp[3]) * I;
+			fjj = udag.comp[0] - (udag.comp[3]) * I;
 
 			// link*=final
-			for(k = 0; k < NCOLOR; k++)
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				temp0 = link->comp[m(k, i)] * fii + link->comp[m(k, j)] * fji;
 				temp1 = link->comp[m(k, i)] * fij + link->comp[m(k, j)] * fjj;
@@ -257,7 +252,7 @@ void bad_cool_SuN(SuN *link, SuN const *const staple)
 				}
 
 			// prod*=final
-			for(k = 0; k < NCOLOR; k++)
+			for(int k = 0; k < NCOLOR; k++)
 				{
 				temp0 = prod.comp[m(k, i)] * fii + prod.comp[m(k, j)] * fji;
 				temp1 = prod.comp[m(k, i)] * fij + prod.comp[m(k, j)] * fjj;

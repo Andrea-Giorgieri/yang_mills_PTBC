@@ -15,72 +15,72 @@
 
 
 // functions to impose conditions on params
-int param_any_ui(unsigned int val, char * msg)
+int param_any_ui(unsigned int val, char *msg)
 	{
 	(void) val;
 	(void) msg;
 	return 0;
 	}
 
-int param_any_int(int val, char * msg)
+int param_any_int(int val, char *msg)
 	{
 	(void) val;
 	(void) msg;
 	return 0;
 	}
 
-int param_bool_int(int val, char * msg)
+int param_bool_int(int val, char *msg)
 	{
-	if ((val == 0) || (val == 1)) return 0;
+	if((val == 0) || (val == 1)) return 0;
 	sprintf(msg, "must be either 0 or 1");
 	return 1;
 	}
 
-int param_positive_int(int val, char * msg)
+int param_positive_int(int val, char *msg)
 	{
-	if (val > 0) return 0;
+	if(val > 0) return 0;
 	sprintf(msg, "must be positive");
 	return 1;
 	}
 
-int param_nonnegative_int(int val, char * msg)
+int param_nonnegative_int(int val, char *msg)
 	{
-	if (val >= 0) return 0;
+	if(val >= 0) return 0;
 	sprintf(msg, "must be non-negative");
 	return 1;
 	}
 
-int param_any_double(double val, char * msg)
+int param_any_double(double val, char *msg)
 	{
 	(void) val;
 	(void) msg;
 	return 0;
 	}
 
-int param_positive_double(double val, char * msg)
+int param_positive_double(double val, char *msg)
 	{
-	if (val > 0) return 0;
+	if(val > 0) return 0;
 	sprintf(msg, "must be positive");
 	return 1;
 	}
 
-int param_nonnegative_double(double val, char * msg)
+int param_nonnegative_double(double val, char *msg)
 	{
-	if (val >= 0) return 0;
+	if(val >= 0) return 0;
 	sprintf(msg, "must be non-negative");
 	return 1;
 	}
 
-int param_any_string(char * val, char * msg)
+int param_any_string(char *val, char *msg)
 	{
 	(void) val;
 	(void) msg;
 	return 0;
 	}
 
-void check_required_string(char * val, char * name, int required)
+void check_required_string(char *val, char *name, int required)
 	{
-	if (required)
+	if(required)
 		{
 		REQUIRE(strcmp(val, "") != 0, "parameter '%s' is required", name);
 		}
@@ -88,45 +88,41 @@ void check_required_string(char * val, char * name, int required)
 
 
 // functions to set values of params
-void set_ui_param(FILE* fp, unsigned int * ptr, char const * const name, int (*condition)(unsigned int, char *))
+void set_ui_param(FILE *fp, unsigned int *ptr, char const *const name, int (*condition)(unsigned int, char *))
 	{
 	unsigned int temp;
-	int err;
 	char msg[STD_STRING_LENGTH];
-	err = fscanf(fp, "%u", &temp);
+	int err = fscanf(fp, "%u", &temp);
 	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
 	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
-	*ptr=temp;
+	*ptr = temp;
 	}
 
-void set_int_param(FILE* fp, int * ptr, char const * const name, int (*condition)(int, char *))
+void set_int_param(FILE *fp, int *ptr, char const *const name, int (*condition)(int, char *))
 	{
 	int temp;
-	int err;
 	char msg[STD_STRING_LENGTH];
-	err = fscanf(fp, "%d", &temp);
+	int err = fscanf(fp, "%d", &temp);
 	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
 	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
-	*ptr=temp;
+	*ptr = temp;
 	}
 
-void set_double_param(FILE* fp, double * ptr, char const * const name, int (*condition)(double, char *))
+void set_double_param(FILE *fp, double *ptr, char const *const name, int (*condition)(double, char *))
 	{
 	double temp;
-	int err;
 	char msg[STD_STRING_LENGTH];
-	err = fscanf(fp, "%lf", &temp);
+	int err = fscanf(fp, "%lf", &temp);
 	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
 	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
-	*ptr=temp;
+	*ptr = temp;
 	}
 
-void set_string_param(FILE* fp, char * ptr, char const * const name, int (*condition)(char *, char *))
+void set_string_param(FILE *fp, char *ptr, char const *const name, int (*condition)(char *, char *))
 	{
 	char temp[STD_STRING_LENGTH];
-	int err;
 	char msg[STD_STRING_LENGTH];
-	err = fscanf(fp, "%s", temp);
+	int err = fscanf(fp, "%s", temp);
 	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
 	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
 	strcpy(ptr, temp);
@@ -138,10 +134,12 @@ void remove_white_line_and_comments(FILE *input)
 	int temp_i;
 
 	// skip empty line
-	{do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');}
+	{
+		do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');
+	}
 
 	// skip comment, from \043 = ascii oct for # to first newline or EOF
-	if(temp_i == '\043') {do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF);}
+	if(temp_i == '\043') { do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF); }
 
 	// return if EOF reached or nothing else to remove, after pushing back last char
 	if(temp_i == EOF) return;
@@ -241,7 +239,6 @@ void set_defaults(GParam * const param)
 // read params from input file
 void readinput(char const * const in_file, GParam * const param)
 	{
-	FILE *input;
 	char str[STD_STRING_LENGTH], param_name[STD_STRING_LENGTH];
 	int i, err;
 
@@ -249,7 +246,7 @@ void readinput(char const * const in_file, GParam * const param)
 	set_defaults(param);
 
 	// open the input file
-	input = fopen(in_file, "r");
+	FILE *input = fopen(in_file, "r");
 	REQUIRE(input != NULL, "failed to open input file %s", in_file);
 
 	// slide the input file
@@ -312,7 +309,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_obc_dir), param_name, &param_any_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "obc_bulk");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -455,7 +452,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_charge_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "charge_density_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -497,14 +494,14 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_charge_prime_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "action_meas");
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_action_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "energy_slices_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -518,7 +515,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_charge_slices_meas), param_name, &param_bool_int);
 			continue;
 			}
-		
+
 		strcpy(param_name, "charge_p_slices_meas");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -693,7 +690,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_string_param(input, param->d_energydensity_file, param_name, &param_any_string);
 			continue;
 			}
-		
+
 		strcpy(param_name, "charge_density_file");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -714,7 +711,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_string_param(input, param->d_chiprime_file, param_name, &param_any_string);
 			continue;
 			}
-		
+
 		strcpy(param_name, "energy_slices_file");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -930,24 +927,26 @@ void readinput(char const * const in_file, GParam * const param)
 			"if nonzero, agf_meas_each must be > MIN_VALUE in macro.h");
 
 	// check on topological observables and theta term
-	if (!((STDIM == 4 && NCOLOR > 1) || (STDIM == 2 && NCOLOR == 1)))
-		{
-		err = 0;
-		err += param->d_charge_meas;
-		err += param->d_charge_prime_meas;
-		err += param->d_chi_prime_meas;
-		err += param->d_charge_slices_meas;
-		err += param->d_charge_p_slices_meas;
+	#if !((STDIM == 4 && NCOLOR > 1) || (STDIM == 2 && NCOLOR == 1))
 
-		REQUIRE(err == 0, "topological observables not allowed with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
+	err = 0;
+	err += param->d_charge_meas;
+	err += param->d_charge_prime_meas;
+	err += param->d_chi_prime_meas;
+	err += param->d_charge_slices_meas;
+	err += param->d_charge_p_slices_meas;
+	REQUIRE(err == 0, "topological observables not allowed with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
 
-		#ifdef MULTICANONICAL_MODE
-		REQUIRE(0, "multicanonical mode not supported with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
-		#endif
-		}
+	#ifdef MULTICANONICAL_MODE
+	REQUIRE(0, "multicanonical mode not supported with STDIM=%d and NCOLOR=%d", STDIM, NCOLOR);
+	#endif
+
+	#endif
+
 	#ifdef THETA_MODE
 	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
+
 	for(i=0; i<param->d_multipolyakov_order; i++)
 		{
 		REQUIRE(param->d_multipolyakov_dirs[i] >= 0 &&
@@ -982,35 +981,34 @@ void readinput(char const * const in_file, GParam * const param)
 
 
 // read topo potential from file
-void read_topo_potential(GParam * const param)
+void read_topo_potential(GParam *const param)
 	{
 	FILE *fp = fopen(param->d_topo_potential_file, "r");
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", param->d_topo_potential_file);
 
 	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
-	for (int a=0; a<param->d_N_replica_pt; a++)
+	for(int a = 0; a < param->d_N_replica_pt; a++)
 		{
 		allocate_array_double(&(param->d_grid[a]), param->d_n_grid, __FILE__, __LINE__);
 		}
 
 	// read x and V_a(x) from topo_potential file
-	for(int i=0; i<param->d_n_grid; i++)
+	for(int i = 0; i < param->d_n_grid; i++)
 		{
 		double x, V;
-		int err;
 
 		// read x
-		err = fscanf(fp, "%lf", &x);
+		int err = fscanf(fp, "%lf", &x);
 		REQUIRE(err == 1, "can't read x at row %d", i);
-		int j = (int)floor((x + param->d_grid_max + (param->d_grid_step / 2.0)) / param->d_grid_step);
+		int j = (int) floor((x + param->d_grid_max + (param->d_grid_step / 2.0)) / param->d_grid_step);
 		REQUIRE(i == j, "grid mismatch: found %d for x=%lf, expected %d", j, x, i);
 
 		// read V_a(x)
-		for(int a=0; a<param->d_N_replica_pt; a++)
+		for(int a = 0; a < param->d_N_replica_pt; a++)
 			{
 			err = fscanf(fp, "%lf", &V);
 			REQUIRE(err == 1, "can't read V_%d at row %d", a, i);
-			param->d_grid[a][i]=V;
+			param->d_grid[a][i] = V;
 			}
 		}
 
@@ -1018,20 +1016,20 @@ void read_topo_potential(GParam * const param)
 	}
 
 // write topo potential to file with name
-void write_topo_potential(GParam const * const param, char * filename)
+void write_topo_potential(GParam const *const param, char *filename)
 	{
 	FILE *fp = fopen(filename, "w");
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", filename);
 
 	// write x and V_a(x)
-	for(int i=0; i<param->d_n_grid; i++)
+	for(int i = 0; i < param->d_n_grid; i++)
 		{
 		// write x
 		double x = i * param->d_grid_step - param->d_grid_max;
 		fprintf(fp, "% 12.6e ", x);
 
 		// write V_a(x)
-		for(int a=0; a<param->d_N_replica_pt; a++)
+		for(int a = 0; a < param->d_N_replica_pt; a++)
 			{
 			fprintf(fp, "% 12.6e ", param->d_grid[a][i]);
 			}
@@ -1043,50 +1041,50 @@ void write_topo_potential(GParam const * const param, char * filename)
 
 void init_derived_constants(GParam *param)
 	{
-	int i, j;
+	int i;
 
 	// derived constants
 	param->d_max_size = param->d_size[0];
 	param->d_min_size = param->d_size[0];
 	param->d_volume = 1;
-	for(i=0; i<STDIM; i++) param->d_space_vol[i] = 1;
-	for(i=0; i<STDIM; i++)
+	for(i = 0; i < STDIM; i++) param->d_space_vol[i] = 1;
+	for(i = 0; i < STDIM; i++)
 		{
-		if (param->d_size[i] > param->d_max_size) param->d_max_size = param->d_size[i];
-		if (param->d_size[i] < param->d_min_size) param->d_min_size = param->d_size[i];
+		if(param->d_size[i] > param->d_max_size) param->d_max_size = param->d_size[i];
+		if(param->d_size[i] < param->d_min_size) param->d_min_size = param->d_size[i];
 		(param->d_volume) *= (param->d_size[i]);
-		for(j=0; j<STDIM; j++) if (j != i) (param->d_space_vol[j]) *= (param->d_size[i]);
+		for(int j = 0; j < STDIM; j++) if(j != i) (param->d_space_vol[j]) *= (param->d_size[i]);
 		}
 
-	param->d_inv_vol = 1.0 / ((double)param->d_volume);
-	for(i=0; i<STDIM; i++) param->d_inv_space_vol[i] = 1.0 / ((double)param->d_space_vol[i]);
+	param->d_inv_vol = 1.0 / ((double) param->d_volume);
+	for(i = 0; i < STDIM; i++) param->d_inv_space_vol[i] = 1.0 / ((double) param->d_space_vol[i]);
 
 	// volume of the defect
-	param->d_volume_defect=1;
-	for(i=0; i<STDIM-1;i++)
+	param->d_volume_defect = 1;
+	for(i = 0; i < STDIM - 1; i++)
 		{
 		param->d_volume_defect *= param->d_L_defect[i];
 		}
 
 	// number of grid points (multicanonic only)
-	param->d_n_grid = (int)((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
+	param->d_n_grid = (int) ((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
 
 	// number of planes (twisted boundary conditions only)
 	param->d_n_planes = STDIM * (STDIM - 1);
-	
+
 	// default open boundary position
 	param->d_obc_default_pos = 0;
 	if(param->d_obc_dir != -1)
 		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
 
 	// number of measures during gradient-flow evolution
-	if (param->d_gf_meas_each > 0)
-		param->d_gf_num_meas = (int)(param->d_ngfsteps / param->d_gf_meas_each);
+	if(param->d_gf_meas_each > 0)
+		param->d_gf_num_meas = (int) (param->d_ngfsteps / param->d_gf_meas_each);
 	else
 		param->d_gf_num_meas = 0;
 
-	if (param->d_agf_meas_each > 0)
-		param->d_agf_num_meas = (int)((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
+	if(param->d_agf_meas_each > 0)
+		param->d_agf_num_meas = (int) ((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
 	else
 		param->d_agf_num_meas = 0;
 	}
@@ -1094,7 +1092,7 @@ void init_derived_constants(GParam *param)
 // free allocated memory for hierarc update parameters
 void free_hierarc_params(GParam *param)
 	{
-	if(param->d_N_hierarc_levels==0)
+	if(param->d_N_hierarc_levels == 0)
 		{
 		(void) param; // to avoid compiler warning about unused variable
 		}
@@ -1113,36 +1111,36 @@ void print_configuration_parameters(FILE *fp)
 	fprintf(fp, "Using OpenMP with %d threads\n\n", NTHREADS);
 	#endif
 
-	if(endian()==0) fprintf(fp, "Little endian machine\n\n");
+	if(endian() == 0) fprintf(fp, "Little endian machine\n\n");
 	else fprintf(fp, "Big endian machine\n\n");
 	}
 
-void print_pt_parameters(FILE *fp, GParam const * const param)
+void print_pt_parameters(FILE *fp, GParam const *const param)
 	{
 	int i;
 	fprintf(fp, "Using Parallel Tempering with\n");
 	fprintf(fp, "defect dir: %d\n", param->d_defect_dir);
 	fprintf(fp, "defect sizes: ");
-	for(i=0; i<STDIM-1; i++) fprintf(fp, "%d ", param->d_L_defect[i]);
+	for(i = 0; i < STDIM - 1; i++) fprintf(fp, "%d ", param->d_L_defect[i]);
 	fprintf(fp, "\n");
 	fprintf(fp, "number of replicas: %d\n", param->d_N_replica_pt);
 	fprintf(fp, "boundary conditions: ");
-	for(i=0; i<param->d_N_replica_pt; i++) fprintf(fp, "%lf ", param->d_pt_bound_cond_coeff[i]);
+	for(i = 0; i < param->d_N_replica_pt; i++) fprintf(fp, "%lf ", param->d_pt_bound_cond_coeff[i]);
 	fprintf(fp, "\n");
-	fprintf(fp,"hierarchical levels: %d\n", param->d_N_hierarc_levels);
-	if(param->d_N_hierarc_levels>0)
+	fprintf(fp, "hierarchical levels: %d\n", param->d_N_hierarc_levels);
+	if(param->d_N_hierarc_levels > 0)
 		{
 		fprintf(fp, "extentions of hierarchical rectangles: ");
-		for(i=0;i<param->d_N_hierarc_levels;i++) fprintf(fp, "%d ", param->d_L_rect[i]);
+		for(i = 0; i < param->d_N_hierarc_levels; i++) fprintf(fp, "%d ", param->d_L_rect[i]);
 		fprintf(fp, "\n");
 		fprintf(fp, "sweeps per hierarchical level: ");
-		for(i=0;i<param->d_N_hierarc_levels;i++) fprintf(fp, "%d ", param->d_N_sweep_rect[i]);
-		fprintf(fp,"\n");
+		for(i = 0; i < param->d_N_hierarc_levels; i++) fprintf(fp, "%d ", param->d_N_sweep_rect[i]);
+		fprintf(fp, "\n");
 		}
-	fprintf(fp,"\n");
+	fprintf(fp, "\n");
 	}
 
-void print_multicanonic_parameters(FILE *fp, GParam const * const param)
+void print_multicanonic_parameters(FILE *fp, GParam const *const param)
 	{
 	fprintf(fp, "Using Multicanonical method with\n");
 	fprintf(fp, "Multicanonic topo-potential read from file %s\nPotential defined on a grid with step=%.10lf and max=%.10lf\n", param->d_topo_potential_file, param->d_grid_step, param->d_grid_max);
@@ -1152,24 +1150,24 @@ void print_multicanonic_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "\n");
 	}
 
-void print_multicanonic_tuning_parameters(FILE *fp, GParam const * const param)
+void print_multicanonic_tuning_parameters(FILE *fp, GParam const *const param)
 	{
 	fprintf(fp, "Tuning Multicanonical method with\n");
 	fprintf(fp, "topo_tuning_thr:         %lf\n", param->d_topo_tuning_thr);
 	fprintf(fp, "topo_tuning_stp:         %lf\n", param->d_topo_tuning_stp);
-	fprintf(fp, "topo_tuning_save_every:  %d\n",  param->d_topo_tuning_save_every);
-	fprintf(fp, "topo_tuning_even:        %d\n",  param->d_topo_tuning_even);
+	fprintf(fp, "topo_tuning_save_every:  %d\n", param->d_topo_tuning_save_every);
+	fprintf(fp, "topo_tuning_even:        %d\n", param->d_topo_tuning_even);
 	fprintf(fp, "\n");
 	}
 
-void print_simul_parameters(FILE *fp, GParam const * const param)
+void print_simul_parameters(FILE *fp, GParam const *const param)
 	{
 	int i;
 	fprintf(fp, "colors: %d\n", NCOLOR);
 	fprintf(fp, "spacetime dimension: %d\n\n", STDIM);
 
 	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(i=1; i<STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
+	for(i = 1; i < STDIM; i++) fprintf(fp, "x%d", param->d_size[i]);
 	fprintf(fp, "\n\n");
 
 	if(param->d_obc_dir != -1)
@@ -1178,8 +1176,8 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 		fprintf(fp, "obc_bulk: %d\n", param->d_obc_bulk);
 		}
 	fprintf(fp, "twist parameters: ");
-	for(i=0;i<STDIM*(STDIM-1)/2;i++) fprintf(fp, "%d ", param->d_k_twist[i]);
-	fprintf(fp,"\n");
+	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) fprintf(fp, "%d ", param->d_k_twist[i]);
+	fprintf(fp, "\n");
 	fprintf(fp, "beta:  %.10lf\n", param->d_beta);
 	#ifdef THETA_MODE
 	fprintf(fp, "theta: %.10lf\n", param->d_theta);
@@ -1207,7 +1205,7 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "\n");
 
 	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
-	for(i=0; i<param->d_multipolyakov_order; i++) fprintf(fp, "%d ", param->d_multipolyakov_dirs[i]);
+	for(i = 0; i < param->d_multipolyakov_order; i++) fprintf(fp, "%d ", param->d_multipolyakov_dirs[i]);
 	fprintf(fp, "\n\n");
 
 	fprintf(fp, "start:                   %d\n", param->d_start);
@@ -1218,26 +1216,26 @@ void print_simul_parameters(FILE *fp, GParam const * const param)
 	fprintf(fp, "\n");
 	}
 
-void print_smoothing_parameters(FILE *fp, GParam const * const param)
+void print_smoothing_parameters(FILE *fp, GParam const *const param)
 	{
-	if (param->d_agf_num_meas > 0)
+	if(param->d_agf_num_meas > 0)
 		{
 		fprintf(fp, "Using adaptive gradient flow with\n");
 		fprintf(fp, "agf_length     %lf\n", param->d_agf_length);
 		fprintf(fp, "agf_step:      %lf\n", param->d_agf_step);
 		fprintf(fp, "agf_meas_each  %lf\n", param->d_agf_meas_each);
-		fprintf(fp, "agf_delta      %e\n",  param->d_agf_delta);
+		fprintf(fp, "agf_delta      %e\n", param->d_agf_delta);
 		fprintf(fp, "\n");
 		}
-	if (param->d_gf_num_meas > 0)
+	if(param->d_gf_num_meas > 0)
 		{
 		fprintf(fp, "Using fixed-step gradient flow with\n");
 		fprintf(fp, "gfstep:        %lf\n", param->d_gfstep);
-		fprintf(fp, "num_gfsteps    %d\n",  param->d_ngfsteps);
-		fprintf(fp, "gf_meas_each   %d\n",    param->d_gf_meas_each);
+		fprintf(fp, "num_gfsteps    %d\n", param->d_ngfsteps);
+		fprintf(fp, "gf_meas_each   %d\n", param->d_gf_meas_each);
 		fprintf(fp, "\n");
 		}
-	if (param->d_coolrepeat > 0)
+	if(param->d_coolrepeat > 0)
 		{
 		fprintf(fp, "Using cooling with\n");
 		fprintf(fp, "coolrepeat:    %d\n", param->d_coolrepeat);
@@ -1246,27 +1244,27 @@ void print_smoothing_parameters(FILE *fp, GParam const * const param)
 		}
 	}
 
-void print_multilevel_parameters(FILE *fp, GParam const * const param)
+void print_multilevel_parameters(FILE *fp, GParam const *const param)
 	{
 	int i;
 	fprintf(fp, "Using Multilevel algorithm with\n");
 	fprintf(fp, "multihit:	%d\n", param->d_multihit);
 	fprintf(fp, "levels for multilevel: %d\n", NLEVELS);
 	fprintf(fp, "multilevel steps: ");
-	for(i=0; i<NLEVELS; i++)
+	for(i = 0; i < NLEVELS; i++)
 		{
 		fprintf(fp, "%d ", param->d_ml_step[i]);
 		}
 	fprintf(fp, "\n");
 	fprintf(fp, "updates for levels: ");
-	for(i=0; i<NLEVELS; i++)
+	for(i = 0; i < NLEVELS; i++)
 		{
 		fprintf(fp, "%d ", param->d_ml_upd[i]);
 		}
 	fprintf(fp, "\n\n");
 	}
 
-void print_metro_parameters(FILE *fp, GParam const * const param, double acc)
+void print_metro_parameters(FILE *fp, GParam const *const param, double acc)
 	{
 	fprintf(fp, "epsilon_metro: %.10lf\n", param->d_epsilon_metro);
 	fprintf(fp, "metropolis acceptance: %.10lf\n", acc);
@@ -1275,11 +1273,11 @@ void print_metro_parameters(FILE *fp, GParam const * const param, double acc)
 
 // print simulation parameters
 
-void print_parameters_local(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-----------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local |\n");
 	fprintf(fp, "+-----------------------------------------+\n\n");
@@ -1296,11 +1294,11 @@ void print_parameters_local(GParam const * const param, Time_Utils const * const
 	fclose(fp);
 	}
 
-void print_parameters_local_agf(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local_agf(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_agf |\n");
 	fprintf(fp, "+---------------------------------------------+\n\n");
@@ -1317,11 +1315,11 @@ void print_parameters_local_agf(GParam const * const param, Time_Utils const * c
 	fclose(fp);
 	}
 
-void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local_pt_multicanonic(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_pt_multicanonic |\n");
 	fprintf(fp, "+---------------------------------------------------------+\n\n");
@@ -1337,11 +1335,11 @@ void print_parameters_local_pt_multicanonic(GParam const * const param, Time_Uti
 	fclose(fp);
 	}
 
-void print_parameters_local_pt(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local_pt(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_pt |\n");
 	fprintf(fp, "+--------------------------------------------+\n\n");
@@ -1359,11 +1357,11 @@ void print_parameters_local_pt(GParam const * const param, Time_Utils const * co
 	fclose(fp);
 	}
 
-void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local_pt_gf(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-----------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_pt_gf |\n");
 	fprintf(fp, "+-----------------------------------------------+\n\n");
@@ -1381,11 +1379,11 @@ void print_parameters_local_pt_gf(GParam const * const param, Time_Utils const *
 	fclose(fp);
 	}
 
-void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const * const timers)
+void print_parameters_local_pt_agf(GParam const *const param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_local_pt_agf |\n");
 	fprintf(fp, "+------------------------------------------------+\n\n");
@@ -1403,12 +1401,11 @@ void print_parameters_local_pt_agf(GParam const * const param, Time_Utils const 
 	fclose(fp);
 	}
 
-void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time)
+void print_parameters_debug_agf_vs_gf(GParam const *const param, time_t time_start, time_t time_end, time_t agf_time, time_t dagf_time, time_t gf_time)
 	{
-	FILE *fp;
-	double diff_sec;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------+\n");
 	fprintf(fp, "| Simulation details for debug_agf_vs_gf |\n");
 	fprintf(fp, "+----------------------------------------+\n\n");
@@ -1421,21 +1418,21 @@ void print_parameters_debug_agf_vs_gf(GParam const * const param, time_t time_st
 	print_simul_parameters(fp, param);
 	print_smoothing_parameters(fp, param);
 
-	diff_sec = difftime(time_end, time_start);
-	fprintf(fp, "Simulation time:              %.3lf seconds\n", diff_sec );
-	fprintf(fp, "Adaptive gradflow time:       %d seconds\n", (int)agf_time);
-	fprintf(fp, "Debug adaptive gradflow time: %d seconds\n", (int)dagf_time);
-	fprintf(fp, "Gradflow time:                %d seconds\n", (int)gf_time);
+	double diff_sec = difftime(time_end, time_start);
+	fprintf(fp, "Simulation time:              %.3lf seconds\n", diff_sec);
+	fprintf(fp, "Adaptive gradflow time:       %d seconds\n", (int) agf_time);
+	fprintf(fp, "Debug adaptive gradflow time: %d seconds\n", (int) dagf_time);
+	fprintf(fp, "Gradflow time:                %d seconds\n", (int) gf_time);
 	fprintf(fp, "\n");
 
 	fclose(fp);
 	}
 
-void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3)
+void print_parameters_debug_agf_vs_delta(GParam const *const param, time_t time_mc, time_t time_agf0, time_t time_agf1, time_t time_agf2, time_t time_agf3)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------+\n");
 	fprintf(fp, "| Simulation details for debug_agf_vs_gf |\n");
 	fprintf(fp, "+----------------------------------------+\n\n");
@@ -1448,22 +1445,22 @@ void print_parameters_debug_agf_vs_delta(GParam const * const param, time_t time
 	print_simul_parameters(fp, param);
 	print_smoothing_parameters(fp, param);
 
-	fprintf(fp, "Simulation time:              %d seconds\n", (int)time_mc );
+	fprintf(fp, "Simulation time:              %d seconds\n", (int) time_mc);
 	fprintf(fp, "Adaptive gradflow time:\n");
-	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1.0000, (int)time_agf0);
-	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/10.000, (int)time_agf1);
-	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/100.00, (int)time_agf2);
-	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta/1000.0, (int)time_agf3);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta / 1.0000, (int) time_agf0);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta / 10.000, (int) time_agf1);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta / 100.00, (int) time_agf2);
+	fprintf(fp, "    delta = %e:       %d seconds\n", param->d_agf_delta / 1000.0, (int) time_agf3);
 	fprintf(fp, "\n");
 
 	fclose(fp);
 	}
 
-void print_parameters_polycorr_long(GParam * param, Time_Utils const * const timers)
+void print_parameters_polycorr_long(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_polycorr_long |\n");
 	fprintf(fp, "+-------------------------------------------------+\n\n");
@@ -1486,11 +1483,11 @@ void print_parameters_polycorr_long(GParam * param, Time_Utils const * const tim
 	fclose(fp);
 	}
 
-void print_parameters_polycorr(GParam * param, Time_Utils const * const timers)
+void print_parameters_polycorr(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_polycorr |\n");
 	fprintf(fp, "+--------------------------------------------+\n\n");
@@ -1507,12 +1504,11 @@ void print_parameters_polycorr(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_t0(GParam * param, Time_Utils const * const timers)
+void print_parameters_t0(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
-	int i;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_t0 |\n");
 	fprintf(fp, "+--------------------------------------+\n\n");
@@ -1523,7 +1519,7 @@ void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
 
 	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(i=1; i<STDIM; i++)
+	for(int i = 1; i < STDIM; i++)
 		{
 		fprintf(fp, "x%d", param->d_size[i]);
 		}
@@ -1538,12 +1534,11 @@ void print_parameters_t0(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_gf(GParam * param, Time_Utils const * const timers)
+void print_parameters_gf(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
-	int i;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+-------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_gradient_flow |\n");
 	fprintf(fp, "+-------------------------------------------------+\n\n");
@@ -1554,7 +1549,7 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
 
 	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(i=1; i<STDIM; i++)
+	for(int i = 1; i < STDIM; i++)
 		{
 		fprintf(fp, "x%d", param->d_size[i]);
 		}
@@ -1569,12 +1564,11 @@ void print_parameters_gf(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_agf(GParam * param, Time_Utils const * const timers)
+void print_parameters_agf(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
-	int i;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+----------------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_adaptive_gradient_flow |\n");
 	fprintf(fp, "+----------------------------------------------------------+\n\n");
@@ -1585,7 +1579,7 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
 
 	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(i=1; i<STDIM; i++)
+	for(int i = 1; i < STDIM; i++)
 		{
 		fprintf(fp, "x%d", param->d_size[i]);
 		}
@@ -1600,18 +1594,18 @@ void print_parameters_agf(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_tracedef(GParam const * const param, Time_Utils const * const timers, double acc)
+void print_parameters_tracedef(GParam const *const param, Time_Utils const *const timers, double acc)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tracedef |\n");
 	fprintf(fp, "+--------------------------------------------+\n\n");
 
 	print_configuration_parameters(fp);
 	fprintf(fp, "htracedef: ");
-	for(int i=0; i<(int)floor(NCOLOR/2.0); i++)
+	for(int i = 0; i < (int) floor(NCOLOR / 2.0); i++)
 		{
 		fprintf(fp, "%lf ", param->d_h[i]);
 		}
@@ -1628,11 +1622,11 @@ void print_parameters_tracedef(GParam const * const param, Time_Utils const * co
 	fclose(fp);
 	}
 
-void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
+void print_parameters_tube_disc(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_disc |\n");
 	fprintf(fp, "+---------------------------------------------+\n\n");
@@ -1654,11 +1648,11 @@ void print_parameters_tube_disc(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
+void print_parameters_tube_conn(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+---------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_conn |\n");
 	fprintf(fp, "+---------------------------------------------+\n\n");
@@ -1680,11 +1674,11 @@ void print_parameters_tube_conn(GParam * param, Time_Utils const * const timers)
 	fclose(fp);
 	}
 
-void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const timers)
+void print_parameters_tube_conn_long(GParam *param, Time_Utils const *const timers)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+--------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tube_conn_long |\n");
 	fprintf(fp, "+--------------------------------------------------+\n\n");
@@ -1707,11 +1701,11 @@ void print_parameters_tube_conn_long(GParam * param, Time_Utils const * const ti
 	fclose(fp);
 	}
 
-void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const * const timers, int count)
+void print_parameters_tuning_pt_mc(GParam const *const param, Time_Utils const *const timers, int count)
 	{
-	FILE *fp;
+	FILE *fp = fopen(param->d_log_file, "w");
+	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
-	fp=fopen(param->d_log_file, "w");
 	fprintf(fp, "+------------------------------------------------+\n");
 	fprintf(fp, "| Simulation details for yang_mills_tuning_pt_mc |\n");
 	fprintf(fp, "+------------------------------------------------+\n\n");
@@ -1723,7 +1717,7 @@ void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const 
 	print_simul_parameters(fp, param);
 	print_smoothing_parameters(fp, param);
 
-	fprintf(fp, "Tuning steps: %d\n", count );
+	fprintf(fp, "Tuning steps: %d\n", count);
 	print_time_utils(fp, timers);
 
 	fclose(fp);
@@ -1733,23 +1727,23 @@ void print_parameters_tuning_pt_mc(GParam const * const param, Time_Utils const 
 
 void print_template_volume_parameters(FILE *fp)
 	{
-	fprintf(fp,"size 12 4 4 12  # Nt Nx Ny Nz\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "size 12 4 4 12  # Nt Nx Ny Nz\n");
+	fprintf(fp, "\n");
 	}
 
 void print_template_simul_parameters(FILE *fp)
 	{
-	fprintf(fp,"# Simulations parameters\n");
+	fprintf(fp, "# Simulations parameters\n");
 	fprintf(fp, "beta   6.4881\n");
 	#ifdef THETA_MODE
 	fprintf(fp, "theta  0.5\n");
 	#endif
-	fprintf(fp,"\n");
+	fprintf(fp, "\n");
 	fprintf(fp, "sample     10\n");
 	fprintf(fp, "thermal    0\n");
 	fprintf(fp, "overrelax  5\n");
 	fprintf(fp, "measevery  1\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "\n");
 
 	fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
 	fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
@@ -1771,29 +1765,29 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 	fprintf(fp, "energy_slices_meas    0  # 1=YES, 0=NO\n");
 	fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "\n");
 	fprintf(fp, "multipolyakov_order   0  # n  mu_1 mu_2 ... mu_n\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "\n");
 	}
 
 void print_template_pt_parameters(FILE *fp)
 	{
-	fprintf(fp,"# Parallel tempering parameters\n");
-	fprintf(fp,"defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-	fprintf(fp,"defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
-	fprintf(fp,"N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
-	fprintf(fp,"\n");
-	fprintf(fp,"# Hierarchical update parameters\n");
-	fprintf(fp,"# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
-	fprintf(fp,"hierarc_upd 2    2 1    1 1\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "# Parallel tempering parameters\n");
+	fprintf(fp, "defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
+	fprintf(fp, "defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
+	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "# Hierarchical update parameters\n");
+	fprintf(fp, "# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
+	fprintf(fp, "hierarc_upd 2    2 1    1 1\n");
+	fprintf(fp, "\n");
 	}
 
 void print_template_twist_parameters(FILE *fp)
 	{
-	fprintf(fp,"# Twist parameters\n");
-	fprintf(fp,"k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...\n");
-	fprintf(fp,"\n");
+	fprintf(fp, "# Twist parameters\n");
+	fprintf(fp, "k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...\n");
+	fprintf(fp, "\n");
 	}
 
 void print_template_adaptive_gradflow_parameters(FILE *fp)
@@ -1832,33 +1826,33 @@ void print_template_metro_parameters(FILE *fp)
 
 void print_template_multicanonic_parameters(FILE *fp)
 	{
-	fprintf(fp,"# Multicanonic parameters\n");
-	fprintf(fp,"grid_step                0.05                  # charge steps at which topo_potential is defined in topo_potential_file\n");
-	fprintf(fp,"grid_max                 3.0                   # abs value of charge at which topo_potential saturates in topo_potential_file\n");
-	fprintf(fp,"topo_cooling             0                     # cooling strat before evaluating the topo potential: 0 = none, 1 = cooling\n");
-	fprintf(fp,"topo_coolsteps           5                     # cooling steps before evaluating the topo potential (if topo_cooling = 1)\n");
-	fprintf(fp,"topo_alpha               1.0                   # used for alpha-rounding if >0, no alpha-rounding if =0\n");
-	fprintf(fp,"topo_potential_file      topo_potential        # file to read the topo_potential from\n");
-	fprintf(fp,"multicanonic_acc_file    multicanonic_acc.dat  # file to save acceptances of Metropolis tests with topo_potential\n");
+	fprintf(fp, "# Multicanonic parameters\n");
+	fprintf(fp, "grid_step                0.05                  # charge steps at which topo_potential is defined in topo_potential_file\n");
+	fprintf(fp, "grid_max                 3.0                   # abs value of charge at which topo_potential saturates in topo_potential_file\n");
+	fprintf(fp, "topo_cooling             0                     # cooling strat before evaluating the topo potential: 0 = none, 1 = cooling\n");
+	fprintf(fp, "topo_coolsteps           5                     # cooling steps before evaluating the topo potential (if topo_cooling = 1)\n");
+	fprintf(fp, "topo_alpha               1.0                   # used for alpha-rounding if >0, no alpha-rounding if =0\n");
+	fprintf(fp, "topo_potential_file      topo_potential        # file to read the topo_potential from\n");
+	fprintf(fp, "multicanonic_acc_file    multicanonic_acc.dat  # file to save acceptances of Metropolis tests with topo_potential\n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_multicanonic_tuning_parameters(FILE *fp)
 	{
-	fprintf(fp,"# Multicanonic tuning parameters\n");
-	fprintf(fp,"topo_tuning_thr           0.05 # Tuning ends if topo potential changes less than this threshold\n");
-	fprintf(fp,"topo_tuning_stp           0.1  # Maximum variation of topo_potential at each point every step \n");
-	fprintf(fp,"topo_tuning_save_every    1    # Save topo_potential at each point every step \n");
-	fprintf(fp,"topo_tuning_even          1    # Force topo_potential to be even during tuning (0 = False, 1 = True) \n");
+	fprintf(fp, "# Multicanonic tuning parameters\n");
+	fprintf(fp, "topo_tuning_thr           0.05 # Tuning ends if topo potential changes less than this threshold\n");
+	fprintf(fp, "topo_tuning_stp           0.1  # Maximum variation of topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_save_every    1    # Save topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_even          1    # Force topo_potential to be even during tuning (0 = False, 1 = True) \n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_multilevel_parameters(FILE *fp)
 	{
-    fprintf(fp, "# For multilevel\n");
-    fprintf(fp, "multihit         10  # number of multihit step\n");
-    fprintf(fp, "ml_step           2  # timeslices for multilevel (from largest to smallest)\n");
-    fprintf(fp, "ml_upd           10  # number of updates for various levels\n");
+	fprintf(fp, "# For multilevel\n");
+	fprintf(fp, "multihit         10  # number of multihit step\n");
+	fprintf(fp, "ml_step           2  # timeslices for multilevel (from largest to smallest)\n");
+	fprintf(fp, "ml_upd           10  # number of updates for various levels\n");
 	fprintf(fp, "ml_file      ml.dat  # multilevel output file\n");
 	fprintf(fp, "\n");
 	}
@@ -1886,11 +1880,11 @@ void print_template_output_parameters(FILE *fp)
 void print_authors(int parallel_tempering, int twisted_bc)
 	{
 	printf("\n");
-	if(parallel_tempering==1)
+	if(parallel_tempering == 1)
 		printf("SU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com)\n");
-	if(twisted_bc==1)
+	if(twisted_bc == 1)
 		printf("Twisted Boundary Conditions implemented by Andrea Giorgieri (andrea.giorgieri.pi@gmail.com)\n");
-	if(parallel_tempering==1 || twisted_bc==1)
+	if(parallel_tempering == 1 || twisted_bc == 1)
 		printf("within yang-mills package\n\n");
 
 	printf("Details about yang-mills package:\n");
@@ -1898,7 +1892,7 @@ void print_authors(int parallel_tempering, int twisted_bc)
 	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
 	}
 
-void print_compilation_details()
+void print_compilation_details(void)
 	{
 	printf("Compilation details:\n");
 	printf("\tN_c (number of colors): %d\n", NCOLOR);
@@ -1940,7 +1934,7 @@ void print_compilation_details()
 	printf("\tcompiled with clang\n");
 	#elif defined( __GNUC__ )
 	printf("\tcompiled with gcc version: %d.%d.%d\n",
-		__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+	       __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 	#endif
 	printf("\n");
 	}

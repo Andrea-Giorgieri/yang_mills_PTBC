@@ -12,138 +12,103 @@
 #include<stdlib.h>
 
 int main(void)
-  {
-  unsigned int seme=0;
-  double energy;
-  GParam param;
+	{
+	unsigned int seed = 0;
+	double energy;
+	GParam param;
 
-  U1 M, N, L, T, mI;
+	U1 M, N, L, T, id_U1;
 
-  // initialize random seed
-  initrand(seme);
+	// initialize random seed
+	initrand(seed);
 
-  // fix a value for d_beta
-  param.d_beta=0.9;
+	// fix a value for d_beta
+	param.d_beta = 0.9;
 
-  printf("\n******************************\n");
-  printf("PROGRAM FOR THE DEBUG OF U(1)\n");
-  printf("******************************\n");
+	printf("\n**********************************\n");
+	printf("PROGRAM FOR THE DEBUGGING OF U(1)\n");
+	printf("**********************************\n");
 
-  printf("\n");
-  printf("VERIFY THAT THE RANDOM MATRIX IS IN U(1)\n\n");
-  printf("  random matrix ....");
-  rand_matrix_U1(&M);
-  one_U1(&mI);
-  times_equal_real_U1(&mI, -1.0);  // mI=-1.0
-  times_dag2_U1(&T, &M, &M);
-  plus_equal_U1(&T, &mI);
-  if(norm_U1(&T) <=MIN_VALUE)
-    {
-    printf("    OK\n");
-    }
-  else
-    {
-    printf("    ERROR!!!!!!!!!!!\n");
-    return EXIT_FAILURE;
-    }
+	printf("\n");
+	printf("VERIFY THAT THE RANDOM MATRIX IS IN U(1)\n\n");
+
+	printf("    Random matrix: ");
+	rand_matrix_U1(&M);
+	equal_U1(&N, &M);
+	times_dag2_U1(&T, &M, &N);
+	one_U1(&id_U1);
+	minus_equal_U1(&T, &id_U1);
+
+	REQUIRE(norm_U1(&T) <= MIN_VALUE, "TEST FAILED");
+	printf("TEST PASSED\n");
 
 
+	printf("\n\n");
+	printf("VERIFY THAT UPDATE U(1)->U(1)\n\n");
 
-  printf("\n\n");
-  printf("VERIFY THAT UPDATE U(1)->U(1)\n\n");
-  rand_matrix_U1(&M);
-  rand_matrix_U1(&N);
-  rand_matrix_U1(&L);
-  plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
+	// heatbath
+	printf("    Heatbath: ");
+	rand_matrix_U1(&M);
+	rand_matrix_U1(&N);
+	rand_matrix_U1(&L);
+	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
+	single_heatbath_U1(&M, &N, &param);
+	equal_U1(&N, &M);
+	times_dag2_U1(&T, &M, &N);
+	minus_equal_U1(&T, &id_U1);
+	REQUIRE(norm_U1(&T) <= MIN_VALUE, "TEST FAILED");
+	printf("TEST PASSED\n");
 
-  // heatbath
-  single_heatbath_U1(&M, &N, &param);
-  printf("  Heatbath ...");
-  times_dag2_U1(&T, &M, &M);
-  plus_equal_U1(&T, &mI);
-  if(norm_U1(&T) <=MIN_VALUE)
-    {
-    printf("    OK\n");
-    }
-  else
-    {
-    printf("    ERROR!!!!!!!!!!!\n");
-    return EXIT_FAILURE;
-    }
-
-  // overrelaxation
-  rand_matrix_U1(&M);
-  rand_matrix_U1(&N);
-  rand_matrix_U1(&L);
-  plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
-  single_overrelaxation_U1(&M, &N);
-  printf("  Overrelaxation ...");
-  times_dag2_U1(&T, &M, &M);
-  plus_equal_U1(&T, &mI);
-  if(norm_U1(&T) <=MIN_VALUE)
-    {
-    printf("    OK\n");
-    }
-  else
-    {
-    printf("    ERROR!!!!!!!!!!!\n");
-    return EXIT_FAILURE;
-    }
+	// overrelaxation
+	printf("    Overrelaxation: ");
+	rand_matrix_U1(&M);
+	rand_matrix_U1(&N);
+	rand_matrix_U1(&L);
+	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
+	single_overrelaxation_U1(&M, &N);
+	equal_U1(&N, &M);
+	times_dag2_U1(&T, &M, &N);
+	minus_equal_U1(&T, &id_U1);
+	REQUIRE(norm_U1(&T) <= MIN_VALUE, "TEST FAILED");
+	printf("TEST PASSED\n");
 
 
-
-  printf("\n\n");
-  printf("VERIFY THAT OVERRELAXATION DOES NOT CHANGE THE ENERGY ...");
-  rand_matrix_U1(&M);
-  rand_matrix_U1(&N);
-  rand_matrix_U1(&L);
-  plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
-
-  times_U1(&T, &M, &N);  // T=M*N
-  energy=retr_U1(&T);    // initial energy
-  single_overrelaxation_U1(&M, &N);
-  times_U1(&T, &M, &N);  // T=M*N
-  energy-=retr_U1(&T);    // -=final energy
-  if(fabs(energy)<MIN_VALUE)
-    {
-    printf("  OK\n");
-    }
-  else
-    {
-    printf("  ERROR!!!!!!!!!!!   DeltaE=%g\n", energy);
-    return EXIT_FAILURE;
-    }
+	printf("\n\n");
+	printf("VERIFY THAT OVERRELAXATION DOES NOT CHANGE THE ENERGY ...");
+	rand_matrix_U1(&M);
+	rand_matrix_U1(&N);
+	rand_matrix_U1(&L);
+	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
+	times_U1(&T, &M, &N);  // T=M*N
+	energy = retr_U1(&T);  // initial energy
+	single_overrelaxation_U1(&M, &N);
+	times_U1(&T, &M, &N);  // T=M*N
+	energy -= retr_U1(&T); // -=final energy
+	REQUIRE(fabs(energy) < MIN_VALUE, "    TEST FAILED: Delta E = %f", energy);
+	printf("    TEST PASSED\n");
 
 
+	printf("\n\n");
+	printf("VERIFY THAT COOLING DECREASES THE ENERGY ...");
+	rand_matrix_U1(&M);
+	rand_matrix_U1(&N);
+	rand_matrix_U1(&L);
+	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
 
-  printf("\n\n");
-  printf("VERIFY THAT COOLING DECREASES THE ENERGY ...");
-  rand_matrix_U1(&M);
-  rand_matrix_U1(&N);
-  rand_matrix_U1(&L);
-  plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
+	times_U1(&T, &M, &N); // T=M*N
+	energy = retr_U1(&T); // initial energy
 
-  times_U1(&T, &M, &N);  // T=M*N
-  energy=retr_U1(&T);    // initial energy
+	cool_U1(&M, &N);
 
-  cool_U1(&M, &N);
+	times_U1(&T, &M, &N);  // T=M*N
+	energy -= retr_U1(&T); // -=final energy
+	REQUIRE(energy < MIN_VALUE, "    TEST FAILED: Delta E = %f", energy);
+	printf("    TEST PASSED\n");
 
-  times_U1(&T, &M, &N);  // T=M*N
-  energy-=retr_U1(&T);   // -=final energy
-  if(energy<MIN_VALUE)
-    {
-    printf("  OK\n");
-    }
-  else
-    {
-    printf("  ERROR!!!!!!!!!!!   DeltaE=%g\n", energy);
-    return EXIT_FAILURE;
-    }
+	printf("\nALL TESTS PASSED\n\n");
 
-  printf("\nTEST PASSED\n\n");
-
-  return EXIT_SUCCESS;
-  }
+	return EXIT_SUCCESS;
+	}
 
 
 #endif

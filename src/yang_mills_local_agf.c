@@ -28,7 +28,6 @@ void real_main(char *in_file)
 	Time_Utils timers;
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	int count;
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -66,7 +65,7 @@ void real_main(char *in_file)
 		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.step_timer));
 		}
-	for(count=0; count < param.d_sample; count++)
+	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -110,7 +109,7 @@ void real_main(char *in_file)
 				}
 			}
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
@@ -120,7 +119,7 @@ void real_main(char *in_file)
 	free_meas_utils(meas_aux, &param, 0);
 
 	// save configuration
-	if (param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_conf_on_file(&GC, &param);
 		}
@@ -138,30 +137,19 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_twist_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_adaptive_gradflow_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_twist_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -175,20 +163,12 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-			return EXIT_SUCCESS;
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			real_main(in_file);
-			return EXIT_SUCCESS;
-			}
-		}
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
+
+	return EXIT_SUCCESS;
 	}
 
 #endif

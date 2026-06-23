@@ -30,7 +30,7 @@ typedef struct Gauge_Conf {
 	int conf_label;	// save the label of the configuration to keep track of the swaps
 
 	// for the boundary conditions
-	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)+1], this factor implements twsited and open (including the bulk identification) boundary conditions 
+	double complex **Z;	// Z [volume] [STDIM*(STDIM-1)+1], this factor implements twisted and open (including the bulk identification) boundary conditions
 
 	// auxiliary conf for Metropolis tests and translations
 	GAUGE_GROUP **lattice_copy;		// copy of lattice
@@ -38,18 +38,18 @@ typedef struct Gauge_Conf {
 
 	// for computing the polyakov loop correlator with multilevel
 	TensProd ***ml_polycorr;	// [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
-	GAUGE_GROUP **loc_poly;		// [d_size[0]/d_ml_step[NLEVELS-1]] [space_vol] auxilliary vector to be used in the multilevel
+	GAUGE_GROUP **loc_poly;		// [d_size[0]/d_ml_step[NLEVELS-1]] [space_vol] auxiliary vector to be used in the multilevel
 
 	// for computing the polyakov loop correlator in the adjoint rep. with multilevel
 	TensProdAdj ***ml_polycorradj;	// [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
 
 	// for the disconnected correlator for string width
 	TensProd **ml_polyplaq;		// [NLEVELS] [only slice 0] [space_vol]
-	double complex *loc_plaq;	// [only slice 0] [space_vol] auxilliary vector to be used in the multilevel
+	double complex *loc_plaq;	// [only slice 0] [space_vol] auxiliary vector to be used in the multilevel
 
 	// for the connected correlator for string width
 	TensProd **ml_polyplaqconn;	// [NLEVELS] [only slice 0] [space_vol]
-	GAUGE_GROUP *loc_plaqconn;	// [only slice 0][space_vol] auxilliary vector to be used in the multilevel
+	GAUGE_GROUP *loc_plaqconn;	// [only slice 0][space_vol] auxiliary vector to be used in the multilevel
 
 	// for multicanonical update: store running charge, copy of lattice to be cooled, rectangles for topcharge
 	double stored_topcharge;
@@ -62,7 +62,7 @@ typedef struct Gauge_Conf {
 typedef struct Acc_Utils {
 	long *num_accepted_swap;	// number of accepted swaps during parallel tempering
 	long *num_swap;				// number of proposed swaps during parallel tempering
-	double *metro_swap_prob;	// to store swap propabilities
+	double *metro_swap_prob;	// to store swap probabilities
 	//FILE *swaptrackfilep;		// pointer to file to track replicas during parallel tempering
 
 	long *num_accepted_metro_multicanonic;	// number of accepted multicanonic Metropolis updates
@@ -92,7 +92,7 @@ typedef struct Meas_Utils {
 	double  *action3;
 	double  *potential;
 
-	// for adaptive gradienf flow
+	// for adaptive gradient flow
 	GAUGE_GROUP **lattice_aux[4];		// array of 4 lattices
 	double local_max_dist[NTHREADS];
 
@@ -207,11 +207,11 @@ void free_gauge_conf(						Gauge_Conf *GC,
 
 void write_conf_on_file_with_name(			Gauge_Conf const * const GC,
 											GParam const * const param,
-											char const * const namefile);
+											char const * const filename);
 
 void write_twist_on_file_with_name(		Gauge_Conf const * const GC,
 										GParam const * const param,
-										char const * const namefile);
+										char const * const filename);
 
 void write_conf_on_file(				Gauge_Conf const * const GC,
 										GParam const * const param);
@@ -229,7 +229,7 @@ void init_gauge_conf_from_gauge_conf(	Gauge_Conf *GC,
 										Gauge_Conf const * const GC2,
 										GParam const * const param);
 
-void compute_md5sum_conf(		char *res,		// the lenght is 2*MD5_DIGEST_LENGTH
+void compute_md5sum_conf(		char *res,		// the length is 2*MD5_DIGEST_LENGTH
 								Gauge_Conf const * const GC,
 								GParam const * const param);
 
@@ -247,14 +247,14 @@ void read_polycorr_from_file(	Gauge_Conf const * const GC,
 								GParam const * const param,
 								int *iteration);
 
-void compute_md5sum_polycorr(	char *res,		// the lenght is 2*MD5_DIGEST_LENGTH
+void compute_md5sum_polycorr(	char *res,		// the length is 2*MD5_DIGEST_LENGTH
 								Gauge_Conf const * const GC,
 								GParam const * const param);
 
-void alloc_polycorradj(			Gauge_Conf *GC,
+void alloc_polycorradj_stuff(			Gauge_Conf *GC,
 								GParam const * const param);
 
-void free_polycorradj(			Gauge_Conf *GC,
+void free_polycorradj_stuff(			Gauge_Conf *GC,
 								GParam const * const param);
 
 void alloc_tube_disc_stuff(		Gauge_Conf *GC,
@@ -430,7 +430,7 @@ void loc_topcharge_corr(				Gauge_Conf * const GC,
 										GParam const * const param,
 										int ncool,
 										int dist,
-										double *ris);
+										double *res);
 
 void perform_measures_aux(				Gauge_Conf * const GC,
 										Geometry const * const geo,
@@ -511,10 +511,6 @@ void optimize_multilevel_polycorradj(	Gauge_Conf * const GC,
 
 void perform_measures_polycorradj(		Gauge_Conf * const GC,
 										Geometry const * const geo,
-										GParam const * const param,
-										Meas_Utils *meas_aux);
-
-void perform_measures_polycorr_long(	Gauge_Conf * const GC,
 										GParam const * const param,
 										Meas_Utils *meas_aux);
 
@@ -802,8 +798,8 @@ void gradflow_RKstep_adaptive(			Gauge_Conf * const GC,
 double gradflow_RKstep_adaptive_no_advance(	Gauge_Conf * const GC,
 										Geometry const * const geo,
 										GParam const *const param,
-										double *t,
-										double *dt,
+										double const *t,
+										double const *dt,
 										double *dt_new,
 										int *accepted,
 										Meas_Utils *meas_aux);

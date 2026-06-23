@@ -27,9 +27,8 @@ void real_main(char *in_file)
 	Time_Utils timers;
 
 	long count;
-	const long max_count=10000;
-	double gftime, energy_clover, energy_clover_old, tch, ris;
-
+	long const max_count = 10000;
+	double gftime, energy_clover, energy_clover_old, tch, res;
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -46,7 +45,7 @@ void real_main(char *in_file)
 	start_timer(&(timers.init_timer));
 
 	// this code has to start from saved conf.
-	param.d_start=2;
+	param.d_start = 2;
 
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -63,40 +62,36 @@ void real_main(char *in_file)
 
 	stop_timer(&(timers.init_timer));
 
-	gftime=0.0;
-	count=0;
-	energy_clover_old=0.0;
-	while(count<max_count)
+	gftime = 0.0;
+	count = 0;
+	energy_clover_old = 0.0;
+	while(count < max_count)
 		{
 		start_timer(&(timers.step_timer));
 
 		gradflow_RKstep(&GC, &geo, &param, param.d_gfstep, &meas_aux);
-		gftime+=param.d_gfstep;
+		gftime += param.d_gfstep;
 
 		clover_disc_energy(&GC, &geo, &param, &energy_clover);
-		tch=topcharge(&GC, &geo, &param);
+		tch = topcharge(&GC, &geo, &param);
 
-	 	fprintf(meas_aux.datafilep, "%.13lf	%.13lf	%.13lf	%.13lf\n", gftime, energy_clover, energy_clover*gftime*gftime, tch);
-		if(energy_clover*gftime*gftime>0.3)
+		fprintf(meas_aux.datafilep, "%.13lf	%.13lf	%.13lf	%.13lf\n", gftime, energy_clover, energy_clover * gftime * gftime, tch);
+		if(energy_clover * gftime * gftime > 0.3)
 			{
-			ris = gftime - param.d_gfstep + (0.3-energy_clover_old*gftime*gftime)*param.d_gfstep/(energy_clover*gftime*gftime-energy_clover_old*gftime*gftime);
-			fprintf(meas_aux.datafilep, "%.13lf\n\n", ris);
-			count=(max_count+10);
+			res = gftime - param.d_gfstep + (0.3 - energy_clover_old * gftime * gftime) * param.d_gfstep / (energy_clover * gftime * gftime - energy_clover_old * gftime * gftime);
+			fprintf(meas_aux.datafilep, "%.13lf\n\n", res);
+			count = (max_count + 10);
 			}
 		fflush(meas_aux.datafilep);
 
 		count++;
-		energy_clover_old=energy_clover;
+		energy_clover_old = energy_clover;
 
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
-	if(count==max_count)
-		{
-		fprintf(stderr, "max_count reached in (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(count < max_count, "max_count = %ld reached", max_count);
 
 	stop_timer(&(timers.prog_timer));
 
@@ -116,37 +111,26 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		fprintf(fp, "size 12 4 4 12\n");
-		fprintf(fp,"\n");
-		fprintf(fp, "# For gradient flow evolution\n");
-		fprintf(fp, "gfstep 0.01  # integration step for gradient flow\n");
-		fprintf(fp, "\n");
-		fprintf(fp, "# Output files\n");
-		fprintf(fp, "conf_file  conf.dat\n");
-		fprintf(fp, "data_file  dati.dat\n");
-		fprintf(fp, "log_file   log.dat\n");
-		fprintf(fp, "\n");
-		fprintf(fp, "randseed 0 #(0=time)\n");
-		fclose(fp);
-		}
+	fprintf(fp, "size 12 4 4 12\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "# For gradient flow evolution\n");
+	fprintf(fp, "gfstep 0.01  # integration step for gradient flow\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "# Output files\n");
+	fprintf(fp, "conf_file  conf.dat\n");
+	fprintf(fp, "data_file  dati.dat\n");
+	fprintf(fp, "log_file   log.dat\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "randseed 0 #(0=time)\n");
+	fclose(fp);
 	}
 
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[50];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -160,19 +144,10 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			}
-		}
 
-	real_main(in_file);
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
 
 	return EXIT_SUCCESS;
 	}

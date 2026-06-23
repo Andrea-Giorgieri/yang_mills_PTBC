@@ -10,9 +10,9 @@ int endian(void)
 	int i = 1;
 	char *p = (char *) &i;
 
-	if (p[0] == 1)
+	if(p[0] == 1)
 		return 0; // LITTLE ENDIAN
-	return 1; // BIG ENDIAN
+	return 1;     // BIG ENDIAN
 	}
 
 
@@ -21,7 +21,7 @@ void SwapBytesInt(void *pv)
 	char *p = pv;
 	size_t lo, hi;
 
-	for (lo = 0, hi = sizeof(int) - 1; hi > lo; lo++, hi--)
+	for(lo = 0, hi = sizeof(int) - 1; hi > lo; lo++, hi--)
 		{
 		char tmp = p[lo];
 		p[lo] = p[hi];
@@ -34,7 +34,7 @@ void SwapBytesLong(void *pv)
 	char *p = pv;
 	size_t lo, hi;
 
-	for (lo = 0, hi = sizeof(long) - 1; hi > lo; lo++, hi--)
+	for(lo = 0, hi = sizeof(long) - 1; hi > lo; lo++, hi--)
 		{
 		char tmp = p[lo];
 		p[lo] = p[hi];
@@ -47,7 +47,7 @@ void SwapBytesFloat(void *pv)
 	char *p = pv;
 	size_t lo, hi;
 
-	for (lo = 0, hi = sizeof(float) - 1; hi > lo; lo++, hi--)
+	for(lo = 0, hi = sizeof(float) - 1; hi > lo; lo++, hi--)
 		{
 		char tmp = p[lo];
 		p[lo] = p[hi];
@@ -60,7 +60,7 @@ void SwapBytesDouble(void *pv)
 	char *p = pv;
 	size_t lo, hi;
 
-	for (lo = 0, hi = sizeof(double) - 1; hi > lo; lo++, hi--)
+	for(lo = 0, hi = sizeof(double) - 1; hi > lo; lo++, hi--)
 		{
 		char tmp = p[lo];
 		p[lo] = p[hi];

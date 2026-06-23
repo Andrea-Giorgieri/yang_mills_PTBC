@@ -26,9 +26,6 @@ void real_main(char *in_file)
 	Meas_Utils meas_aux;
 	Time_Utils timers;
 
-	int stop;
-	long step=0; // just to avoid gcc warning of maybe-uninitialized
-
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
@@ -44,7 +41,7 @@ void real_main(char *in_file)
 	start_timer(&(timers.init_timer));
 
 	// this code has to start from saved conf.
-	param.d_start=2;
+	param.d_start = 2;
 
 	// not to overwrite files of runs with online gradient flow
 	strcpy(param.d_data_file, "_gradflow");
@@ -63,8 +60,12 @@ void real_main(char *in_file)
 	// init meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
-	if (param.d_saveconf_analysis_every == 0) stop = 1;
-	else step = ((int)(param.d_thermal/param.d_saveconf_analysis_every)+1)*param.d_saveconf_analysis_every;
+	int stop = 0;
+	long step = 0;
+	if(param.d_saveconf_analysis_every == 0)
+		stop = 1;
+	else
+		step = (param.d_thermal / param.d_saveconf_analysis_every + 1) * param.d_saveconf_analysis_every;
 
 	stop_timer(&(timers.init_timer));
 
@@ -73,13 +74,14 @@ void real_main(char *in_file)
 		start_timer(&(timers.step_timer));
 
 		stop = init_gauge_conf_step(&GC, &param, step);
-		if (stop == 0)
+		if(stop == 0)
 			{
 			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 			step += param.d_saveconf_analysis_every;
 			}
+
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	stop_timer(&(timers.prog_timer));
@@ -100,42 +102,31 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_gradflow_parameters(fp);
-		fprintf(fp, "# Simulation parameters\n");
-		fprintf(fp, "thermal                    0\n");
-		fprintf(fp, "saveconf_analysis_every  100 # if 0 does not save, else save configurations for analysis every ... updates\n");
-		fprintf(fp, "\n");
-		fprintf(fp, "# Output files\n");
-		fprintf(fp, "conf_file             conf.dat\n");
-		fprintf(fp, "twist_file            twist.dat\n");
-		fprintf(fp, "data_file             dati.dat\n");
-		fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
-		fprintf(fp, "energy_slices_file    energy_slices.dat\n");
-		fprintf(fp, "topcharge_tcorr_file  charge_slices.dat\n");
-		fprintf(fp, "log_file              log.dat\n");
-		fprintf(fp, "\n");
-		fprintf(fp, "randseed 0 #(0=time)\n");
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_gradflow_parameters(fp);
+	fprintf(fp, "# Simulation parameters\n");
+	fprintf(fp, "thermal                    0\n");
+	fprintf(fp, "saveconf_analysis_every  100 # if 0 does not save, else save configurations for analysis every ... updates\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "# Output files\n");
+	fprintf(fp, "conf_file             conf.dat\n");
+	fprintf(fp, "twist_file            twist.dat\n");
+	fprintf(fp, "data_file             dati.dat\n");
+	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
+	fprintf(fp, "energy_slices_file    energy_slices.dat\n");
+	fprintf(fp, "topcharge_tcorr_file  charge_slices.dat\n");
+	fprintf(fp, "log_file              log.dat\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "randseed 0 #(0=time)\n");
+	fclose(fp);
 	}
 
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[500];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -149,19 +140,10 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			}
-		}
 
-	real_main(in_file);
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
 
 	return EXIT_SUCCESS;
 	}

@@ -62,6 +62,7 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// find and init first conf
 	while(init_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
+
 	REQUIRE(step <= stop_index, "no configuration found up to update index %ld", stop_index);
 	stop_timer(&(timers.init_timer));
 
@@ -77,7 +78,7 @@ void real_main(char *in_file, long step, long stop_index)
 		while(read_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
 
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	stop_timer(&(timers.prog_timer));
@@ -128,9 +129,9 @@ int main(int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	
+
 	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
-	
+
 	char *end;
 
 	long start_index = strtol(argv[2], &end, 10);

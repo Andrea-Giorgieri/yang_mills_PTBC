@@ -27,8 +27,6 @@ void real_main(char *in_file)
 	Meas_Utils meas_aux;
 	Time_Utils timers;
 
-	int count;
-
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
@@ -38,15 +36,9 @@ void real_main(char *in_file)
 	// read input file
 	readinput(in_file, &param);
 
-	int tmp=param.d_size[1];
-	for(count=2; count<STDIM; count++)
-		{
-		if(tmp!= param.d_size[count])
-			{
-			fprintf(stderr, "When using yang_mills_tube_conn_long all the spatial sizes have to be of equal length.\n");
-			exit(EXIT_FAILURE);
-			}
-		}
+	int size_1 = param.d_size[1];
+	for(int i = 2; i < STDIM; i++)
+		REQUIRE(param.d_size[i] == size_1, "all the spatial sizes must be equal");
 
 	// initialize timers
 	init_time_utils(&timers, param.d_walltime);
@@ -75,7 +67,7 @@ void real_main(char *in_file)
 	if(param.d_start != 2) // NEW SIMULATION
 		{
 		start_timer(&(timers.step_timer));
-		for(count=0; count<param.d_measevery; count++)
+		for(int count = 0; count < param.d_measevery; count++)
 			{
 			update(&GC, &geo, &param, &acc_counters);
 			}
@@ -94,14 +86,14 @@ void real_main(char *in_file)
 		{
 		start_timer(&(timers.step_timer));
 
-		int count, iteration;
+		int iteration;
 
 		// read multilevel stuff
 		read_tube_conn_stuff_from_file(&GC, &param, &iteration);
 
-		if(iteration<0) // update the conf, no multilevel
+		if(iteration < 0) // update the conf, no multilevel
 			{
-			for(count=0; count<param.d_measevery; count++)
+			for(int count = 0; count < param.d_measevery; count++)
 				{
 				update(&GC, &geo, &param, &acc_counters);
 				}
@@ -117,13 +109,13 @@ void real_main(char *in_file)
 		else // iteration >=0, perform multilevel
 			{
 			multilevel_tube_conn_long(&GC, &geo, &param, param.d_ml_step[0], iteration);
-			iteration+=1;
-			if(iteration==param.d_ml_level0_repeat)
+			iteration += 1;
+			if(iteration == param.d_ml_level0_repeat)
 				{
 				// print the measure
 				perform_measures_tube_conn_long(&GC, &param, &meas_aux);
 
-				iteration=-1; // next time the conf will be updated, no multilevel
+				iteration = -1; // next time the conf will be updated, no multilevel
 				}
 
 			// save multilevel stuff
@@ -139,7 +131,7 @@ void real_main(char *in_file)
 	free_meas_utils(meas_aux, &param, 0);
 
 	// save configuration
-	if(param.d_saveconf_back_every!=0)
+	if(param.d_saveconf_back_every != 0)
 		{
 		write_conf_on_file(&GC, &param);
 		}
@@ -160,35 +152,24 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_simul_parameters(fp);
-		print_template_multilevel_parameters(fp);
-		fprintf(fp, "ml_level0_repeat  1 # number of times level0 is repeated in long sim.\n");
-		fprintf(fp, "dist_poly         2 # distance between the polyakov loop\n");
-		fprintf(fp, "transv_dist       2 # transverse distance from the polyakov correlator\n");
-		fprintf(fp, "plaq_dir        1 0 # plaquette orientation for flux tube\n");
-		fprintf(fp,"\n");
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_simul_parameters(fp);
+	print_template_multilevel_parameters(fp);
+	fprintf(fp, "ml_level0_repeat  1 # number of times level0 is repeated in long sim.\n");
+	fprintf(fp, "dist_poly         2 # distance between the polyakov loop\n");
+	fprintf(fp, "transv_dist       2 # transverse distance from the polyakov correlator\n");
+	fprintf(fp, "plaq_dir        1 0 # plaquette orientation for flux tube\n");
+	fprintf(fp, "\n");
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[50];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
@@ -202,19 +183,10 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in include/macro.h\n");
-			}
-		else
-			{
-			strcpy(in_file, argv[1]);
-			}
-		}
 
-	real_main(in_file);
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+
+	real_main(argv[1]);
 
 	return EXIT_SUCCESS;
 	}

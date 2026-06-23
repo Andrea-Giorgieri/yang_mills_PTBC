@@ -84,54 +84,47 @@ void times_dag12_Su2(Su2 *A, Su2 const *const B, Su2 const *const C);
 // random SU(2) matrix
 void rand_matrix_Su2(Su2 *restrict A)
 	{
-	register double p0, p1, p2, p3, p;
+	register double p0, p1, p2, p3, r2;
 
-	p = 2.0;
-	while(p > 1.0)
+	do
 		{
 		p0 = 1.0 - 2.0 * casuale();
 		p1 = 1.0 - 2.0 * casuale();
 		p2 = 1.0 - 2.0 * casuale();
 		p3 = 1.0 - 2.0 * casuale();
-		p = sqrt(p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3);
-		}
 
-	p0 /= p;
-	p1 /= p;
-	p2 /= p;
-	p3 /= p;
+		r2 = p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3;
+		} while(r2 > 1.0);
 
-	A->comp[0] = p0;
-	A->comp[1] = p1;
-	A->comp[2] = p2;
-	A->comp[3] = p3;
+	double const invr = 1.0 / sqrt(r2);
+
+	A->comp[0] = p0 * invr;
+	A->comp[1] = p1 * invr;
+	A->comp[2] = p2 * invr;
+	A->comp[3] = p3 * invr;
 	}
+
 
 // random SU(2) matrix with p0 given (used in the update)
 void rand_matrix_p0_Su2(double p0, Su2 *restrict A)
 	{
-	register double p1, p2, p3, p;
+	register double p1, p2, p3, r2;
 
-	p = 2.0;
-	while(p > 1.0)
+	do
 		{
 		p1 = 1.0 - 2.0 * casuale();
 		p2 = 1.0 - 2.0 * casuale();
 		p3 = 1.0 - 2.0 * casuale();
-		p = p1 * p1 + p2 * p2 + p3 * p3;
-		}
 
-	p /= (1.0 - p0 * p0);
-	p = sqrt(p);
+		r2 = p1 * p1 + p2 * p2 + p3 * p3;
+		} while(r2 > 1.0);
 
-	p1 /= p;
-	p2 /= p;
-	p3 /= p;
+	double const scale = sqrt((1.0 - p0 * p0) / r2);
 
 	A->comp[0] = p0;
-	A->comp[1] = p1;
-	A->comp[2] = p2;
-	A->comp[3] = p3;
+	A->comp[1] = p1 * scale;
+	A->comp[2] = p2 * scale;
+	A->comp[3] = p3 * scale;
 	}
 
 // sqrt of the determinant
@@ -162,15 +155,14 @@ void taexp_Su2(Su2 *A);
 void print_on_screen_Su2(Su2 const *const restrict A)
 	{
 	//fprintf(stdout, "% 10.4e % 10.4e % 10.4e % 10.4e\n", A->comp[0], A->comp[1], A->comp[2], A->comp[3]);
-	int i, j;
 	double complex f[2][2];
-	f[0][0] =  A->comp[0] + (A->comp[3]) * I;
-	f[0][1] =  A->comp[2] + (A->comp[1]) * I;
+	f[0][0] = A->comp[0] + (A->comp[3]) * I;
+	f[0][1] = A->comp[2] + (A->comp[1]) * I;
 	f[1][0] = -A->comp[2] + (A->comp[1]) * I;
-	f[1][1] =  A->comp[0] - (A->comp[3]) * I;
-	for(i = 0; i < 2; i++)
+	f[1][1] = A->comp[0] - (A->comp[3]) * I;
+	for(int i = 0; i < 2; i++)
 		{
-		for(j = 0; j < 2; j++)
+		for(int j = 0; j < 2; j++)
 			{
 			fprintf(stdout, "(% 5.3f % 5.3f) ", creal(f[i][j]), cimag(f[i][j]));
 			}
@@ -182,13 +174,8 @@ void print_on_screen_Su2(Su2 const *const restrict A)
 // print on file
 void print_on_file_Su2(FILE *fp, Su2 const *const restrict A)
 	{
-	int err;
-	err = fprintf(fp, "% 18.12e % 18.12e % 18.12e % 18.12e\n", A->comp[0], A->comp[1], A->comp[2], A->comp[3]);
-	if(err < 0)
-		{
-		fprintf(stderr, "Problem in writing on a file a Su2 matrix (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	int err = fprintf(fp, "% 18.12e % 18.12e % 18.12e % 18.12e\n", A->comp[0], A->comp[1], A->comp[2], A->comp[3]);
+	REQUIRE(err >= 0, "failed to write an SU(2) matrix on a file");
 	}
 
 // print on binary file without changing endiannes
@@ -199,11 +186,7 @@ void print_on_binary_file_noswap_Su2(FILE *fp, Su2 const *const restrict A)
 	err += fwrite(&(A->comp[1]), sizeof(double), 1, fp);
 	err += fwrite(&(A->comp[2]), sizeof(double), 1, fp);
 	err += fwrite(&(A->comp[3]), sizeof(double), 1, fp);
-	if(err != 4)
-		{
-		fprintf(stderr, "Problem in binary writing on a file a Su2 matrix (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(err == 4, "failed to write an SU(2) matrix on a file in binary mode");
 	}
 
 // print on binary file changing endiannes
@@ -227,11 +210,7 @@ void print_on_binary_file_swap_Su2(FILE *fp, Su2 const *const restrict A)
 	tmp = A->comp[3];
 	SwapBytesDouble(&tmp);
 	err += fwrite(&(tmp), sizeof(double), 1, fp);
-	if(err != 4)
-		{
-		fprintf(stderr, "Problem in binary writing on a file a Su2 matrix (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(err == 4, "failed to write an SU(2) matrix on a file in binary mode with swapped endianness");
 	}
 
 // print on binary file in big endian format
@@ -251,12 +230,7 @@ void print_on_binary_file_bigen_Su2(FILE *fp, Su2 const *const restrict A)
 void read_from_file_Su2(FILE *fp, Su2 *restrict A)
 	{
 	int err = fscanf(fp, "%lg %lg %lg %lg", &(A->comp[0]), &(A->comp[1]), &(A->comp[2]), &(A->comp[3]));
-
-	if(err != 4)
-		{
-		fprintf(stderr, "Problems reading Su2 matrix from file (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file");
 	}
 
 // read from binary file without changing endiannes
@@ -267,12 +241,7 @@ void read_from_binary_file_noswap_Su2(FILE *fp, Su2 *restrict A)
 	err += fread(&(A->comp[1]), sizeof(double), 1, fp);
 	err += fread(&(A->comp[2]), sizeof(double), 1, fp);
 	err += fread(&(A->comp[3]), sizeof(double), 1, fp);
-
-	if(err != 4)
-		{
-		fprintf(stderr, "Problems reading Su2 matrix from file (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file in binary mode");
 	}
 
 // read from binary file changing endiannes
@@ -283,17 +252,12 @@ void read_from_binary_file_swap_Su2(FILE *fp, Su2 *restrict A)
 	err += fread(&(A->comp[1]), sizeof(double), 1, fp);
 	err += fread(&(A->comp[2]), sizeof(double), 1, fp);
 	err += fread(&(A->comp[3]), sizeof(double), 1, fp);
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file in binary mode with swapped endianness");
 
-	if(err != 4)
-		{
-		fprintf(stderr, "Problems reading Su2 matrix from file (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-
-	SwapBytesDouble((void *)&(A->comp[0]));
-	SwapBytesDouble((void *)&(A->comp[1]));
-	SwapBytesDouble((void *)&(A->comp[2]));
-	SwapBytesDouble((void *)&(A->comp[3]));
+	SwapBytesDouble((void *) &(A->comp[0]));
+	SwapBytesDouble((void *) &(A->comp[1]));
+	SwapBytesDouble((void *) &(A->comp[2]));
+	SwapBytesDouble((void *) &(A->comp[3]));
 	}
 
 // read from binary file written in big endian

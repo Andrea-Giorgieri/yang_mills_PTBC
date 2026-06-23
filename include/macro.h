@@ -24,36 +24,52 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
 
 
 // function to access matrix elements
-#define m(X,Y) ((X)*NCOLOR + (Y))
-#define madj(X,Y) ((X)*(NCOLOR*NCOLOR -1) + (Y))
+#define m(X,Y) ((X) * NCOLOR + (Y))
+#define madj(X,Y) ((X) * (NCOLOR * NCOLOR - 1) + (Y))
 
-// function to validate function arguments
-#define REQUIRE(cond, fmt, ...)                               \
+// function to validate conditions
+#define REQUIRE(cond, ...)                                    \
     do {                                                      \
         if (!(cond)) {                                        \
             fprintf(stderr,                                   \
-                    "ERROR (%s:%d:%s): " fmt "\n",            \
-                    __FILE__, __LINE__, __func__,             \
-                    ##__VA_ARGS__);                           \
+                    "ERROR (%s:%d:%s): ",                     \
+                    __FILE__, __LINE__, __func__);            \
+            fprintf(stderr, __VA_ARGS__);                     \
+            fprintf(stderr, "\n");                            \
             exit(EXIT_FAILURE);                               \
         }                                                     \
     } while (0)
 
-// function to perform debugging checks
+// function for debugging checks
 #ifdef DEBUG
-#define ASSERT(cond, fmt, ...)                                \
+#define ASSERT(cond, ...)                                     \
     do {                                                      \
         if (!(cond)) {                                        \
             fprintf(stderr,                                   \
-                    "ASSERTION FAILED (%s:%d:%s): " fmt "\n", \
-                    __FILE__, __LINE__, __func__,             \
-                    ##__VA_ARGS__);                           \
+                    "ASSERTION FAILED (%s:%d:%s): ",          \
+                    __FILE__, __LINE__, __func__);            \
+            fprintf(stderr, __VA_ARGS__);                     \
+            fprintf(stderr, "\n");                            \
             abort();                                          \
         }                                                     \
     } while (0)
 #else
 #define ASSERT(cond, fmt, ...) ((void)0)
 #endif
+
+// function for probing numeric variables (cast as double)
+#define PROBE(x)                                              \
+    fprintf(stderr, "[PROBE] %s:%d:%s: %s = %g\n",            \
+            __FILE__, __LINE__, __func__, #x, (double)(x))
+
+
+// function to print flags
+#define HERE(msg)                                             \
+    do {                                                      \
+        fprintf(stderr, "[HERE] %s:%d:%s: %s\n",              \
+                __FILE__, __LINE__, __func__, (msg));         \
+    } while(0)
+
 
 // way to print a macro: if
 // #define val1 val2

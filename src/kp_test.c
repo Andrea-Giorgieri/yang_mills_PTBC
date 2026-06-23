@@ -24,7 +24,6 @@ void real_main(char *in_file)
 	GParam param;
 	Time_Utils timers;
 
-	long count;
 	double reE, imE, reEU, imEU, reEUb, imEUb;
 
 	// to disable nested parallelism
@@ -35,12 +34,12 @@ void real_main(char *in_file)
 
 	// read input file
 	readinput(in_file, &param);
-	
+
 	// initialize staple
 	FILE *filep = fopen(param.d_conf_file, "r");
-	read_from_file_SuN(filep, &staple);
+	read_from_file(filep, &staple);
 	fclose(filep);
-	
+
 	// initialize link
 	one(&link);
 
@@ -59,7 +58,7 @@ void real_main(char *in_file)
 	stop_timer(&(timers.init_timer));
 
 	// Monte Carlo begin
-	for(count=0; count < param.d_sample; count++)
+	for(long count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -69,38 +68,42 @@ void real_main(char *in_file)
 		stop_timer(&(timers.update_timer));
 
 		// perform measures
-		
+
 		start_timer(&(timers.meas_timer));
-		
+
 		// plaquette with link
 		times(&matrix, &link, &staple);
 		reE = retr(&matrix);
 		imE = imtr(&matrix);
-		
+
 		// plaquette with unitarized link
 		equal(&link_aux, &link);
-		unitarize_SuN(&link_aux);
+		unitarize(&link_aux);
 		times(&matrix, &link_aux, &staple);
 		reEU = retr(&matrix);
 		imEU = imtr(&matrix);
-		
+
 		// plaquette with badly-unitarized link
 		equal(&link_aux, &link);
+		#if NCOLOR > 2
 		bad_unitarize_SuN(&link_aux, 1e10, stdout, 1);
+		#else
+		unitarize(&link_aux);
+		#endif
 		times(&matrix, &link_aux, &staple);
 		reEUb = retr(&matrix);
 		imEUb = imtr(&matrix);
-		
+
 		// unitarize link?
 		//unitarize_SuN(&link_aux);
-		
+
 		stop_timer(&(timers.meas_timer));
-		
+
 		// write measures
 		fprintf(datafilep, "%10ld % 22.16e % 22.16e % 22.16e % 22.16e % 22.16e % 22.16e \n", count, reE, imE, reEU, imEU, reEUb, imEUb);
-		
+
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
@@ -119,34 +122,23 @@ void real_main(char *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp;
+	FILE *fp = fopen("template_input.example", "w");
+	REQUIRE(fp != NULL, "failed to open template_input.example");
 
-	fp=fopen("template_input.example", "w");
-
-	if(fp==NULL)
-		{
-		fprintf(stderr, "Error in opening the file template_input.example (%s, %d)\n", __FILE__, __LINE__);
-		exit(EXIT_FAILURE);
-		}
-	else
-		{
-		print_template_volume_parameters(fp);
-		print_template_pt_parameters(fp);
-		print_template_twist_parameters(fp);
-		#ifdef MULTICANONICAL_MODE
-		print_template_multicanonic_parameters(fp);
-		#endif
-		print_template_simul_parameters(fp);
-		print_template_adaptive_gradflow_parameters(fp);
-		print_template_output_parameters(fp);
-		fclose(fp);
-		}
+	print_template_volume_parameters(fp);
+	print_template_pt_parameters(fp);
+	print_template_twist_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_template_multicanonic_parameters(fp);
+	#endif
+	print_template_simul_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_output_parameters(fp);
+	fclose(fp);
 	}
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 	{
-	char in_file[STD_STRING_LENGTH];
-
 	if(argc != 2)
 		{
 		int parallel_tempering = 1;
@@ -160,25 +152,13 @@ int main (int argc, char **argv)
 
 		return EXIT_SUCCESS;
 		}
-	else
-		{
-		if(strlen(argv[1]) >= STD_STRING_LENGTH)
-			{
-			fprintf(stderr, "File name too long. Increse STD_STRING_LENGTH in /include/macro.h\n");
-			return EXIT_SUCCESS;
-			}
-		else
-			{
-			#if(STDIM==4 && NCOLOR>1)
-				strcpy(in_file, argv[1]);
-				real_main(in_file);
-				return EXIT_SUCCESS;
-			#else
-				fprintf(stderr, "Parallel tempering of volume defect not implemented for STDIM =/= 4 and N_color < 2.\n");
-				return EXIT_SUCCESS;
-			#endif
-			}
-		}
+
+	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	REQUIRE(STDIM == 4 && NCOLOR > 1, "PTBC not implemented for STDIM != 4 or NCOLOR < 2");
+
+	real_main(argv[1]);
+
+	return EXIT_SUCCESS;
 	}
 
 #endif

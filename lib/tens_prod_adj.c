@@ -13,35 +13,35 @@
 
 
 // initialize to zero
-void zero_TensProdAdj(TensProdAdj * restrict A);
+void zero_TensProdAdj(TensProdAdj *restrict A);
 
 
 // initialize to one
-void one_TensProdAdj(TensProdAdj * restrict A);
+void one_TensProdAdj(TensProdAdj *restrict A);
 
 
 // A=B
-void equal_TensProdAdj(TensProdAdj * restrict A, TensProdAdj const * const restrict B);
+void equal_TensProdAdj(TensProdAdj *restrict A, TensProdAdj const *const restrict B);
 
 
 // A*=r real
-void times_equal_real_TensProdAdj(TensProdAdj * restrict A, double r);
+void times_equal_real_TensProdAdj(TensProdAdj *restrict A, double r);
 
 // A+=B
-void plus_equal_TensProdAdj(TensProdAdj * restrict A, TensProdAdj const * const restrict B);
+void plus_equal_TensProdAdj(TensProdAdj *restrict A, TensProdAdj const *const restrict B);
 
 
 // A=B*C
-void times_TensProdAdj(TensProdAdj * restrict A,
-                        TensProdAdj const * const restrict B,
-                        TensProdAdj const * const restrict C);
+void times_TensProdAdj(TensProdAdj *restrict A, TensProdAdj const *const restrict B, TensProdAdj const *const restrict C);
 
 
 // A*=B
-void times_equal_TensProdAdj(TensProdAdj * restrict A, TensProdAdj const * const restrict B);
+void times_equal_TensProdAdj(TensProdAdj *restrict A, TensProdAdj const *const restrict B);
 
 
-double retr_TensProdAdj(TensProdAdj const * const restrict A);
-double imtr_TensProdAdj(TensProdAdj const * const restrict A);
+double retr_TensProdAdj(TensProdAdj const *const restrict A);
+
+
+double imtr_TensProdAdj(TensProdAdj const *const restrict A);
 
 #endif

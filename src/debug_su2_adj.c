@@ -12,57 +12,53 @@
 
 #define m2adj(X,Y) ((X)*3 + (Y))
 
-int main()
-  {
-  unsigned int seme=0;
+int main(void)
+	{
+	unsigned int const seed = 0;
 
-  Su2 B1, B2;
-  Su2Adj A1;
+	Su2 B1, B2;
+	Su2Adj A1;
 
-  int i;
-  double risth, ris;
+	// initialize random seed
+	initrand(seed);
 
-  // initialize random seed
-  initrand(seme);
+	printf("\n**************************************\n");
+	printf("PROGRAM FOR THE DEBUGGING OF SU(2) Adj\n");
+	printf("**************************************\n");
 
-  printf("\n*********************************\n");
-  printf("PROGRAM FOR THE DEBUG OF SU(2)Adj\n");
-  printf("*********************************\n");
+	printf("\n");
+	printf("VERIFY THAT Tr(Adj)=|Tr(Fund)|^2-1\n\n");
+	printf("    ");
 
-  printf("\n");
-  printf("VERIFY THAT Tr(Adj)=|Tr(Fund)|^2-1\n\n");
-  printf("  ....");
+	//random matrix in the fundamental repr.
+	rand_matrix_Su2(&B1);
+	rand_matrix_Su2(&B2);
 
-  //random matrix in the fundamental repr.
-  rand_matrix_Su2(&B1);
-  rand_matrix_Su2(&B2);
+	//compute matrices (B1,B2) in adjoint representation (A1,A2)
+	fund_to_adj_Su2(&A1, &B1);
 
-  //compute matrices (B1,B2) in adjoint representation (A1,A2)
-  fund_to_adj_Su2(&A1, &B1);
+	// should be trace
+	double const res_th = pow(2.0 * retr_Su2(&B1), 2.0) - 1;
 
-  // shoud be trace
-  risth=pow(2.0*retr_Su2(&B1),2.0)-1;
+	double res = 0.0;
+	for(int i = 0; i < 2 * 2 - 1; i++)
+		{
+		res += A1.comp[m2adj(i, i)];
+		}
 
-  ris=0.0;
-  for(i=0; i<2*2-1; i++)
-     {
-     ris+=A1.comp[m2adj(i,i)];
-     }
+	if(fabs(res_th - res) <= MIN_VALUE)
+		{
+		printf("OK\n");
+		}
+	else
+		{
+		printf("ERROR: expected %lf, got %lf\n", res_th, res);
+		}
 
-  if(fabs(risth-ris) <=MIN_VALUE)
-    {
-    printf("    OK\n");
-    }
-  else
-    {
-    printf("    ERROR!!!!!!!!!!!\n");
-    return EXIT_FAILURE;
-    }
+	printf("\nALL TESTS ENDED\n\n");
 
-  printf("\nTEST PASSED\n\n");
-
-  return EXIT_SUCCESS;
-  }
+	return EXIT_SUCCESS;
+	}
 
 #undef m2adj
 

@@ -853,7 +853,7 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
 		// trace deformation contribution to action_old
 		times(&poly, &(GC->lattice[r][i]), &stap_td);
 		one(&tmp_matrix);
-		for(int j = 0; j < (int) floor(NCOLOR / 2.0); j++)
+		for(int j = 0; j < NCOLOR / 2; j++)
 			{
 			times_equal(&tmp_matrix, &poly);
 			rpart = NCOLOR * retr(&tmp_matrix);
@@ -885,7 +885,7 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
 		// trace deformation contribution to action_new
 		times(&poly, &new_link, &stap_td);
 		one(&tmp_matrix);
-		for(int j = 0; j < (int) floor(NCOLOR / 2.0); j++)
+		for(int j = 0; j < NCOLOR / 2; j++)
 			{
 			times_equal(&tmp_matrix, &poly);
 			rpart = NCOLOR * retr(&tmp_matrix);
@@ -967,11 +967,9 @@ void update(Gauge_Conf *const GC,
 	(void) acc_counters; // to avoid compiler warning of unused variable
 	#endif
 
-	/* Check if there's at least one even dimension of the lattice, i.e. check if d_volume is even.
-	If there's at least one even dimension: d_volume/2 even sites and d_volume/2 odd sites.
-	Otherwise: (d_volume+1)/2 even sites and (d_volume-1)/2 odd sites. */
-	long const is_even = (param->d_volume) % 2;
-	long const num_even = (param->d_volume + is_even) / 2; // number of even sites
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
 
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
@@ -985,15 +983,20 @@ void update(Gauge_Conf *const GC,
 		#endif
 		for(long s = 0; s < num_even; s++)
 			{
-			heatbath(GC, geo, param, s, dir);
+			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
 			}
 
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = num_even; s < (param->d_volume); s++)
+		for(long s = num_even; s < even_volume; s++)
 			{
-			heatbath(GC, geo, param, s, dir);
+			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
+			}
+
+		for(long s = even_volume; s < volume; s++)
+			{
+			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
 			}
 		}
 
@@ -1011,15 +1014,20 @@ void update(Gauge_Conf *const GC,
 			#endif
 			for(long s = 0; s < num_even; s++)
 				{
-				overrelaxation(GC, geo, param, s, dir);
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
 				}
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = num_even; s < (param->d_volume); s++)
+			for(long s = num_even; s < even_volume; s++)
 				{
-				overrelaxation(GC, geo, param, s, dir);
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
+				}
+
+			for(long s = even_volume; s < volume; s++)
+				{
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
 				}
 			}
 		}
@@ -1050,12 +1058,11 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 	(void) acc_counters; // to avoid compiler warning of unused variable
 	#endif
 
-	/* Check if there's at least one even dimension of the lattice, i.e. check if d_volume is even.
-	If there's at least one even dimension: d_volume/2 even sites and d_volume/2 odd sites.
-	Otherwise: (d_volume+1)/2 even sites and (d_volume-1)/2 odd sites. */
-	long const is_even = (param->d_volume) % 2;
-	long const num_even = (param->d_volume + is_even) / 2; // number of even sites
-	long const num_odd = (param->d_volume - is_even) / 2;  // number of odd sites
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
+	long const num_border = param->d_n_border;     // number of sites outside the largest even sublattice
+	int const Nr = param->d_N_replica_pt;          // number of PTBC replicas
 
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
@@ -1067,24 +1074,38 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = 0; s < ((param->d_N_replica_pt) * num_even); s++)
+		for(long s = 0; s < Nr * num_even; s++)
 			{
 			// s = i * num_even + r
-			long const r = s % num_even;              // site index
-			int const i = (int) ((s - r) / num_even); // replica index
-			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+			long const r = s % num_even;
+			int const i = (int) ((s - r) / num_even);
+			heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 			}
 
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = 0; s < ((param->d_N_replica_pt) * num_odd); s++)
+		for(long s = 0; s < Nr * num_even; s++)
 			{
-			// s = i * num_odd + aux ; aux = r - num_even
-			long const aux = s % num_odd;
-			long const r = num_even + aux;             // site index
-			int const i = (int) ((s - aux) / num_odd); // replica index
-			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+			// s = i * num_even + aux; aux = r - num_even
+			long const aux = s % num_even;
+			long const r = num_even + aux;
+			int const i = (int) ((s - aux) / num_even);
+			heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+			}
+
+		if(num_border > 0)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(int i = 0; i < Nr; i++)
+				{
+				for(long r = even_volume; r < volume; r++)
+					{
+					heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+					}
+				}
 			}
 		}
 
@@ -1100,30 +1121,44 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = 0; s < (param->d_N_replica_pt) * num_even; s++)
+			for(long s = 0; s < Nr * num_even; s++)
 				{
 				// s = i * num_even + r
-				long const r = s % num_even;              // site index
-				int const i = (int) ((s - r) / num_even); // replica index
-				overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+				long const r = s % num_even;
+				int const i = (int) ((s - r) / num_even);
+				overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 				}
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = 0; s < (param->d_N_replica_pt) * num_odd; s++)
+			for(long s = 0; s < Nr * num_even; s++)
 				{
 				// s = i * num_odd + aux ; aux = r - num_even
-				long const aux = s % num_odd;
-				long const r = num_even + aux;             // site index
-				int const i = (int) ((s - aux) / num_odd); // replica index
-				overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+				long const aux = s % num_even;
+				long const r = num_even + aux;
+				int const i = (int) ((s - aux) / num_even);
+				overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+				}
+
+			if(num_border > 0)
+				{
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for if(Nr > 1) num_threads(NTHREADS)
+				#endif
+				for(int i = 0; i < Nr; i++)
+					{
+					for(long r = even_volume; r < volume; r++)
+						{
+						overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+						}
+					}
 				}
 			}
 		}
 
 	// Metropolis test if using multicanonical
-	for(int j = 0; j < (param->d_N_replica_pt); j++)
+	for(int j = 0; j < Nr; j++)
 		{
 		int acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
@@ -1150,13 +1185,13 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 	(void) acc_counters; // to avoid compiler warning of unused variable
 	#endif
 
-	/* Check if there's at least one even dimension of the rectangle, i.e. check if d_vol_rect is even.
-		If there's at least one even dimension: d_vol_rect/2 even sites and d_vol_rect/2 odd sites.
-		Otherwise: (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites. */
+	// If d_vol_rect is even it has d_vol_rect/2 even sites and d_vol_rect/2 odd sites,
+	// otherwise (d_vol_rect+1)/2 even sites and (d_vol_rect-1)/2 odd sites.
 	long const rect_volume = (rect_aux->update_rect[hierarc_level]).d_vol_rect;
 	long const is_even = rect_volume % 2;
 	long const num_even = (rect_volume + is_even) / 2; // number of even sites
 	long const num_odd = (rect_volume - is_even) / 2;  // number of odd sites
+	int const Nr = param->d_N_replica_pt;              // number of PTBC replicas
 
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
@@ -1168,7 +1203,7 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = 0; s < (num_even * (param->d_N_replica_pt)); s++)
+		for(long s = 0; s < Nr * num_even; s++)
 			{
 			// s = i * num_even + n
 			long const n = s % num_even;                                         // site index on rectangle
@@ -1180,7 +1215,7 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = 0; s < (num_odd * (param->d_N_replica_pt)); s++)
+		for(long s = 0; s < Nr * num_odd; s++)
 			{
 			// s = i * num_odd + aux; aux = n - num_even
 			long const aux = s % num_odd;
@@ -1203,7 +1238,7 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = 0; s < (num_even * (param->d_N_replica_pt)); s++)
+			for(long s = 0; s < Nr * num_even; s++)
 				{
 				// s = i * num_even + n
 				long const n = s % num_even;                                         // site index on rectangle
@@ -1215,7 +1250,7 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = 0; s < (num_odd * (param->d_N_replica_pt)); s++)
+			for(long s = 0; s < Nr * num_odd; s++)
 				{
 				// s = i * num_odd + aux; aux = n - num_even
 				long const aux = s % num_odd;
@@ -1229,7 +1264,7 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 
 	// Metropolis test if using multicanonical
 	// TODO: check rectangle version (seems ok)
-	for(int j = 0; j < (param->d_N_replica_pt); j++)
+	for(int j = 0; j < Nr; j++)
 		{
 		int acc = 1;
 		// multicanonic Metropolis tests and acceptance counters update
@@ -1313,12 +1348,17 @@ void update_with_trace_def(Gauge_Conf *const GC,
                            GParam const *const param,
                            double *acc_td)
 	{
-	long const num_even = (param->d_volume + (param->d_volume % 2)) / 2;
-	long const num_sp_even = (param->d_space_vol[0] + (param->d_space_vol[0] % 2)) / 2;
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
+
+	// number of spatial even sites (spatial sizes assumed to be even if using OpenMP)
+	long const sp_volume = param->d_space_vol[0];
+	long const num_sp_even = (sp_volume + sp_volume % 2) / 2;
 
 	int *a;
-	allocate_array_int(&a, param->d_space_vol[0], __FILE__, __LINE__);
-	for(long r = 0; r < param->d_space_vol[0]; r++) a[r] = 0;
+	allocate_array_int(&a, sp_volume, __FILE__, __LINE__);
+	for(long r = 0; r < sp_volume; r++) a[r] = 0;
 
 	// heatbath on spatial links
 	for(int dir = 1; dir < STDIM; dir++)
@@ -1332,15 +1372,20 @@ void update_with_trace_def(Gauge_Conf *const GC,
 		#endif
 		for(long r = 0; r < num_even; r++)
 			{
-			heatbath(GC, geo, param, r, dir);
+			heatbath(GC, geo, param, geo->d_sip_to_si[r], dir);
 			}
 
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long r = num_even; r < (param->d_volume); r++)
+		for(long r = num_even; r < even_volume; r++)
 			{
-			heatbath(GC, geo, param, r, dir);
+			heatbath(GC, geo, param, geo->d_sip_to_si[r], dir);
+			}
+
+		for(long r = even_volume; r < volume; r++)
+			{
+			heatbath(GC, geo, param, geo->d_sip_to_si[r], dir);
 			}
 		}
 
@@ -1363,7 +1408,7 @@ void update_with_trace_def(Gauge_Conf *const GC,
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long r = num_sp_even; r < (param->d_space_vol[0]); r++)
+		for(long r = num_sp_even; r < sp_volume; r++)
 			{
 			long const r4 = sisp_and_t_to_si(geo, r, t);
 			a[r] += metropolis_with_tracedef(GC, geo, param, r4, 0);
@@ -1374,7 +1419,7 @@ void update_with_trace_def(Gauge_Conf *const GC,
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for reduction(+:asum)
 	#endif
-	for(long r = 0; r < param->d_space_vol[0]; r++)
+	for(long r = 0; r < sp_volume; r++)
 		{
 		asum += (long) a[r];
 		}
@@ -1394,15 +1439,20 @@ void update_with_trace_def(Gauge_Conf *const GC,
 			#endif
 			for(long r = 0; r < num_even; r++)
 				{
-				overrelaxation(GC, geo, param, r, dir);
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[r], dir);
 				}
 
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r = num_even; r < (param->d_volume); r++)
+			for(long r = num_even; r < even_volume; r++)
 				{
-				overrelaxation(GC, geo, param, r, dir);
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[r], dir);
+				}
+
+			for(long r = even_volume; r < volume; r++)
+				{
+				overrelaxation(GC, geo, param, geo->d_sip_to_si[r], dir);
 				}
 			}
 		}
@@ -1424,38 +1474,245 @@ void update_with_trace_def(Gauge_Conf *const GC,
 	}
 
 
-// perform n cooling steps minimizing the action at theta=0
+// sites are visited in lexicographic order, then directions are visited in lexicographic order
+void cooling_lex_site_lex_dir(Gauge_Conf *const GC,
+                              Geometry const *const geo,
+                              GParam const *const param)
+	{
+	for(long r = 0; r < param->d_volume; r++)
+		{
+		long const r_lex = si_to_lex(r, param);
+		for(int dir = 0; dir < STDIM; dir++)
+			{
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r_lex, dir, &staple);
+			cool(&(GC->lattice[r_lex][dir]), &staple);
+			}
+		}
+	}
+
+
+// directions are visited in lexicographic order, then sites are visited in lexicographic order
+void cooling_lex_dir_lex_site(Gauge_Conf *const GC,
+                              Geometry const *const geo,
+                              GParam const *const param)
+	{
+	for(int dir = 0; dir < STDIM; dir++)
+		{
+		for(long r = 0; r < param->d_volume; r++)
+			{
+			GAUGE_GROUP staple;
+			long const r_lex = si_to_lex(r, param);
+			calcstaples_wilson(GC, geo, param, r_lex, dir, &staple);
+			cool(&(GC->lattice[r_lex][dir]), &staple);
+			}
+		}
+	}
+
+
+// directions are visited in lexicographic order, then even sites are visited first (original, default implementation)
+void cooling_lex_dir_lexeo_site(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param)
+	{
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
+
+	for(int dir = 0; dir < STDIM; dir++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = 0; s < num_even; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = num_even; s < even_volume; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+
+		for(long s = even_volume; s < volume; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+		}
+	}
+
+
+// even sites are visited first, then directions are visited in lexicographic order
+void cooling_lexeo_site_lex_dir(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param)
+	{
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
+
+	for(int dir = 0; dir < STDIM; dir++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = 0; s < num_even; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+		}
+
+	for(int dir = 0; dir < STDIM; dir++)
+		{
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = num_even; s < even_volume; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+		}
+
+	for(int dir = 0; dir < STDIM; dir++)
+		{
+		for(long s = even_volume; s < volume; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+		}
+	}
+
+
+// randomize the order of spacetime directions in dirs (must be initialized outside)
+static inline void shuffle_spacetime_dirs(int *dirs)
+	{
+	for(int i = STDIM - 1; i > 0; i--)
+		{
+		int const j = (int) (casuale() * (i + 1));
+		int const tmp = dirs[i];
+		dirs[i] = dirs[j];
+		dirs[j] = tmp;
+		}
+	}
+
+
+// randomize the even/odd site ranges
+static inline void shuffle_site_parity(long bounds[2][2])
+	{
+	if(casuale() < 0.5)
+		{
+		for(int i = 0; i < 2; i++)
+			{
+			long const temp = bounds[0][i];
+			bounds[0][i] = bounds[1][i];
+			bounds[1][i] = temp;
+			}
+		}
+	}
+
+
+// directions are visited in random order, then sites of random parity are visited first
+// this implementation of cooling does not break isotropy and parity
+void cooling_rnd_dir_rndeo_site(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param)
+	{
+	shuffle_spacetime_dirs(GC->stdim_shuffle);
+	for(int i = 0; i < STDIM; i++)
+		{
+		int const dir = GC->stdim_shuffle[i];
+		shuffle_site_parity(GC->parity_shuffle);
+
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = GC->parity_shuffle[0][0]; s < GC->parity_shuffle[0][1]; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = GC->parity_shuffle[1][0]; s < GC->parity_shuffle[1][1]; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+
+		for(long s = param->d_even_volume; s < param->d_volume; s++)
+			{
+			long const r = geo->d_sip_to_si[s];
+			GAUGE_GROUP staple;
+			calcstaples_wilson(GC, geo, param, r, dir, &staple);
+			cool(&(GC->lattice[r][dir]), &staple);
+			}
+		}
+	}
+
+// perform given number of cooling steps with given cooling type,
+// minimizing the action at theta=0
 void cooling(Gauge_Conf *const GC,
              Geometry const *const geo,
              GParam const *const param,
-             int const n)
+             int const num_steps,
+             Cooling_Type const type)
 	{
-	long const num_even = (param->d_volume + (param->d_volume % 2)) / 2;
-	for(int k = 0; k < n; k++)
+	switch(type)
 		{
-		// cooling
-		for(int dir = 0; dir < STDIM; dir++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < num_even; r++)
-				{
-				GAUGE_GROUP staple;
-				calcstaples_wilson(GC, geo, param, r, dir, &staple);
-				cool(&(GC->lattice[r][dir]), &staple);
-				}
+		case LEX_SITE_LEX_DIR:
+			for(int k = 0; k < num_steps; k++)
+				cooling_lex_site_lex_dir(GC, geo, param);
+			break;
 
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = num_even; r < (param->d_volume); r++)
-				{
-				GAUGE_GROUP staple;
-				calcstaples_wilson(GC, geo, param, r, dir, &staple);
-				cool(&(GC->lattice[r][dir]), &staple);
-				}
-			}
+		case LEX_DIR_LEX_SITE:
+			for(int k = 0; k < num_steps; k++)
+				cooling_lex_dir_lex_site(GC, geo, param);
+			break;
+
+		case LEX_DIR_LEXEO_SITE:
+			for(int k = 0; k < num_steps; k++)
+				cooling_lex_dir_lexeo_site(GC, geo, param);
+			break;
+
+		case LEXEO_SITE_LEX_DIR:
+			for(int k = 0; k < num_steps; k++)
+				cooling_lexeo_site_lex_dir(GC, geo, param);
+			break;
+
+		case RND_DIR_RNDEO_SITE:
+			for(int k = 0; k < num_steps; k++)
+				cooling_rnd_dir_rndeo_site(GC, geo, param);
+			break;
+
+		default:
+			REQUIRE(0, "unknown cooling type (%d)\n", (int)type);
 		}
 
 	// final unitarization
@@ -1477,7 +1734,9 @@ void cooling_with_defect(Gauge_Conf *const GC,
                          GParam const *const param,
                          int const n)
 	{
-	long const num_even = (param->d_volume + (param->d_volume % 2)) / 2;
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
 
 	for(int k = 0; k < n; k++)
 		{
@@ -1487,8 +1746,9 @@ void cooling_with_defect(Gauge_Conf *const GC,
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r = 0; r < num_even; r++)
+			for(long s = 0; s < num_even; s++)
 				{
+				long const r = geo->d_sip_to_si[s];
 				GAUGE_GROUP staple;
 				calcstaples_wilson_with_defect(GC, geo, param, r, dir, &staple);
 				cool(&(GC->lattice[r][dir]), &staple);
@@ -1497,8 +1757,17 @@ void cooling_with_defect(Gauge_Conf *const GC,
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long r = num_even; r < (param->d_volume); r++)
+			for(long s = num_even; s < even_volume; s++)
 				{
+				long const r = geo->d_sip_to_si[s];
+				GAUGE_GROUP staple;
+				calcstaples_wilson_with_defect(GC, geo, param, r, dir, &staple);
+				cool(&(GC->lattice[r][dir]), &staple);
+				}
+
+			for(long s = even_volume; s < volume; s++)
+				{
+				long const r = geo->d_sip_to_si[s];
 				GAUGE_GROUP staple;
 				calcstaples_wilson_with_defect(GC, geo, param, r, dir, &staple);
 				cool(&(GC->lattice[r][dir]), &staple);

@@ -213,9 +213,11 @@ void cool_SuN(SuN *link, SuN const *const staple)
 
 	// Maximize ReTr[staple * C *link] for C \in Z(SU(N)) and update link *= C
 	// \phi \equiv carg(Tr[staple * link]) => C = \exp{-i * 2\pi/N * round(\phi / (2*\pi/N))}
+	#if NCOLOR > 3
 	aux = argtr_SuN(&prod);                        // aux = phi
 	aux = round(aux / PI2_N) * PI2_N;              // round aux to nearest center phase (PI2_N = 2*pi/N in marco.h)
 	times_equal_complex_SuN(link, cexp(-I * aux)); // link *= exp(-i * aux)
+	#endif
 	}
 
 // TODO: bugged cooling for testing, remove

@@ -1,5 +1,5 @@
-#ifndef YM_AGF_C
-#define YM_AGF_C
+#ifndef YM_CM_C
+#define YM_CM_C
 
 #include"../include/macro.h"
 
@@ -33,22 +33,12 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// read input file
 	readinput(in_file, &param);
+	edit_params_meas_only(&param);
 
 	// initialize timers
 	init_time_utils(&timers, param.d_walltime);
 	start_timer(&(timers.prog_timer));
 	start_timer(&(timers.init_timer));
-
-	// this code has to start from saved conf.
-	param.d_start = 2;
-
-	// not to overwrite files of runs with online gradient flow
-	strcat(param.d_data_file, "_agf");
-	strcat(param.d_energydensity_file, "_agf");
-	strcat(param.d_chiprime_file, "_agf");
-	strcat(param.d_energy_slices_file, "_agf");
-	strcat(param.d_charge_slices_file, "_agf");
-	strcat(param.d_log_file, "_agf");
 
 	// initialize random generator
 	initrand(param.d_randseed);
@@ -109,6 +99,7 @@ void print_template_input(void)
 	#endif
 	print_template_simul_parameters(fp);
 	print_template_adaptive_gradflow_parameters(fp);
+	print_template_cooling_parameters(fp);
 	print_template_output_parameters(fp);
 
 	fclose(fp);
@@ -122,6 +113,7 @@ int main(int argc, char **argv)
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 
+		printf("Perform measures on saved configurations in a given range of indices generated with a given input file\n");
 		printf("Usage: %s input_file start_index stop_index\n\n", argv[0]);
 
 		print_compilation_details();

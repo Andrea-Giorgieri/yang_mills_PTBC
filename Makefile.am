@@ -21,8 +21,8 @@ bin_PROGRAMS = conf_check \
             yang_mills_local_pt \
             yang_mills_local_pt_gf \
             yang_mills_local_pt_agf \
+            yang_mills_conf_measures \
             yang_mills_gradient_flow \
-            yang_mills_adaptive_gradient_flow \
             yang_mills_gradflow_all_conf \
             yang_mills_tuning_pt_mc
 
@@ -409,7 +409,7 @@ yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
                        $(tens_prod) \
                        $(u1)
 
-yang_mills_adaptive_gradient_flow_SOURCES=./src/yang_mills_adaptive_gradient_flow.c \
+yang_mills_conf_measures_SOURCES=./src/yang_mills_conf_measures.c \
                        $(timing) \
                        $(align) \
                        $(dSFMT)  \

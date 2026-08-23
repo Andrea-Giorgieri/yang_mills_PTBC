@@ -440,7 +440,7 @@ double multicanonic_topcharge_cooling(Gauge_Conf *const GC,
 		// TODO: unitarize before cooling?
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
-		cooling(&helper, geo, param, param->d_topo_coolsteps);
+		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
 		return topcharge(&helper, geo, param);
 		}
 	return topcharge(GC, geo, param);
@@ -469,7 +469,7 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf *const GC,
 		helper.Z_copy = GC->Z_copy;
 
 		//hierarchical_cooling(&helper, geo, param, rect_aux->cooling_rect[hierarc_level]);
-		cooling(&helper, geo, param, param->d_topo_coolsteps);
+		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
 		return multicanonic_delta_topcharge_rectangle(&helper, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
 		}
 	return multicanonic_delta_topcharge_rectangle(GC, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
@@ -880,114 +880,130 @@ void multicanonic_agf_parallel_tempering_with_hierarchical_update(Gauge_Conf *co
 // update all replica only on a given rectangle in the presence of a defect (MODIFICARE)
 void multicanonic_update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param, Acc_Utils *acc_counters)
 	{
-	long s, num_even, num_odd;
-	int j, dir;
-	int num_replica = param->d_N_replica_pt; // just an auxiliary variable
+	#ifdef DEBUG
+	ASSERT(param->d_min_size > 1, "this function cannot be used in the completely reduced case");
+	#endif
+
+	long const num_even = param->d_n_even;         // number of even sites
+	long const even_volume = param->d_even_volume; // volume of largest even sublattice
+	long const volume = param->d_volume;           // full lattice volume
+	long const num_border = param->d_n_border;     // number of sites outside the largest even sublattice
+	int const Nr = param->d_N_replica_pt;          // number of PTBC replicas
+
+	// auxiliary variables to compute mean multicanonic acc
 	long *sum_acc, *count_metro;
-
-	for(j = 0; j < STDIM; j++)
-		{
-		if(param->d_size[j] == 1)
-			{
-			fprintf(stderr, "Error: this functon can not be used in the completely reduced case (%s, %d)\n", __FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-			}
-		}
-
-	// init aux variables to compute mean multicanonic acc
-	allocate_array_long(&sum_acc, num_replica, __FILE__, __LINE__);
-	allocate_array_long(&count_metro, num_replica, __FILE__, __LINE__);
-	for(j = 0; j < param->d_N_replica_pt; j++)
+	allocate_array_long(&sum_acc, Nr, __FILE__, __LINE__);
+	allocate_array_long(&count_metro, Nr, __FILE__, __LINE__);
+	for(int j = 0; j < Nr; j++)
 		{
 		sum_acc[j] = 0;
 		count_metro[j] = 0;
 		}
 
-	num_even = (param->d_volume + (param->d_volume % 2)) / 2;
-	num_odd = (param->d_volume - (param->d_volume % 2)) / 2;
-
 	// heatbath
-	for(dir = 0; dir < STDIM; dir++)
+	for(int dir = 0; dir < STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
 
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
+		#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
 		#endif
-		for(s = 0; s < ((param->d_N_replica_pt) * num_even); s++)
+		for(long s = 0; s < Nr * num_even; s++)
 			{
 			// s = i * num_even + r
-			long r = s % num_even;              // site index
-			int i = (int) ((s - r) / num_even); // replica index
-			int acc_metro;
-			acc_metro = multicanonic_heatbath_with_defect(&(GC[i]), geo, param, r, dir);
-			sum_acc[i] += acc_metro;
+			long const r = s % num_even;
+			int const i = (int) ((s - r) / num_even);
+			sum_acc[i] += multicanonic_heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 			count_metro[i]++;
 			}
 
 		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
+		#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
 		#endif
-		for(s = 0; s < ((param->d_N_replica_pt) * num_odd); s++)
+		for(long s = 0; s < Nr * num_even; s++)
 			{
-			// s = i * num_odd + aux ; aux = r - num_even
-			long aux = s % num_odd;
-			long r = num_even + aux;             // site index
-			int i = (int) ((s - aux) / num_odd); // replica index
-			int acc_metro;
-			acc_metro = multicanonic_heatbath_with_defect(&(GC[i]), geo, param, r, dir);
-			sum_acc[i] += acc_metro;
+			// s = i * num_odd + aux; aux = r - num_even
+			long const aux = s % num_even;
+			long const r = num_even + aux;
+			int const i = (int) ((s - aux) / num_even);
+			sum_acc[i] += multicanonic_heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 			count_metro[i]++;
+			}
+
+		if(num_border > 0)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
+			#endif
+			for(int i = 0; i < Nr; i++)
+				{
+				for(long r = even_volume; r < volume; r++)
+					{
+					sum_acc[i] += multicanonic_heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+					count_metro[i]++;
+					}
+				}
 			}
 		}
 
 	// overrelax
-	for(dir = 0; dir < STDIM; dir++)
+	for(int dir = 0; dir < STDIM; dir++)
 		{
 		#ifdef THETA_MODE
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
 
-		for(j = 0; j < param->d_overrelax; j++)
+		for(int j = 0; j < param->d_overrelax; j++)
 			{
 			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
+			#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
 			#endif
-			for(s = 0; s < ((param->d_N_replica_pt) * num_even); s++)
+			for(long s = 0; s < Nr * num_even; s++)
 				{
 				// s = i * num_even + r
-				long r = s % num_even;              // site index
-				int i = (int) ((s - r) / num_even); // replica index
-				int acc_metro;
-				acc_metro = multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
-				sum_acc[i] += acc_metro;
+				long const r = s % num_even;
+				int const i = (int) ((s - r) / num_even);
+				sum_acc[i] += multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 				count_metro[i]++;
 				}
 
 			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS) private(s) reduction(+:sum_acc[:num_replica]) reduction(+:count_metro[:num_replica])
+			#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
 			#endif
-			for(s = 0; s < ((param->d_N_replica_pt) * num_odd); s++)
+			for(long s = 0; s < Nr * num_even; s++)
 				{
 				// s = i * num_odd + aux ; aux = r - num_even
-				long aux = s % num_odd;
-				long r = num_even + aux;             // site index
-				int i = (int) ((s - aux) / num_odd); // replica index
-				int acc_metro;
-				acc_metro = multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
-				sum_acc[i] += acc_metro;
+				long const aux = s % num_even;
+				long const r = num_even + aux;
+				int const i = (int) ((s - aux) / num_even);
+				sum_acc[i] += multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
 				count_metro[i]++;
+				}
+
+			if(num_border > 0)
+				{
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS) reduction(+:sum_acc[:Nr]) reduction(+:count_metro[:Nr])
+				#endif
+				for(int i = 0; i < Nr; i++)
+					{
+					for(long r = even_volume; r < volume; r++)
+						{
+						sum_acc[i] += multicanonic_overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+						count_metro[i]++;
+						}
+					}
 				}
 			}
 		}
 
 	// add number of accepted and number of proposed Metropolis multicanonic tests
-	for(int i = 0; i < param->d_N_replica_pt; i++)
+	for(int j = 0; j < Nr; j++)
 		{
-		acc_counters->num_accepted_metro_multicanonic[i] += sum_acc[i];
-		acc_counters->num_metro_multicanonic[i] += count_metro[i];
+		acc_counters->num_accepted_metro_multicanonic[j] += sum_acc[j];
+		acc_counters->num_metro_multicanonic[j] += count_metro[j];
 		}
 
 	// free aux arrays
@@ -996,14 +1012,14 @@ void multicanonic_update_with_defect(Gauge_Conf *const GC, Geometry const *const
 
 	// final unitarization
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) private(s, dir)
+	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(s = 0; s < ((param->d_N_replica_pt) * (param->d_volume)); s++)
+	for(long s = 0; s < Nr * volume; s++)
 		{
 		// s = i * volume + r
-		long r = s % param->d_volume;
-		int i = (int) ((s - r) / (param->d_volume));
-		for(dir = 0; dir < STDIM; dir++)
+		long const r = s % param->d_volume;
+		int const i = (int) ((s - r) / (param->d_volume));
+		for(int dir = 0; dir < STDIM; dir++)
 			{
 			unitarize(&(GC[i].lattice[r][dir]));
 			}

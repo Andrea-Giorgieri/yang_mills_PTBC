@@ -19,27 +19,25 @@ void single_heatbath_U1(U1 *link, U1 const *const staple, GParam const *const pa
 
 	if(alpha > MIN_VALUE)
 		{
+		double const exp2am1 = expm1(2.0 * alpha);
 		double const q_max = exp(0.210513662353018684327769 * alpha); // see later for this number
 		double const theta_staple = atan2(-cimag(staple->comp), creal(staple->comp));
-		double x, r1, r2, q;
+		double x, q;
 		do
 			{
-			r1 = casuale();
-			r2 = casuale();
-			x = -1.0 + log(1.0 + (exp(2.0 * alpha) - 1.0) * r1) / alpha;
+			x = -1.0 + log1p(exp2am1 * casuale()) / alpha;
 			q = exp(alpha * (cos(HALF_PI * (1.0 - x)) - x));
-			} while(q <= q_max * r2);
+			} while(q <= q_max * casuale());
 
 		double theta = (1.0 - x) * HALF_PI;
 
-		r1 = casuale();
-		if(r1 > 0.5)
+		if(casuale() > 0.5)
 			{
 			theta = -theta;
 			}
 		theta += theta_staple;
 
-		link->comp = cos(theta) + sin(theta) * I;
+		link->comp = cos(theta) + I * sin(theta);
 		}
 	else
 		{
@@ -52,7 +50,7 @@ void single_overrelaxation_U1(U1 *link, U1 const *const staple)
 	{
 	U1 newlink, helper;
 
-	double p = norm_U1(staple);
+	double const p = norm_U1(staple);
 
 	if(p > MIN_VALUE)
 		{

@@ -150,49 +150,60 @@ void remove_white_line_and_comments(FILE *input)
 	remove_white_line_and_comments(input);
 	}
 
-void set_defaults(GParam * const param)
+void set_defaults(GParam *const param)
 	{
 	int i;
 
 	// multilevel
-	for(i=0; i<NLEVELS; i++) param->d_ml_step[i] = 0;
+	for(i = 0; i < NLEVELS; i++)
+		{
+		param->d_ml_step[i] = NLEVELS - i;
+		param->d_ml_upd[i] = 0;
+		}
+	param->d_multihit = 0;
+	param->d_ml_level0_repeat = 0;
+	param->d_dist_poly = 0;
+	param->d_trasv_dist = 0;
+	param->d_plaq_dir[0] = 0;
+	param->d_plaq_dir[0] = 1;
 
 	// trace deformation and theta term
-	for(i=0; i<NCOLOR; i++) param->d_h[i] = 0.0;
+	for(i = 0; i < NCOLOR; i++) param->d_h[i] = 0.0;
 	param->d_theta = 0.0;
 
 	// twist and open boundary conditions
-	for (i=0; i<STDIM*(STDIM-1)/2; i++) param->d_k_twist[i] = 0;
+	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) param->d_k_twist[i] = 0;
 	param->d_obc_dir = -1;
 	param->d_obc_bulk = -1;
 
 	// parallel tempering
-	for (i=0; i<STDIM-1; i++) param->d_L_defect[i] = 0;
-	param->d_defect_dir   = 0;
+	for(i = 0; i < STDIM - 1; i++) param->d_L_defect[i] = 0;
+	param->d_defect_dir = 0;
 	param->d_N_replica_pt = 1;
 	allocate_array_double(&(param->d_pt_bound_cond_coeff), 1, __FILE__, __LINE__);
 	param->d_pt_bound_cond_coeff[0] = 1.0;
 
 	// gradient flow
-	param->d_ngfsteps     = 0;
+	param->d_ngfsteps = 0;
 	param->d_gf_meas_each = 1;
-	param->d_gfstep       = 1;
+	param->d_gfstep = 1;
 
 	// adaptive gradient flow
-	param->d_agf_length    = 0;
+	param->d_agf_length = 0;
 	param->d_agf_meas_each = 1;
-	param->d_agf_step      = 0.1;
-	param->d_agf_delta     = 0.00001;
-	param->d_agf_time_bin  = 0;
+	param->d_agf_step = 0.1;
+	param->d_agf_delta = 0.00001;
+	param->d_agf_time_bin = 0;
 
 	// cooling
+	strcpy(param->d_cooling_type_str, "LEX_DIR_LEXEO_SITE");
 	param->d_coolrepeat = 0;
-	param->d_coolsteps  = 1;
+	param->d_coolsteps = 1;
 
 	// multicanonical with cold topcharge
-	param->d_topo_cooling    = 0;
-	param->d_topo_coolsteps  = 0;
-	param->d_topo_alpha      = 0;
+	param->d_topo_cooling = 0;
+	param->d_topo_coolsteps = 0;
+	param->d_topo_alpha = 0;
 	param->d_topo_tuning_thr = 0.1;
 	param->d_topo_tuning_stp = 0.1;
 	param->d_topo_tuning_save_every = 0;
@@ -202,42 +213,44 @@ void set_defaults(GParam * const param)
 	param->d_walltime = 24.0;
 
 	// measures
-	param->d_plaquette_meas        = 1;
-	param->d_clover_energy_meas    = 0;
-	param->d_energy_density_meas   = 0;
-	param->d_charge_meas           = 0;
-	param->d_charge_density_meas   = 0;
-	param->d_chi_prime_meas        = 0;
-	param->d_charge_prime_meas     = 0;
-	param->d_polyakov_meas         = 0;
-	param->d_polyakov_powers_meas  = 0;
+	param->d_plaquette_meas = 1;
+	param->d_clover_energy_meas = 0;
+	param->d_energy_density_meas = 0;
+	param->d_charge_meas = 0;
+	param->d_charge_density_meas = 0;
+	param->d_chi_prime_meas = 0;
+	param->d_charge_prime_meas = 0;
+	param->d_polyakov_meas = 0;
+	param->d_polyakov_powers_meas = 0;
 	param->d_polyakov_density_meas = 0;
-	param->d_energy_slices_meas    = 0;
-	param->d_charge_slices_meas    = 0;
-	param->d_charge_p_slices_meas  = 0;
-	param->d_multipolyakov_order   = 0;
-	param->d_action_meas           = 0;
+	param->d_energy_slices_meas = 0;
+	param->d_charge_slices_meas = 0;
+	param->d_charge_p_slices_meas = 0;
+	param->d_action_meas = 0;
+
+	param->d_multipolyakov_order = 0;
+	param->d_meas_effective_charge = 0;
 
 	// filenames
-	strcpy(param->d_ml_file,               "");
-	strcpy(param->d_conf_file,             "");
-	strcpy(param->d_twist_file,            "");
-	strcpy(param->d_data_file,             "");
-	strcpy(param->d_energydensity_file,    "");
-	strcpy(param->d_chargedensity_file,    "");
-	strcpy(param->d_polyakovdensity_file,  "");
-	strcpy(param->d_chiprime_file,         "");
-	strcpy(param->d_energy_slices_file,    "");
-	strcpy(param->d_charge_slices_file,    "");
-	strcpy(param->d_log_file,              "");
-	strcpy(param->d_swap_acc_file,         "");
-	strcpy(param->d_swap_tracking_file,    "");
+	strcpy(param->d_ml_file, "");
+	strcpy(param->d_conf_file, "");
+	strcpy(param->d_twist_file, "");
+	strcpy(param->d_data_file, "");
+	strcpy(param->d_energydensity_file, "");
+	strcpy(param->d_chargedensity_file, "");
+	strcpy(param->d_polyakovdensity_file, "");
+	strcpy(param->d_chiprime_file, "");
+	strcpy(param->d_energy_slices_file, "");
+	strcpy(param->d_charge_slices_file, "");
+	strcpy(param->d_log_file, "");
+	strcpy(param->d_swap_acc_file, "");
+	strcpy(param->d_swap_tracking_file, "");
 	strcpy(param->d_multicanonic_acc_file, "");
-	strcpy(param->d_topo_potential_file,   "");
+	strcpy(param->d_topo_potential_file, "");
 	}
 
 // read params from input file
-void readinput(char const * const in_file, GParam * const param)
+void readinput(char const *const in_file, GParam *const param)
 	{
 	char str[STD_STRING_LENGTH], param_name[STD_STRING_LENGTH];
 	int i, err;
@@ -268,7 +281,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "size");
 		if(strcmp(str, param_name) == 0)
 			{
-			for(i=0; i<STDIM; i++)
+			for(i = 0; i < STDIM; i++)
 				set_int_param(input, &(param->d_size[i]), param_name, &param_positive_int);
 			continue;
 			}
@@ -283,7 +296,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "htracedef");
 		if(strcmp(str, param_name) == 0)
 			{
-			for(i=0; i<(int)floor(NCOLOR/2.0); i++)
+			for(i = 0; i < NCOLOR / 2; i++)
 				set_double_param(input, &(param->d_h[i]), param_name, &param_any_double);
 			continue;
 			}
@@ -298,7 +311,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "k_twist");
 		if(strcmp(str, param_name) == 0)
 			{
-			for (i=0; i<STDIM*(STDIM-1)/2; i++)
+			for(i = 0; i < STDIM * (STDIM - 1) / 2; i++)
 				set_int_param(input, &(param->d_k_twist[i]), param_name, &param_any_int);
 			continue;
 			}
@@ -324,7 +337,7 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_N_replica_pt), param_name, &param_positive_int);
 			free(param->d_pt_bound_cond_coeff);
 			allocate_array_double(&(param->d_pt_bound_cond_coeff), param->d_N_replica_pt, __FILE__, __LINE__);
-			for (i=0; i<param->d_N_replica_pt; i++)
+			for(i = 0; i < param->d_N_replica_pt; i++)
 				set_double_param(input, &(param->d_pt_bound_cond_coeff[i]), param_name, &param_any_double);
 			continue;
 			}
@@ -339,7 +352,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "defect_size");
 		if(strcmp(str, param_name) == 0)
 			{
-			for (i=0; i<STDIM-1; i++)
+			for(i = 0; i < STDIM - 1; i++)
 				set_int_param(input, &(param->d_L_defect[i]), param_name, &param_any_int);
 			continue;
 			}
@@ -350,12 +363,12 @@ void readinput(char const * const in_file, GParam * const param)
 			set_int_param(input, &(param->d_N_hierarc_levels), param_name, &param_nonnegative_int);
 			if(param->d_N_hierarc_levels > 0)
 				{
-				allocate_array_int(&(param->d_L_rect),       param->d_N_hierarc_levels, __FILE__, __LINE__);
+				allocate_array_int(&(param->d_L_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
 				allocate_array_int(&(param->d_N_sweep_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
 				}
-			for(i=0; i<param->d_N_hierarc_levels; i++)
-				set_int_param(input, &(param->d_L_rect[i]),       param_name, &param_nonnegative_int);
-			for(i=0; i<param->d_N_hierarc_levels; i++)
+			for(i = 0; i < param->d_N_hierarc_levels; i++)
+				set_int_param(input, &(param->d_L_rect[i]), param_name, &param_nonnegative_int);
+			for(i = 0; i < param->d_N_hierarc_levels; i++)
 				set_int_param(input, &(param->d_N_sweep_rect[i]), param_name, &param_nonnegative_int);
 			continue;
 			}
@@ -530,13 +543,28 @@ void readinput(char const * const in_file, GParam * const param)
 			if(param->d_multipolyakov_order > 0)
 				{
 				allocate_array_int(&(param->d_multipolyakov_dirs), param->d_multipolyakov_order, __FILE__, __LINE__);
-				for (i=0; i< param->d_multipolyakov_order; i++)
+				for(i = 0; i < param->d_multipolyakov_order; i++)
 					set_int_param(input, &(param->d_multipolyakov_dirs[i]), param_name, &param_nonnegative_int);
 				}
 			continue;
 			}
 
+		strcpy(param_name, "meas_effective_charge");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_meas_effective_charge), param_name, &param_bool_int);
+			continue;
+			}
+
+
 		// cooling params
+		strcpy(param_name, "cooling_type");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_cooling_type_str, param_name, &param_any_string);
+			continue;
+			}
+
 		strcpy(param_name, "coolsteps");
 		if(strcmp(str, param_name) == 0)
 			{
@@ -620,7 +648,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "ml_step");
 		if(strcmp(str, param_name) == 0)
 			{
-			for(i=0; i<NLEVELS; i++)
+			for(i = 0; i < NLEVELS; i++)
 				set_int_param(input, &(param->d_ml_step[i]), param_name, &param_any_int);
 			continue;
 			}
@@ -628,7 +656,7 @@ void readinput(char const * const in_file, GParam * const param)
 		strcpy(param_name, "ml_upd");
 		if(strcmp(str, param_name) == 0)
 			{
-			for(i=0; i<NLEVELS; i++)
+			for(i = 0; i < NLEVELS; i++)
 				set_int_param(input, &(param->d_ml_upd[i]), param_name, &param_any_int);
 			continue;
 			}
@@ -843,6 +871,13 @@ void readinput(char const * const in_file, GParam * const param)
 			continue;
 			}
 
+		strcpy(param_name, "test_flag");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_test_flag), param_name, &param_any_int);
+			continue;
+			}
+
 		// raise error if parameter is unrecognized
 		REQUIRE(0, "unrecognized parameter '%s' in input file %s", str, in_file);
 		}
@@ -856,45 +891,50 @@ void readinput(char const * const in_file, GParam * const param)
 	// Further checks
 
 	// multilevel
-	if (param->d_ml_step[0] != 0)
+	#if NLEVELS > 1
+	check_required_string(param->d_ml_file, "ml_file", 1);
+
+	REQUIRE(param->d_size[0] % param->d_ml_step[0] == 0 &&
+	        param->d_size[0] >= param->d_ml_step[0],
+	        "size[0] must be divisible by ml_step[0] and >= ml_step[0]");
+
+	for(i = 1; i < NLEVELS; i++)
 		{
-		check_required_string(param->d_ml_file, "ml_file", 1);
-
-		REQUIRE(param->d_size[0] % param->d_ml_step[0] == 0 &&
-				param->d_size[0] >= param->d_ml_step[0],
-				"size[0] must be divisible by ml_step[0] and >= ml_step[0]");
-
-		for(i=1; i<NLEVELS; i++)
-			{
-			REQUIRE(param->d_ml_step[i-1] % param->d_ml_step[i] == 0 &&
-					param->d_ml_step[i-1] > param->d_ml_step[i],
-					"ml_step[%d] must divide ml_step[%d] and be smaller",
-					i, i-1);
-			}
-
-		REQUIRE(param->d_ml_step[NLEVELS-1] > 1, "ml_step[%d] must be > 1", NLEVELS-1);
+		REQUIRE(param->d_ml_step[i-1] % param->d_ml_step[i] == 0 &&
+		        param->d_ml_step[i-1] > param->d_ml_step[i],
+		        "ml_step[%d] must divide ml_step[%d] and be smaller",
+		        i, i-1);
 		}
 
-	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even.
-	// This prevents even-odd parallelization of updates.
-	// TODO: implement parallel sweep on the largest sublattice with even sides and sequential sweep of the rest
-	#ifdef OPENMP_MODE
-	for(i=0; i<STDIM; i++)
+	REQUIRE(param->d_ml_step[NLEVELS-1] > 1, "ml_step[%d] must be > 1", NLEVELS-1);
+	#endif
+
+	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even. This prevents naive even-odd parallelization of updates.
+	// This is dealt with only when sweeping the full lattice, not when sweeping the spatial lattice as required by trace deformation.
+	#ifndef OPENMP_MODE
+	for(i = 0; i < NCOLOR / 2; i++)
 		{
-		REQUIRE((param->d_size[i] % 2) == 0, "when using OpenMP all lattice sizes must be even");
+		if(param->d_h[i] != 0.0)
+			{
+			for(int j = 1; j < STDIM; j++)
+				{
+				REQUIRE(param->d_size[j] % 2 == 0, "when using OpenMP and trace deformation, spatial lattice sizes must be even");
+				}
+			break;
+			}
 		}
 	#endif
 
 	// sizes
-	for(i=0; i<STDIM; i++)
+	for(i = 0; i < STDIM; i++)
 		{
 		REQUIRE(param->d_size[i] > 1, "all lattice sizes must be larger than 1");
 		}
 
 	// open boundary conditions
 	REQUIRE(param->d_obc_dir >= -1 && param->d_obc_dir < STDIM,
-		"direction of open boundary conditions must be -1 (PBC) or in [0, %d)",
-		STDIM);
+	        "direction of open boundary conditions must be -1 (PBC) or in [0, %d)",
+	        STDIM);
 	if(param->d_obc_dir != -1 && param->d_obc_bulk == -1)
 		{
 		param->d_obc_bulk = param->d_size[param->d_obc_dir];
@@ -902,29 +942,26 @@ void readinput(char const * const in_file, GParam * const param)
 
 	// parallel tempering
 	REQUIRE(param->d_defect_dir >= 0 && param->d_defect_dir < STDIM,
-		"defect_dir must be in [0, %d)",
-		STDIM);
-	for(i=0; i<STDIM-1; i++)
+	        "defect_dir must be in [0, %d)",
+	        STDIM);
+	for(i = 0; i < STDIM - 1; i++)
 		{
 		int j = (i < param->d_defect_dir) ? i : i + 1;
 		REQUIRE(param->d_L_defect[i] <= param->d_size[j],
-			"defect length %d (%d) exceeds lattice size %d (%d)",
-			i,
-			param->d_L_defect[i],
-			j,
-			param->d_size[j]);
+		        "defect length %d (%d) exceeds lattice size %d (%d)",
+		        i, param->d_L_defect[i], j, param->d_size[j]);
 		}
 
 	// check on gradflow parameters
 	REQUIRE(param->d_agf_meas_each > param->d_agf_time_bin,
-			"agf_meas_each must be greater than agf_time_bin");
+	        "agf_meas_each must be greater than agf_time_bin");
 
 	REQUIRE(param->d_agf_meas_each > param->d_agf_step,
-			"agf_meas_each must be greater than agf_step");
+	        "agf_meas_each must be greater than agf_step");
 
 	REQUIRE(param->d_agf_meas_each == 0 ||
-			param->d_agf_meas_each > MIN_VALUE,
-			"if nonzero, agf_meas_each must be > MIN_VALUE in macro.h");
+	        param->d_agf_meas_each > MIN_VALUE,
+	        "if nonzero, agf_meas_each must be > MIN_VALUE in macro.h");
 
 	// check on topological observables and theta term
 	#if !((STDIM == 4 && NCOLOR > 1) || (STDIM == 2 && NCOLOR == 1))
@@ -947,36 +984,51 @@ void readinput(char const * const in_file, GParam * const param)
 	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
 
-	for(i=0; i<param->d_multipolyakov_order; i++)
+	for(i = 0; i < param->d_multipolyakov_order; i++)
 		{
 		REQUIRE(param->d_multipolyakov_dirs[i] >= 0 &&
-				param->d_multipolyakov_dirs[i] < STDIM,
-				"multipolyakov_dirs[%d] must be in [0, %d)",
-				i, STDIM);
+		        param->d_multipolyakov_dirs[i] < STDIM,
+		        "multipolyakov_dirs[%d] must be in [0, %d)",
+		        i, STDIM);
 		}
 
 	// check on filenames
-	check_required_string(param->d_conf_file,             "conf_file",  1);
-	check_required_string(param->d_twist_file,            "twist_file", 1);
-	check_required_string(param->d_log_file,              "log_file",   1);
-	check_required_string(param->d_data_file,             "data_file",  1);
-	check_required_string(param->d_energydensity_file,    "energy_density_file",   param->d_energy_density_meas);
-	check_required_string(param->d_chargedensity_file,    "charge_density_file",   param->d_charge_density_meas);
-	check_required_string(param->d_polyakovdensity_file,  "polyakov_density_file", param->d_polyakov_density_meas);
-	check_required_string(param->d_chiprime_file,         "chiprime_data_file",    param->d_chi_prime_meas);
-	check_required_string(param->d_energy_slices_file,    "energy_slices_file",    param->d_energy_slices_meas);
-	check_required_string(param->d_charge_slices_file,    "topcharge_tcorr_file",  param->d_charge_slices_meas);
-	check_required_string(param->d_charge_slices_file,    "topcharge_tcorr_file",  param->d_charge_p_slices_meas);
-	check_required_string(param->d_swap_acc_file,         "swap_acc_file",         param->d_N_replica_pt > 1);
-	check_required_string(param->d_swap_tracking_file,    "swap_track_file",       param->d_N_replica_pt > 1);
+	check_required_string(param->d_conf_file, "conf_file", 1);
+	check_required_string(param->d_twist_file, "twist_file", 1);
+	check_required_string(param->d_log_file, "log_file", 1);
+	check_required_string(param->d_data_file, "data_file", 1);
+	check_required_string(param->d_energydensity_file, "energy_density_file", param->d_energy_density_meas);
+	check_required_string(param->d_chargedensity_file, "charge_density_file", param->d_charge_density_meas);
+	check_required_string(param->d_polyakovdensity_file, "polyakov_density_file", param->d_polyakov_density_meas);
+	check_required_string(param->d_chiprime_file, "chiprime_data_file", param->d_chi_prime_meas);
+	check_required_string(param->d_energy_slices_file, "energy_slices_file", param->d_energy_slices_meas);
+	check_required_string(param->d_charge_slices_file, "topcharge_tcorr_file", param->d_charge_slices_meas);
+	check_required_string(param->d_charge_slices_file, "topcharge_tcorr_file", param->d_charge_p_slices_meas);
+	check_required_string(param->d_swap_acc_file, "swap_acc_file", param->d_N_replica_pt > 1);
+	check_required_string(param->d_swap_tracking_file, "swap_track_file", param->d_N_replica_pt > 1);
 
 	init_derived_constants(param);
 
 	#ifdef MULTICANONICAL_MODE
 	check_required_string(param->d_multicanonic_acc_file, "multicanonic_acc_file", 1);
-	check_required_string(param->d_topo_potential_file,   "topo_potential_file",   1);
+	check_required_string(param->d_topo_potential_file, "topo_potential_file", 1);
 	read_topo_potential(param);
 	#endif
+	}
+
+static inline Cooling_Type cooling_type_from_string(char const *str)
+	{
+	if(strcmp(str, "LEX_SITE_LEX_DIR") == 0)
+		return LEX_SITE_LEX_DIR;
+	if(strcmp(str, "LEX_DIR_LEX_SITE") == 0)
+		return LEX_DIR_LEX_SITE;
+	if(strcmp(str, "LEX_DIR_LEXEO_SITE") == 0)
+		return LEX_DIR_LEXEO_SITE;
+	if(strcmp(str, "LEXEO_SITE_LEX_DIR") == 0)
+		return LEXEO_SITE_LEX_DIR;
+	if(strcmp(str, "RND_DIR_RNDEO_SITE") == 0)
+		return RND_DIR_RNDEO_SITE;
+	REQUIRE(0, "unknown cooling type \"%s\"", str);
 	}
 
 
@@ -1039,7 +1091,7 @@ void write_topo_potential(GParam const *const param, char *filename)
 	fclose(fp);
 	}
 
-void init_derived_constants(GParam *param)
+void init_derived_constants(GParam *const param)
 	{
 	int i;
 
@@ -1047,15 +1099,20 @@ void init_derived_constants(GParam *param)
 	param->d_max_size = param->d_size[0];
 	param->d_min_size = param->d_size[0];
 	param->d_volume = 1;
+	param->d_even_volume = 1;
 	for(i = 0; i < STDIM; i++) param->d_space_vol[i] = 1;
 	for(i = 0; i < STDIM; i++)
 		{
+		param->d_even_size[i] = param->d_size[i] - (param->d_size[i] % 2);
 		if(param->d_size[i] > param->d_max_size) param->d_max_size = param->d_size[i];
 		if(param->d_size[i] < param->d_min_size) param->d_min_size = param->d_size[i];
 		(param->d_volume) *= (param->d_size[i]);
+		(param->d_even_volume) *= (param->d_even_size[i]);
 		for(int j = 0; j < STDIM; j++) if(j != i) (param->d_space_vol[j]) *= (param->d_size[i]);
 		}
 
+	param->d_n_even = param->d_even_volume / 2;
+	param->d_n_border = param->d_volume - param->d_even_volume;
 	param->d_inv_vol = 1.0 / ((double) param->d_volume);
 	for(i = 0; i < STDIM; i++) param->d_inv_space_vol[i] = 1.0 / ((double) param->d_space_vol[i]);
 
@@ -1065,6 +1122,17 @@ void init_derived_constants(GParam *param)
 		{
 		param->d_volume_defect *= param->d_L_defect[i];
 		}
+
+	// number of multilevel hits (assuming Polyakov loops are separated along the "1" direction)
+	if(param->d_dist_poly > 1 && param->d_size[1] - param->d_dist_poly > 1)
+		param->d_ml_num_hit = param->d_multihit;
+	else
+		param->d_ml_num_hit = 0;
+
+	// number of multilevel slices
+	for(i = 0; i < NLEVELS; i++)
+		param->d_ml_num_slices[i] = param->d_size[0] / param->d_ml_step[i];
+
 
 	// number of grid points (multicanonic only)
 	param->d_n_grid = (int) ((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
@@ -1087,10 +1155,51 @@ void init_derived_constants(GParam *param)
 		param->d_agf_num_meas = (int) ((param->d_agf_length + MIN_VALUE) / param->d_agf_meas_each);
 	else
 		param->d_agf_num_meas = 0;
+
+	// cooling type
+	param->d_cooling_type = cooling_type_from_string(param->d_cooling_type_str);
+	}
+
+
+// edit parameters for measure-only mode
+void edit_params_meas_only(GParam *const param)
+	{
+	// start from saved conf.
+	param->d_start = 2;
+
+	// not to overwrite files of runs with online measures
+	char suffix[STD_STRING_LENGTH];
+	sprintf(suffix, "%s", "");
+	if(param->d_agf_num_meas > 0)
+		strcat(suffix, "_agf");
+	if(param->d_gf_num_meas > 0)
+		strcat(suffix, "_gf");
+	if(param->d_coolrepeat > 0)
+		{
+		char aux[STD_STRING_LENGTH + 6];
+		sprintf(aux, "_cool_%s", param->d_cooling_type_str);
+		strcat(suffix, aux);
+		}
+	if(strcmp(suffix, "") == 0)
+		strcat(suffix, "_hot");
+
+	char *files[] = {
+			param->d_data_file,
+			param->d_energydensity_file,
+			param->d_energydensity_file,
+			param->d_polyakovdensity_file,
+			param->d_chiprime_file,
+			param->d_energy_slices_file,
+			param->d_charge_slices_file,
+			param->d_log_file
+			};
+
+	for(size_t i = 0; i < sizeof(files) / sizeof(files[0]); i++)
+		strcat(files[i], suffix);
 	}
 
 // free allocated memory for hierarc update parameters
-void free_hierarc_params(GParam *param)
+void free_hierarc_params(GParam *const param)
 	{
 	if(param->d_N_hierarc_levels == 0)
 		{
@@ -1206,7 +1315,9 @@ void print_simul_parameters(FILE *fp, GParam const *const param)
 
 	fprintf(fp, "multipolyakov_order:   %d    ", param->d_multipolyakov_order);
 	for(i = 0; i < param->d_multipolyakov_order; i++) fprintf(fp, "%d ", param->d_multipolyakov_dirs[i]);
-	fprintf(fp, "\n\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "meas_effective_charge: %d\n", param->d_meas_effective_charge);
+	fprintf(fp, "\n");
 
 	fprintf(fp, "start:                   %d\n", param->d_start);
 	fprintf(fp, "saveconf_back_every:     %d\n", param->d_saveconf_back_every);
@@ -1238,6 +1349,7 @@ void print_smoothing_parameters(FILE *fp, GParam const *const param)
 	if(param->d_coolrepeat > 0)
 		{
 		fprintf(fp, "Using cooling with\n");
+		fprintf(fp, "cooling_type:  %s\n", param->d_cooling_type_str);
 		fprintf(fp, "coolrepeat:    %d\n", param->d_coolrepeat);
 		fprintf(fp, "coolsteps:     %d\n", param->d_coolsteps);
 		fprintf(fp, "\n");
@@ -1767,6 +1879,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "multipolyakov_order   0  # n  mu_1 mu_2 ... mu_n\n");
+	fprintf(fp, "meas_effective_charge 0  # if 1, eventual x-dependence of theta-term moved in definition of Q\n");
 	fprintf(fp, "\n");
 	}
 

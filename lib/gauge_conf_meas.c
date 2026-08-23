@@ -346,6 +346,7 @@ void clover_energy_slices(Gauge_Conf const *const GC,
                           FILE *filep)
 	{
 	int const L_mu = param->d_size[mu];
+	int const offset = (int) (GC->translation[mu] % L_mu);
 	for(int i = 0; i < L_mu; i++) slices[i] = 0.0;
 
 	#ifdef OPENMP_MODE
@@ -353,7 +354,7 @@ void clover_energy_slices(Gauge_Conf const *const GC,
 	#endif
 	for(long r = 0; r < param->d_volume; r++)
 		{
-		int const x_mu = geo->d_mucomp[mu][r];
+		int const x_mu = periodic_condition(geo->d_mucomp[mu][r] - offset, L_mu);
 		slices[x_mu] += loc_clover_energy(GC, geo, param, r);
 		}
 	for(int i = 0; i < L_mu; i++) slices[i] *= param->d_inv_space_vol[mu];
@@ -368,44 +369,53 @@ void clover_energy_slices(Gauge_Conf const *const GC,
 void action(Gauge_Conf const *const GC,
             Geometry const *const geo,
             GParam const *const param,
-            double *action1, double *action2, double *action3, double *pot)
+            double *S_wilson, double *S_theta, double *S_total, double *V_mc)
 	{
-	double res1 = 0.0, res2 = 0.0, res3 = 0.0;
-
+	// compute Wilson and theta terms of the action as sum of forces on the links
+	double Sw = 0.0, St = 0.0;
+	#ifdef THETA_MODE
 	for(int dir = 0; dir < STDIM; dir++)
 		{
 		compute_clovers(GC, geo, param, dir);
 		}
-
+	#endif
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res1, res2, res3)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : Sw, St, S)
 	#endif
 	for(long s = 0; s < STDIM * (param->d_volume); s++)
 		{
-		GAUGE_GROUP stap1, stap2, stap3;
+		GAUGE_GROUP staple_wilson, staple_topo;
 		long const r = s % (param->d_volume);
 		int const i = (int) ((s - r) / (param->d_volume));
 
-		calcstaples_with_topo(GC, geo, param, r, i, &stap1);
-		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap2);
-		calcstaples_wilson(GC, geo, param, r, i, &stap3);
+		calcstaples_wilson_with_defect(GC, geo, param, r, i, &staple_wilson);
+		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &staple_topo);
+		minus_equal(&staple_topo, &staple_wilson);
 
-		// compute action
-		times_equal(&stap1, &(GC->lattice[r][i]));
-		times_equal(&stap2, &(GC->lattice[r][i]));
-		times_equal(&stap3, &(GC->lattice[r][i]));
-		res1 += retr(&stap1);
-		res2 += retr(&stap2);
-		res3 += retr(&stap3);
+		times_equal(&staple_wilson, &(GC->lattice[r][i]));
+		times_equal(&staple_topo, &(GC->lattice[r][i]));
+		Sw += retr(&staple_wilson);
+		St += retr(&staple_topo);
 		}
+	double const S0 = (double) (param->d_n_planes * param->d_volume) / 2;
+	*S_wilson = param->d_beta * (S0 - Sw / 4.0); // Wilson term: degree 4 in the links, sum of forces divided by 4
+	*S_theta = -param->d_beta * St / 8.0;        // Theta term: degree 8 in the links, sum of forces divided by 8
 
-	double const aux = (double) ((param->d_n_planes) * (param->d_volume)) / 2;
-	*action1 = (param->d_beta) * (aux - res1 * 0.25);
-	*action2 = (param->d_beta) * (aux - res2 * 0.25);
-	*action3 = (param->d_beta) * (aux - res3 * 0.25) - (param->d_theta) * topcharge(GC, geo, param);
-	*pot = 0.0;
+	// compute the total action from average plaquette and topological charge
+	double plaqs, plaqt;
+	plaquette(GC, geo, param, &plaqs, &plaqt);
+	double const sum_plaq = (double) param->d_volume * ((STDIM - 1) * (STDIM - 2) * plaqs / 2 + (STDIM - 1) * plaqt);
+	#ifdef THETA_MODE
+	*S_total = param->d_beta * (S0 - sum_plaq) - param->d_theta * topcharge(GC, geo, param);
+	#else
+	*S_total = param->d_beta * (S0 - sum_plaq);
+	#endif
+
+	// compute multicanonical potential
 	#ifdef MULTICANONICAL_MODE
-	*pot = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
+	*V_mc = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
+	#else
+	*V_mc = 0.0;
 	#endif
 	}
 
@@ -624,7 +634,11 @@ double loc_topcharge(Gauge_Conf const *const GC,
 	#if (STDIM==4 && NCOLOR>1)
 
 	// topcharge normalization: Nc from retr() = 1/N ReTr[], bulk factor Z if using OBC, 1 / (128 * pi ** 2) from definition
-	double const charge_norm = NCOLOR * creal(GC->Z[r][param->d_n_planes]) / (128.0 * PI * PI);
+	double charge_norm = NCOLOR / (128.0 * PI * PI);
+	#ifdef THETA_MODE
+	if(param->d_meas_effective_charge)
+		charge_norm *= creal(GC->Z[r][param->d_n_planes]);
+	#endif
 
 	int sign = -1;
 	double loc_charge = 0.0;
@@ -789,7 +803,7 @@ void topcharge_slices(Gauge_Conf const *const GC,
                       FILE *filep)
 	{
 	int const L_mu = param->d_size[mu];
-
+	int const offset = (int) (GC->translation[mu] % L_mu);
 	for(int i = 0; i < L_mu; i++) slices[i] = 0.0;
 
 	#ifdef OPENMP_MODE
@@ -797,7 +811,7 @@ void topcharge_slices(Gauge_Conf const *const GC,
 	#endif
 	for(long r = 0; r < (param->d_volume); r++)
 		{
-		int x_mu = geo->d_mucomp[mu][r];
+		int const x_mu = periodic_condition(geo->d_mucomp[mu][r] - offset, L_mu);
 		slices[x_mu] += loc_topcharge(GC, geo, param, r);
 		}
 
@@ -817,6 +831,8 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
 	{
 	int const L_mu = param->d_size[mu];
 	int const L_nu = param->d_size[nu];
+	int const offset_mu = (int) (GC->translation[mu] % L_mu);
+	int const offset_nu = (int) (GC->translation[nu] % L_nu);
 	double *slicesre = meas_aux->real_slices;
 	double *slicesim = meas_aux->imag_slices;
 	FILE *const filep = meas_aux->q_slices_filep;
@@ -842,9 +858,9 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
 		#endif
 		for(long r = 0; r < (param->d_volume); r++)
 			{
-			int x_mu = geo->d_mucomp[mu][r];
-			int x_nu = geo->d_mucomp[nu][r];
-			double ph = p * x_nu;
+			int const x_mu = periodic_condition(geo->d_mucomp[mu][r] - offset_mu, L_mu);
+			int const x_nu = periodic_condition(geo->d_mucomp[nu][r] - offset_nu, L_nu);
+			double const ph = p * x_nu;
 			slicesre[x_mu] += cos(ph) * charge[r];
 			slicesim[x_mu] += sin(ph) * charge[r];
 			}
@@ -864,7 +880,7 @@ void check_correlation_decay_cooling(Gauge_Conf const *const GC, Geometry const 
 
 	for(int i = 0; i < (param->d_coolrepeat); i++)
 		{
-		cooling(&helperconf, geo, param, param->d_coolsteps);
+		cooling(&helperconf, geo, param, param->d_coolsteps, LEX_DIR_LEXEO_SITE);
 		double const Q = fabs(topcharge(&helperconf, geo, param));
 		double satd = 0.0;
 
@@ -899,7 +915,7 @@ void loc_topcharge_corr(Gauge_Conf *const GC,
 	allocate_array_double(&charge_array, param->d_volume, __FILE__, __LINE__);
 
 	// compute the local topological charge
-	if(ncool > 0) cooling(GC, geo, param, ncool);
+	if(ncool > 0) cooling(GC, geo, param, ncool, LEX_DIR_LEXEO_SITE);
 
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -942,11 +958,7 @@ void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GPara
 		{
 		double plaqs, plaqt;
 		plaquette(GC, geo, param, &plaqs, &plaqt);
-		#if STDIM == 4
-		meas_aux->meanplaq[meas_count] = 0.5 * (plaqs + plaqt);
-		#else
-		meas_aux->meanplaq[meas_count] = plaqt;
-		#endif
+		meas_aux->meanplaq[meas_count] = ((STDIM - 2.0) * plaqs + 2.0 * plaqt) / STDIM;
 		}
 	if(param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
 	if(param->d_energy_density_meas == 1) energy_density(GC, geo, param, meas_aux, meas_count + 1);
@@ -957,7 +969,7 @@ void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GPara
 	if(param->d_polyakov_density_meas == 1) for(int i = 0; i < STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count + 1);
 	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->e_slices_filep);
 	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->q_slices_filep);
-	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, meas_count + 1);
+	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, param->d_test_flag, meas_aux, meas_count + 1);
 	if(param->d_chi_prime_meas == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
 	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
 	if(param->d_action_meas == 1) action(GC, geo, param, &(meas_aux->action1[meas_count]), &(meas_aux->action2[meas_count]), &(meas_aux->action3[meas_count]), &(meas_aux->potential[meas_count]));
@@ -986,7 +998,7 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 	if(param->d_charge_prime_meas == 1) for(i = 0; i < STDIM; i++) charge_prime[i] = topcharge_prime(GC, geo, param, i);
 	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->e_slices_filep);
 	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, 0, meas_aux->q_slices_filep);
-	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, 1, meas_aux, 0);
+	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, param->d_test_flag, meas_aux, 0);
 	if(param->d_action_meas == 1) action(GC, geo, param, &action1, &action2, &action3, &potential);
 
 	// print meas (density profiles already printed)
@@ -999,7 +1011,7 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 	if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", multipolyre, multipolyim);
 	if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
 	if(param->d_charge_prime_meas == 1) for(i = 0; i < STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
-	if(param->d_action_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e", action1, action2, action3, potential);
+	if(param->d_action_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, potential);
 
 	// flush data files
 	fflush(meas_aux->datafilep);
@@ -1027,7 +1039,7 @@ void perform_measures_localobs(Gauge_Conf *const GC,
 	if(param->d_gf_num_meas > 0) perform_measures_localobs_gradflow(GC, geo, param, meas_aux);
 
 	// measures with cooling
-	if(param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux);
+	if(param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux, param->d_cooling_type);
 
 	// multicanonical topcharge and weight
 	#ifdef MULTICANONICAL_MODE
@@ -1048,11 +1060,11 @@ void perform_measures_localobs(Gauge_Conf *const GC,
 void perform_measures_localobs_cooling(Gauge_Conf *const GC,
                                        Geometry const *const geo,
                                        GParam const *const param,
-                                       Meas_Utils *meas_aux)
+                                       Meas_Utils *meas_aux, Cooling_Type const type)
 	{
 	for(int meas_count = 0; meas_count < param->d_coolrepeat; meas_count++)
 		{
-		cooling(GC, geo, param, param->d_coolsteps);
+		cooling(GC, geo, param, param->d_coolsteps, type);
 		perform_measures_aux(GC, geo, param, meas_count, meas_aux);
 		}
 
@@ -1688,7 +1700,7 @@ void optimize_multihit_polycorradj(Gauge_Conf *const GC,
 	{
 	int const max_hit = 50;
 	int const dir = 1;
-	double const inv_n2 = 1.0 / ((double)NCOLOR * NCOLOR);
+	double const inv_n2 = 1.0 / ((double) NCOLOR * NCOLOR);
 
 	double *poly_array;
 	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
@@ -2572,8 +2584,7 @@ void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const *const param)
 	free(meas_aux);
 	}
 
-void print_measures_aux(int const num_meas, long const update_index, GParam const *const param,
-                        Meas_Utils *meas_aux)
+void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux)
 	{
 	double time_step;
 	if(param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);

@@ -105,17 +105,8 @@ void times_dag12_U1(U1 *A, U1 const *const B, U1 const *const C);
 // random matrix
 void rand_matrix_U1(U1 *restrict A)
 	{
-	double p0, p1, p;
-
-	do
-		{
-		p0 = 1.0 - 2.0 * casuale();
-		p1 = 1.0 - 2.0 * casuale();
-
-		p = sqrt(p0 * p0 + p1 * p1);
-		} while(p < MIN_VALUE);
-
-	A->comp = (p0 + p1 * I) / p;
+	double const theta = 2.0 * PI * casuale();
+	A->comp = cexp(I * theta);
 	}
 
 

@@ -105,8 +105,7 @@ void times_dag12_SuN(SuN *A, SuN const *const B, SuN const *const C);
 // generated a la Cabibbo Marinari with N(N-1)/2 SU(2) random matrices
 void rand_matrix_SuN(SuN *A)
 	{
-	double p0, p1, p2, p3, p;
-	double complex aux00, aux01, aux10, aux11, temp0, temp1;
+	double p0, p1, p2, p3, r2;
 
 	one_SuN(A);
 
@@ -115,32 +114,36 @@ void rand_matrix_SuN(SuN *A)
 		for(int j = i + 1; j < NCOLOR; j++)
 			{
 			// SU(2) random components
-			p = 2.0;
-			while(p > 1.0)
+			do
 				{
 				p0 = 1.0 - 2.0 * casuale();
 				p1 = 1.0 - 2.0 * casuale();
 				p2 = 1.0 - 2.0 * casuale();
 				p3 = 1.0 - 2.0 * casuale();
-				p = sqrt(p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3);
-				}
 
-			p0 /= p;
-			p1 /= p;
-			p2 /= p;
-			p3 /= p;
+				r2 = p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3;
+				} while(r2 > 1.0);
 
-			aux00 = p0 + p3 * I;
-			aux01 = p2 + p1 * I;
-			aux10 = -p2 + p1 * I;
-			aux11 = p0 - p3 * I;
+			double const invr = 1.0 / sqrt(r2);
+
+			p0 *= invr;
+			p1 *= invr;
+			p2 *= invr;
+			p3 *= invr;
+
+			double complex const aux00 = p0 + p3 * I;
+			double complex const aux01 = p2 + p1 * I;
+			double complex const aux10 = -p2 + p1 * I;
+			double complex const aux11 = p0 - p3 * I;
 
 			for(int k = 0; k < NCOLOR; k++)
 				{
-				temp0 = A->comp[m(k, i)] * aux00 + A->comp[m(k, j)] * aux10;
-				temp1 = A->comp[m(k, i)] * aux01 + A->comp[m(k, j)] * aux11;
-				A->comp[m(k, i)] = temp0;
-				A->comp[m(k, j)] = temp1;
+				double complex *Aki = &A->comp[m(k, i)];
+				double complex *Akj = &A->comp[m(k, j)];
+				double complex const temp0 = *Aki * aux00 + *Akj * aux10;
+				double complex const temp1 = *Aki * aux01 + *Akj * aux11;
+				*Aki = temp0;
+				*Akj = temp1;
 				}
 			}
 		}

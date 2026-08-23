@@ -380,6 +380,17 @@ void restore_gauge_conf_rectangle(Gauge_Conf *const GC, int const hierarc_level,
 void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const param, char const *const filename)
 	{
 	GC->update_index = 0;
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		GC->translation[i] = 0;
+		GC->stdim_shuffle[i] = i;
+		}
+	GC->parity_shuffle[0][0] = 0;
+	GC->parity_shuffle[0][1] = param->d_n_even;
+	GC->parity_shuffle[1][0] = param->d_n_even;
+	GC->parity_shuffle[1][1] = param->d_even_volume;
+
 	allocate_lattice_with_copy(GC, param);
 
 	#ifdef THETA_MODE
@@ -1056,7 +1067,21 @@ void write_conf_on_file_back(Gauge_Conf const *const GC, GParam const *const par
 // allocate GC and initialize with GC2, including the twist factors
 void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2, GParam const *const param)
 	{
+	GC->update_index = GC2->update_index;
+	GC->replica_index = GC2->replica_index;
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		GC->translation[i] = GC2->translation[i];
+		GC->stdim_shuffle[i] = i;
+		}
+	GC->parity_shuffle[0][0] = 0;
+	GC->parity_shuffle[0][1] = param->d_n_even;
+	GC->parity_shuffle[1][0] = param->d_n_even;
+	GC->parity_shuffle[1][1] = param->d_even_volume;
+
 	allocate_lattice_with_copy(GC, param);
+
 	#ifdef MULTICANONICAL_MODE
 	allocate_lattice_cold_with_copy(GC, param);
 	#endif
@@ -1083,9 +1108,6 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 			GC->Z_copy[r][j] = GC2->Z_copy[r][j];
 			}
 		}
-
-	GC->update_index = GC2->update_index;
-	GC->replica_index = GC2->replica_index;
 	}
 
 

@@ -109,7 +109,7 @@ void real_main(char *in_file)
 			}
 		else // iteration >=0, perform multilevel
 			{
-			multilevel_polycorr_long(&GC, &geo, &param, param.d_ml_step[0], iteration);
+			multilevel_polycorr_long_zero(&GC, &geo, &param, iteration);
 			iteration += 1;
 			if(iteration == param.d_ml_level0_repeat)
 				{

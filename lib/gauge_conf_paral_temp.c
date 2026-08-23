@@ -204,26 +204,17 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 
 	// Metropolis test: p<1 => acc=1 with probability p, p>=1 => acc=1 (already assigned)
 	int acc = 1;
-	if(p < 1)
-		{
-		if(casuale() > p)
-			{
-			acc = 0;
-			}
-		}
+	if(p < 1 && casuale() > p) acc = 0;
 
 	// if Metropolis is accepted, swap replicas, including the twist factors and the stored charges for multicanonic
 	if(acc == 1)
 		{
-		GAUGE_GROUP **aux;
-		double complex **aux_Z;
-
 		// swap of configurations
-		aux = GC[a].lattice;
+		GAUGE_GROUP **aux = GC[a].lattice;
 		GC[a].lattice = GC[b].lattice;
 		GC[b].lattice = aux;
 
-		aux_Z = GC[a].Z;
+		double complex **aux_Z = GC[a].Z;
 		GC[a].Z = GC[b].Z;
 		GC[b].Z = aux_Z;
 
@@ -254,11 +245,17 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 		#endif
 
 		// swap of labels
-		int aux_label;
-
-		aux_label = GC[a].conf_label;
+		int const aux_label = GC[a].conf_label;
 		GC[a].conf_label = GC[b].conf_label;
 		GC[b].conf_label = aux_label;
+
+		// swap of translation tracking
+		for(int i = 0; i < STDIM; i++)
+			{
+			long const aux_translation = GC[a].translation[i];
+			GC[a].translation[i] = GC[b].translation[i];
+			GC[b].translation[i] = aux_translation;
+			}
 
 		// increase counter of successful swaps for replicas (a, a+1)
 		acc_counters->num_accepted_swap[a]++;
@@ -272,6 +269,7 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 	{
 	// extract random direction
 	int const dir = (int) (STDIM * casuale());
+	GC->translation[dir] += 1;
 
 	// translation in direction +dir, including the Z factors and cold lattice
 	#ifdef OPENMP_MODE

@@ -46,6 +46,7 @@ const int g_indep_perm_dir[4][3] = {
 
 #endif
 
+
 // single index 4d = even/odd lexicographic index 4d
 // single index 3d = even/odd lexicographic index 3d
 void init_indexing_lexeo(void)
@@ -67,6 +68,7 @@ void init_indexing_lexeo(void)
 void init_geometry(Geometry *geo, GParam const *const param)
 	{
 	// allocate memory
+	allocate_array_long(&(geo->d_sip_to_si), param->d_volume, __FILE__, __LINE__);
 	allocate_array_long_pointer(&(geo->d_nnp), param->d_volume, __FILE__, __LINE__);
 	allocate_array_long_pointer(&(geo->d_nnm), param->d_volume, __FILE__, __LINE__);
 	for(long r = 0; r < (param->d_volume); r++)
@@ -87,7 +89,7 @@ void init_geometry(Geometry *geo, GParam const *const param)
 			allocate_array_long(&(geo->d_mutimespace[i][r]), (param->d_volume) / (param->d_size[i]), __FILE__, __LINE__);
 		}
 
-	// initialize nearest neighbors
+	// initialize sip_to_si and nearest neighbors
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
@@ -95,6 +97,7 @@ void init_geometry(Geometry *geo, GParam const *const param)
 		{
 		int cartcoord[STDIM];
 		si_to_cart(cartcoord, r, param);
+		geo->d_sip_to_si[cart_to_lexeop(cartcoord, param)] = r;
 
 		for(int i = 0; i < STDIM; i++)
 			{
@@ -135,6 +138,7 @@ void init_geometry(Geometry *geo, GParam const *const param)
 	test_geometry(geo, param);
 	#endif
 	}
+
 
 // free memory
 void free_geometry(Geometry *geo, GParam const *const param)
@@ -277,42 +281,15 @@ int is_on_defect(long const r, GParam const *const param)
 // cartesian coordinates -> lexicographic index
 long cart_to_lex(int const *const cartcoord, GParam const *const param)
 	{
-	long res = 0;
-	long aux = 1;
-	for(int i = 0; i < STDIM; i++)
+	long res = 0;                  // res = cartcoord[0]
+	long aux = 1;                  //     + cartcoord[1]*size[0]
+	for(int i = 0; i < STDIM; i++) //     + cartcoord[2]*size[0]*size[1]
 		{
-		res += cartcoord[i] * aux;
+		//     + ...
+		res += cartcoord[i] * aux; //     + cartcoord[STDIM-1]*size[0]*size[1]*...*size[STDIM-2]
 		aux *= param->d_size[i];
 		}
-
-	// res = cartcoord[0]
-	//		+cartcoord[1]*size[0]
-	//		+cartcoord[2]*size[0]*size[1]
-	//		+...
-	//		+cartcoord[STDIM-1]*size[0]*size[1]*...*size[STDIM-2]
-
 	return res;
-
-	/*
-	int i;
-	long res, aux;
-
-	res=0;
-	aux=1;
-	for(i=STDIM-1; i>=0; i--)
-		{
-		res+=cartcoord[i]*aux;
-		aux*=param->d_size[i];
-		}
-
-	// res = cartcoord[STDIM-1] +
-	//		+cartcoord[STDIM-2]*size[STDIM-1]+
-	//		+cartcoord[STDIM-3]*size[STDIM-1]*size[STDIM-2]+
-	//		+...
-	//		+cartcoord[0]*size[STDIM-1]*size[STDIM-2]*...*size[1]
-
-	return res;
-	*/
 	}
 
 
@@ -321,44 +298,17 @@ void lex_to_cart(int *cartcoord, long lex, GParam const *const param)
 	{
 	long aux[STDIM];
 
-	aux[0] = 1;
-	for(int i = 1; i < STDIM; i++)
+	aux[0] = 1;                    // aux[0]=1
+	for(int i = 1; i < STDIM; i++) // aux[1]=size[0]
 		{
-		aux[i] = aux[i - 1] * param->d_size[i - 1];
-		}
-	// aux[0]=1
-	// aux[1]=size[0]
-	// aux[2]=size[0]*size[1]
-	// ...
-	// aux[STDIM-1]=size[0]*size[1]*...*size[STDIM-2]
-
+		// aux[2]=size[0]*size[1]
+		aux[i] = aux[i - 1] * param->d_size[i - 1]; // ...
+		}                                           // aux[STDIM-1]=size[0]*size[1]*...*size[STDIM-2]
 	for(int i = STDIM - 1; i >= 0; i--)
 		{
 		cartcoord[i] = (int) (lex / aux[i]);
 		lex -= aux[i] * cartcoord[i];
 		}
-
-	/*
-	int i;
-	long aux[STDIM];
-
-	aux[STDIM-1]=1;
-	for(i=STDIM-2; i>=0; i--)
-		{
-		aux[i]=aux[i+1]*param->d_size[i+1];
-		}
-	// aux[STDIM-1] = 1
-	// aux[STDIM-2] = size[STDIM-1]
-	// aux[STDIM-3] = size[STDIM-1]*size[STDIM-2]
-	// ...
-	// aux[0]		 = size[STDIM-1]*size[STDIM-2]*...*size[1]
-
-	for(i=0; i<STDIM; i++)
-		{
-		cartcoord[i]=(int) (lex/aux[i]);
-		lex-=aux[i]*cartcoord[i];
-		}
-	*/
 	}
 
 
@@ -372,13 +322,11 @@ long cart_to_lexeo(int const *const cartcoord, GParam const *const param)
 		{
 		eo += cartcoord[i];
 		}
-
 	if(eo % 2 == 0)
 		{
-		return lex / 2;
+		return lex / 2; // even sites are written first
 		}
 	return (lex + param->d_volume) / 2;
-	// even sites are written first
 	}
 
 
@@ -459,43 +407,17 @@ long cartsp_to_lexsp(int const *const ccsp, GParam const *const param)
 	// cc	= t x1 x2 ... x_{STDIM-1}
 	// ccsp =	x1 x2		x_{STDIM-1}
 
-	long res = 0;
-	long aux = 1;
-	for(int i = 0; i < STDIM - 1; i++)
+	long res = 0;                      // res = ccsp[0]
+	long aux = 1;                      //     + ccsp[1]*size[1]
+	for(int i = 0; i < STDIM - 1; i++) //     + ccsp[2]*size[1]*size[2]
 		{
-		res += ccsp[i] * aux;
+		//     + ...
+		res += ccsp[i] * aux; //     + ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
 		aux *= param->d_size[i + 1];
 		}
-
-	// res = ccsp[0]
-	//		+ccsp[1]*size[1]
-	//		+ccsp[2]*size[1]*size[2]
-	//		+...
-	//		+ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
-
 	return res;
-
-	/*
-	int i;
-	long res, aux;
-
-	res=0;
-	aux=1;
-	for(i=STDIM-2; i>=0; i--)
-		{
-		res+=ccsp[i]*aux;
-		aux*=param->d_size[i+1];
-		}
-
-	// res = ccsp[STDIM-2] +
-	//		+ccsp[STDIM-3]*size[STDIM-1]+
-	//		+ccsp[STDIM-4]*size[STDIM-1]*size[STDIM-2]+
-	//		+ccsp
-	//		+ccsp[0]*size[STDIM-1]*size[STDIM-2]*...*size[2]
-
-	return res;
-	*/
 	}
+
 
 // spatial cartesian coordinates -> spatial lexicographic index
 long cartsp_to_lexsp_mu(int const *const ccsp, int mu, GParam const *const param)
@@ -514,10 +436,10 @@ long cartsp_to_lexsp_mu(int const *const ccsp, int mu, GParam const *const param
 		}
 
 	// res = ccsp[0]
-	//		+ccsp[1]*size[0]
-	//		+ccsp[2]*size[0]*size[1]
-	//		+... (skipping size[mu])
-	//		+ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
+	//     + ccsp[1]*size[0]
+	//     + ccsp[2]*size[0]*size[1]
+	//     + ... (skipping size[mu])
+	//     + ccsp[STDIM-2]*size[1]*size[2]*...*size[STDIM-2]
 
 	return res;
 	}
@@ -533,44 +455,18 @@ void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const *const param)
 	int i;
 	long aux[STDIM - 1];
 
-	aux[0] = 1;
-	for(i = 1; i < STDIM - 1; i++)
+	aux[0] = 1;                    // aux[0]=1
+	for(i = 1; i < STDIM - 1; i++) // aux[1]=size[1]
 		{
-		aux[i] = aux[i - 1] * param->d_size[i];
-		}
-	// aux[0]=1
-	// aux[1]=size[1]
-	// aux[2]=size[1]*size[2]
-	// ...
-	// aux[STDIM-2]=size[1]*size[2]*...*size[STDIM-2]
+		// aux[2]=size[1]*size[2]
+		aux[i] = aux[i - 1] * param->d_size[i]; // ...
+		}                                       // aux[STDIM-2]=size[1]*size[2]*...*size[STDIM-2]
 
 	for(i = STDIM - 2; i >= 0; i--)
 		{
 		ccsp[i] = (int) (lexsp / aux[i]);
 		lexsp -= aux[i] * ccsp[i];
 		}
-
-	/*
-	int i;
-	long aux[STDIM-1];
-
-	aux[STDIM-2]=1;
-	for(i=STDIM-3; i>=0; i--)
-		{
-		aux[i]=aux[i+1]*param->d_size[i+2];
-		}
-	// aux[STDIM-2] = 1
-	// aux[STDIM-3] = size[STDIM-1]
-	// aux[STDIM-4] = size[STDIM-1]*size[STDIM-2]
-	// ...
-	// aux[0]		 = size[STDIM-1]*size[STDIM-2]*...*size[2]
-
-	for(i=0; i<STDIM-1; i++)
-		{
-		ccsp[i]=(int) (lexsp/aux[i]);
-		lexsp-=aux[i]*ccsp[i];
-		}
-	*/
 	}
 
 
@@ -591,6 +487,7 @@ long cartsp_to_lexeosp(int const *const ccsp, GParam const *const param)
 		}
 	return (lexsp + param->d_space_vol[0]) / 2;
 	}
+
 
 // spatial cartesian coordinates -> spatial lexicographic eo index
 long cartsp_to_lexeosp_mu(int const *const ccsp, int mu, GParam const *const param)
@@ -708,6 +605,7 @@ void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const *con
 	*lexeosp = cartsp_to_lexeosp(ccsp, param);
 	}
 
+
 void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const *const param)
 	{
 	int cc[STDIM], ccsp[STDIM - 1];
@@ -719,6 +617,166 @@ void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam c
 	for(int i = 0; i < STDIM - 1; i++)
 		ccsp[i] = cc[(i < mu) ? i : i + 1];
 	*lexeosp = cartsp_to_lexeosp_mu(ccsp, mu, param);
+	}
+
+
+/*
+Geometry for allowing even-odd parallelization of updates with one or more odd lattice sizes.
+The lattice is split into the largest sublattice with all even sizes and its borders.
+The border is recursively split into shells with even sizes and reduced dimension.
+
+2D odd x odd lattice:  |   2D even x odd lattice:
+                       |
+ (0,1)  (1,1)          |   (-1,1)
++ + + + | +            |   + + + +
+-----------            |   -------
++ + + + | +            |   + + + +
++ + + + | +            |   + + + +
++ + + + | +            |   + + + +
++ + + + | +            |   + + + +
+ (0,0)  (1,0)          |   (-1,0)
+
+Shell coordinates are defined as follows:
+    -1 along even dimensions of the full lattice
+     0 along odd dimensions of the full lattice, if the shell is the even bulk
+     1 along odd dimensions of the full lattice, if the shell is the border
+Including the largest even sublattice, there are 2^{d_odd} shells,
+with d_odd the number of odd sides of the full lattice.
+
+Inside a shell, sites are indexed in even-odd lexicographic order.
+Updates are parallelized oly in the largest even sublattice.
+
+*/
+
+// volume of the shell with given coordinates
+static inline long shell_volume(int const *const shell_coord, GParam const *const param)
+	{
+	long res = param->d_even_volume;
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(shell_coord[i] == 1)
+			{
+			res /= param->d_even_size[i];
+			}
+		}
+	return res;
+	}
+
+
+// lex index of the shell with given coordinates, with 0 always being the largest even sublattice
+// the shell coordinates are interpreted as a binary counter
+static inline int shell_coord_to_shell_lex(int const *const shell_coord)
+	{
+	int res = 0;
+	int base = 1;
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(shell_coord[i] != -1)
+			{
+			res += shell_coord[i] * base;
+			base *= 2;
+			}
+		}
+	return res;
+	}
+
+
+// coordinates of the shell with given lex index
+static inline void shell_lex_to_shell_coord(int *shell_coord, int const shell_lex, GParam const *const param)
+	{
+	int x = shell_lex;
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(param->d_size[i] % 2 == 0)
+			{
+			shell_coord[i] = -1;
+			}
+		else
+			{
+			shell_coord[i] = x & 1;
+			x >>= 1;
+			}
+		}
+	}
+
+
+// offset of the sites in the shell with given coordinates, i.e.
+// the number of sites in all previous shells
+static inline long shell_offset(int const *const shell_coord, GParam const *const param)
+	{
+	long res = 0;
+	int const shell_lex = shell_coord_to_shell_lex(shell_coord);
+	int shell_coord_aux[STDIM];
+
+	for(int i = 0; i < shell_lex; i++)
+		{
+		shell_lex_to_shell_coord(shell_coord_aux, i, param);
+		res += shell_volume(shell_coord_aux, param);
+		}
+
+	return res;
+	}
+
+
+// decompose the cartesian coordinates of a lattice site into the coordinates of its shell
+// and its cartesian coordinates inside the shell
+static inline void cart_to_shell_coord_and_cart_shell(int *shell_coord, int *cart_shell, int const *const cartcoord, GParam const *const param)
+	{
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(param->d_size[i] % 2 == 0)
+			{
+			cart_shell[i] = cartcoord[i];
+			shell_coord[i] = -1;
+			}
+		else
+			{
+			if(cartcoord[i] < param->d_even_size[i])
+				{
+				cart_shell[i] = cartcoord[i];
+				shell_coord[i] = 0;
+				}
+			else
+				{
+				cart_shell[i] = -1;
+				shell_coord[i] = 1;
+				}
+			}
+		}
+	}
+
+
+// restricted to a shell, cartesian coordinates of a site -> lexicographic eo index of the site
+static inline long cart_shell_to_lexeo_shell(int const *const cart_shell, GParam const *const param)
+	{
+	int eo = 0;
+	long res = 0, aux = 1;
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(cart_shell[i] != -1)
+			{
+			res += cart_shell[i] * aux;
+			aux *= param->d_even_size[i];
+			eo += cart_shell[i];
+			}
+		}
+	eo = eo % 2;
+	return (eo * aux + res) / 2; // even sites first
+	}
+
+
+// cartesian coordinates of a site -> lexicographic shell + eo index of the site
+long cart_to_lexeop(int const *const cartcoord, GParam const *const param)
+	{
+	int shell_coord[STDIM], cart_shell[STDIM];
+	cart_to_shell_coord_and_cart_shell(shell_coord, cart_shell, cartcoord, param);
+
+	long const offset = shell_offset(shell_coord, param);
+	long const lexeo_shell = cart_shell_to_lexeo_shell(cart_shell, param);
+
+	return offset + lexeo_shell;
 	}
 
 // geometry for rectangles to be used for hierarchical update during parallel tempering
@@ -739,7 +797,7 @@ int orthogonal_dir(int const mu, int const i)
 
 // cartesian -> lexicographic eo (on a given rectangle)
 // this function should not be used outside geometry.c
-long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const most_update)
+long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect)
 	{
 	int eo = 0;
 	long res = 0, aux = 1;
@@ -747,59 +805,62 @@ long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const most_
 	for(int i = 0; i < STDIM; i++)
 		{
 		res += cartcoord[i] * aux;
-		aux *= most_update->d_size_rect[i];
+		aux *= rect->d_size_rect[i];
 		eo += cartcoord[i];
 		}
 	eo = eo % 2;
-	return (eo * (most_update->d_vol_rect) + res) / 2; // even sites first
+	return (eo * (rect->d_vol_rect) + res) / 2; // even sites first
 	}
 
 
-void init_rect(Rectangle *most_update, int const L_R, GParam const *const param)
+void init_rect(Rectangle *rect, int L_R, GParam const *const param)
 	{
 	// sizes of rectangle and ranges of rect coordinates
-	int aux_L[STDIM], size_min[STDIM];
+	int defect_size[STDIM], defect_coord[STDIM], rect_size[STDIM], min_coord[STDIM];
 
-	// rectangle sizes and min of rect coordinates along every direction
-	aux_L[param->d_defect_dir] = 2 * L_R + 1;
-	size_min[param->d_defect_dir] = param->d_size[param->d_defect_dir] - L_R - 1;
+	// full defect sizes and coordinates
+	defect_size[param->d_defect_dir] = 1;
+	defect_coord[param->d_defect_dir] = param->d_size[param->d_defect_dir] - 1;
 	for(int i = 0; i < STDIM - 1; i++)
 		{
 		int const j = orthogonal_dir(param->d_defect_dir, i);
-		aux_L[j] = 2 * L_R + param->d_L_defect[i];
-		size_min[j] = -L_R;
+		defect_size[j] = param->d_L_defect[i];
+		defect_coord[j] = 0;
 		}
 
-	// d_size_rect[i] must not exceed d_size[i]
-	// if so, the exceeding dimension of the rectangle is just the respective dimension of the whole lattice
-	// and the i-th coordinate just ranges from 0 to d_size[i]-1
+	// rectangle sizes and min of rect coordinates along every direction
+	// d_size_rect[i] must not exceed d_size[i] (for periodicity) or d_even_size[i] if using OpenMP (for even/odd parallelization)
+	// if so, the exceeding dimension of the rectangle is trimmed
 	for(int i = 0; i < STDIM; i++)
 		{
-		if(aux_L[i] >= param->d_size[i])
-			{
-			aux_L[i] = param->d_size[i];
-			size_min[i] = 0;
-			}
+		#ifdef OPENMP_MODE
+		int const max_size = param->d_even_size[i];
+		#else
+		int const max_size = param->d_size[i];
+		#endif
+		int const max_LR2 = max_size - defect_size[i];
+		int const LR2 = (2 * L_R > max_LR2) ? max_LR2 : 2 * L_R;
+		rect_size[i] = defect_size[i] + LR2;
+		min_coord[i] = defect_coord[i] - LR2 / 2;
 		}
 
 	// volume of rectangle
 	long V = 1;
 	for(int i = 0; i < STDIM; i++)
-		V *= aux_L[i];
+		V *= rect_size[i];
 
 	// allocate rectangle
-	allocate_array_long(&(most_update->rect_sites), V, __FILE__, __LINE__);
+	allocate_array_long(&(rect->rect_sites), V, __FILE__, __LINE__);
 
 	// save dimensions and volume of the rectangle
 	for(int i = 0; i < STDIM; i++)
-		most_update->d_size_rect[i] = aux_L[i];
-	most_update->d_vol_rect = V;
+		rect->d_size_rect[i] = rect_size[i];
+	rect->d_vol_rect = V;
 
 	// save lexeo index of sites of the rectangle
 	int coord[STDIM];      // cartesian coordinates on the whole lattice
 	int real_coord[STDIM]; // cartesian coordinates after using periodic conditions
 	int coord_rect[STDIM]; // cartesian coordinates on the rectangle
-	long r, r_rect;        // lexeo index on the rectangle and lexeo index on the whole lattice
 
 	for(int i = 0; i < STDIM; i++)
 		coord_rect[i] = 0;
@@ -807,24 +868,24 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const *const param)
 	// loop over each rectangle site
 	while(1)
 		{
-		// compute rectangle coordinates coord_rect and lattice coordinates real_coord for current iteration
+		// map rectangle coordinates to lattice coordinates
 		for(int i = 0; i < STDIM; i++)
 			{
-			coord[i] = size_min[i] + coord_rect[i];
+			coord[i] = min_coord[i] + coord_rect[i];
 			real_coord[i] = periodic_condition(coord[i], param->d_size[i]);
 			}
 
 		// convert to lexicographical index on rectangle and lattice
-		r_rect = cart_to_si_rect(coord_rect, most_update);
-		r = cart_to_si(real_coord, param);
+		long const r_rect = cart_to_si_rect(coord_rect, rect);
+		long const r = cart_to_si(real_coord, param);
 
-		most_update->rect_sites[r_rect] = r;
+		rect->rect_sites[r_rect] = r;
 
 		// move to the next rectangle site
 		int i = STDIM - 1;
 		while(i >= 0)
 			{
-			if(coord_rect[i] < aux_L[i] - 1)
+			if(coord_rect[i] < rect_size[i] - 1)
 				{
 				coord_rect[i]++;
 				break;
@@ -839,24 +900,26 @@ void init_rect(Rectangle *most_update, int const L_R, GParam const *const param)
 		}
 	}
 
-void free_rect(Rectangle *most_update)
+
+void free_rect(Rectangle *rect)
 	{
-	free(most_update->rect_sites);
+	free(rect->rect_sites);
 	}
 
-void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam const *const param)
+
+void init_rect_hierarc(Rectangle **rect, Rectangle **clover_rect, GParam const *const param)
 	{
 	if(param->d_N_hierarc_levels == 0)
 		{
-		most_update = NULL;
+		rect = NULL;
 		(void) clover_rect;
 		}
 	else
 		{
 		int i;
-		allocate_array_Rectangle(most_update, param->d_N_hierarc_levels, __FILE__, __LINE__);
+		allocate_array_Rectangle(rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 		for(i = 0; i < param->d_N_hierarc_levels; i++)
-			init_rect(&((*most_update)[i]), param->d_L_rect[i], param);
+			init_rect(&((*rect)[i]), param->d_L_rect[i], param);
 
 		#ifdef THETA_MODE
 		allocate_array_Rectangle(clover_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
@@ -868,20 +931,21 @@ void init_rect_hierarc(Rectangle **most_update, Rectangle **clover_rect, GParam 
 		}
 	}
 
-void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam const *const param)
+
+void free_rect_hierarc(Rectangle *rect, Rectangle *clover_rect, GParam const *const param)
 	{
 	if(param->d_N_hierarc_levels == 0)
 		{
 		// just to avoid compiler warning of unused variables
-		(void) most_update;
+		(void) rect;
 		(void) clover_rect;
 		}
 	else
 		{
 		int i;
 		for(i = 0; i < param->d_N_hierarc_levels; i++)
-			free_rect(&(most_update[i]));
-		free(most_update);
+			free_rect(&(rect[i]));
+		free(rect);
 		#ifdef THETA_MODE
 		for(i = 0; i < param->d_N_hierarc_levels; i++)
 			free_rect(&(clover_rect[i]));
@@ -891,6 +955,7 @@ void free_rect_hierarc(Rectangle *most_update, Rectangle *clover_rect, GParam co
 		#endif
 		}
 	}
+
 
 void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 	{
@@ -962,20 +1027,19 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 		}
 	}
 
+
 void free_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 	{
 	free_rect(&(rect_aux->swap_rect));
 
 	if(param->d_N_hierarc_levels > 0)
 		{
-		int i;
-
-		for(i = 0; i < param->d_N_hierarc_levels; i++)
+		for(int i = 0; i < param->d_N_hierarc_levels; i++)
 			free_rect(&(rect_aux->update_rect[i]));
 		free(rect_aux->update_rect);
 
 		#ifdef THETA_MODE
-		for(i = 0; i < param->d_N_hierarc_levels; i++)
+		for(int i = 0; i < param->d_N_hierarc_levels; i++)
 			free_rect(&(rect_aux->clover_rect[i]));
 		free(rect_aux->clover_rect);
 		#endif
@@ -983,7 +1047,7 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 		#ifdef MULTICANONICAL_MODE
 		if(param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0)
 			{
-			for(i = 0; i < param->d_N_hierarc_levels; i++)
+			for(int i = 0; i < param->d_N_hierarc_levels; i++)
 				{
 				for(int j = 0; j < param->d_topo_coolsteps; j++)
 					free_rect(&(rect_aux->cooling_rect[i][j]));
@@ -992,27 +1056,30 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 			free(rect_aux->cooling_rect);
 			}
 
-		for(i = 0; i < param->d_N_hierarc_levels; i++)
+		for(int i = 0; i < param->d_N_hierarc_levels; i++)
 			free_rect(&(rect_aux->topcharge_rect[i]));
 		free(rect_aux->topcharge_rect);
 		#endif
 		}
 	}
 
+
 // distance between sites i and j on a 1D-ring with L sites
 int ring_distance(int const i, int const j, int const L)
 	{
-	int d = abs(i - j);
+	int const d = abs(i - j);
 	return (d < L - d) ? d : L - d;
 	}
+
 
 // distance of site i from the link j -> j+1 on a 1D-ring with L sites
 int link_ring_distance(int const i, int const j, int const L)
 	{
-	int d0 = ring_distance(i, j, L);
-	int d1 = ring_distance(i, periodic_condition(j + 1, L), L);
+	int const d0 = ring_distance(i, j, L);
+	int const d1 = ring_distance(i, periodic_condition(j + 1, L), L);
 	return (d0 < d1) ? d0 : d1;
 	}
+
 
 // square distance between sites i and j on a periodic lattice
 double square_distance(long const i, long const j, GParam const *const param)

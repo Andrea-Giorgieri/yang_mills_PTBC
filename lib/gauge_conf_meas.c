@@ -380,7 +380,7 @@ void action(Gauge_Conf const *const GC,
 		}
 	#endif
 	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : Sw, St, S)
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : Sw, St)
 	#endif
 	for(long s = 0; s < STDIM * (param->d_volume); s++)
 		{

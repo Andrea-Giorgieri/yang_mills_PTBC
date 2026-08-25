@@ -541,36 +541,35 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *co
 int init_gauge_conf_step(Gauge_Conf *GC, GParam const *const param, long step)
 	{
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-	FILE *file;
+	FILE *fp;
 
 	GC->replica_index = 0;
 
-	//gauge conf filename at step
+	// gauge conf filename at step
 	strcpy(name, param->d_conf_file);
 	strcat(name, "_step_");
 	sprintf(aux, "%ld", step);
 	strcat(name, aux);
 
-	//check if conf file exists and initialize conf if it does
-	if((file = fopen(name, "r")))
-		{
-		fclose(file);
-		init_gauge_conf_from_file_with_name(GC, param, name);
-		}
-	else return 0;
+	// if conf file exists, initialize conf; otherwise return 0 (interpreted as no conf found)
+	fp = fopen(name, "r");
+	if(fp == NULL)
+		return 0;
+	fclose(fp);
+	init_gauge_conf_from_file_with_name(GC, param, name);
 
-	//twist filename at step
+	// twist filename at step
 	strcpy(name, param->d_twist_file);
 	strcat(name, "_step_");
 	strcat(name, aux);
 
-	//check if twist file exists and initialize cond if it does
-	if((file = fopen(name, "r")))
-		{
-		fclose(file);
-		init_twist_cond_from_file_with_name(GC, param, name);
-		}
-	else return 0;
+	// if twist file exists, initialize twist; otherwise return 0 (interpreted as no conf found)
+	fp = fopen(name, "r");
+	if(fp == NULL)
+		return 0;
+	fclose(fp);
+	init_twist_cond_from_file_with_name(GC, param, name);
+
 	return 1;
 	}
 
@@ -580,36 +579,35 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const *const param, long step)
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	FILE *fp;
 
-	//gauge conf filename at step
+	// gauge conf filename at step
 	strcpy(name, param->d_conf_file);
 	strcat(name, "_step_");
 	sprintf(aux, "%ld", step);
 	strcat(name, aux);
 
-	//check if conf file exists and read conf if it does
-	if((fp = fopen(name, "r")))
-		{
-		fclose(fp);
-		read_gauge_conf_from_file_with_name(GC, param, name);
-		}
-	else return 0;
+	// if conf file exists, read conf; otherwise return 0 (interpreted as no conf found)
+	fp = fopen(name, "r");
+	if(fp == NULL)
+		return 0;
+	fclose(fp);
+	read_gauge_conf_from_file_with_name(GC, param, name);
 
-	//twist filename at step
+	// twist filename at step
 	strcpy(name, param->d_twist_file);
 	strcat(name, "_step_");
 	strcat(name, aux);
 
-	//check if twist file exists and initialize cond if it does
-	if((fp = fopen(name, "r")))
-		{
-		fclose(fp);
-		int x_mu = 0;
-		int x_nu = 0;
-		int x_obc = param->d_obc_default_pos;
-		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, name);
-		initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
-		}
-	else return 0;
+	// if twist file exists, read twist; otherwise return 0 (interpreted as no conf found)
+	fp = fopen(name, "r");
+	if(fp == NULL)
+		return 0;
+	fclose(fp);
+	int x_mu = 0;
+	int x_nu = 0;
+	int x_obc = param->d_obc_default_pos;
+	read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, name);
+	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
+
 	return 1;
 	}
 

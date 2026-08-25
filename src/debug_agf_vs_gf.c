@@ -18,7 +18,7 @@
 #include"../include/gparam.h"
 #include"../include/random.h"
 
-void real_main(char *in_file)
+void real_main(char const *in_file)
 	{
 	Gauge_Conf *GC;
 	Geometry geo;

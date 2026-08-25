@@ -18,7 +18,7 @@
 #include"../include/random.h"
 #include"../include/timing.h"
 
-void real_main(char *in_file)
+void real_main(char const *in_file)
 	{
 	Gauge_Conf GC;
 	Geometry geo;
@@ -50,32 +50,40 @@ void real_main(char *in_file)
 	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
-	// initialize gauge configurations replica and volume defects
+	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
-	// init meas utils
+	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
 	stop_timer(&(timers.init_timer));
 
-	// Monte Carlo begin
-	if(param.d_sample == 0) // no update is done, only measures are performed on read configuration
+	// if number of MC updates is set to 0, perform measures on initialized configuration
+	if(param.d_sample == 0)
 		{
 		start_timer(&(timers.step_timer));
+		start_timer(&(timers.meas_timer));
 		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
+		start_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
 		}
+
+	// Monte Carlo begin
 	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
-		// update conf
+		// update configuration
+		start_timer(&(timers.update_timer));
 		update(&GC, &geo, &param, &acc_counters);
+		stop_timer(&(timers.update_timer));
 
 		// perform measures
 		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 			{
+			start_timer(&(timers.meas_timer));
 			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
+			stop_timer(&(timers.meas_timer));
 			}
 
 		// save configuration for backup
@@ -85,7 +93,6 @@ void real_main(char *in_file)
 				{
 				// simple
 				write_conf_on_file(&GC, &param);
-
 				// backup copy
 				write_conf_on_file_back(&GC, &param);
 				}
@@ -144,6 +151,8 @@ void print_template_input(void)
 	print_template_twist_parameters(fp);
 	print_template_simul_parameters(fp);
 	print_template_adaptive_gradflow_parameters(fp);
+	print_template_gradflow_parameters(fp);
+	print_template_cooling_parameters(fp);
 	print_template_output_parameters(fp);
 	fclose(fp);
 	}

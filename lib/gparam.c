@@ -212,7 +212,7 @@ void set_defaults(GParam *const param)
 	// walltime
 	param->d_walltime = 24.0;
 
-	// measures
+	// measurements
 	param->d_plaquette_meas = 1;
 	param->d_clover_energy_meas = 0;
 	param->d_energy_density_meas = 0;
@@ -1145,7 +1145,7 @@ void init_derived_constants(GParam *const param)
 	if(param->d_obc_dir != -1)
 		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
 
-	// number of measures during gradient-flow evolution
+	// number of measurements during gradient-flow evolution
 	if(param->d_gf_meas_each > 0)
 		param->d_gf_num_meas = (int) (param->d_ngfsteps / param->d_gf_meas_each);
 	else
@@ -1167,7 +1167,7 @@ void edit_params_meas_only(GParam *const param)
 	// start from saved conf.
 	param->d_start = 2;
 
-	// not to overwrite files of runs with online measures
+	// not to overwrite files of runs with online measurements
 	char suffix[STD_STRING_LENGTH];
 	sprintf(suffix, "%s", "");
 	if(param->d_agf_num_meas > 0)
@@ -1385,27 +1385,6 @@ void print_metro_parameters(FILE *fp, GParam const *const param, double acc)
 
 // print simulation parameters
 
-void print_parameters_local(GParam const *const param, Time_Utils const *const timers)
-	{
-	FILE *fp = fopen(param->d_log_file, "w");
-	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
-
-	fprintf(fp, "+-----------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_local |\n");
-	fprintf(fp, "+-----------------------------------------+\n\n");
-
-	print_configuration_parameters(fp);
-	#ifdef MULTICANONICAL_MODE
-	print_multicanonic_parameters(fp, param);
-	#endif
-	print_simul_parameters(fp, param);
-	print_smoothing_parameters(fp, param);
-
-	print_time_utils(fp, timers);
-
-	fclose(fp);
-	}
-
 void print_parameters_local_agf(GParam const *const param, Time_Utils const *const timers)
 	{
 	FILE *fp = fopen(param->d_log_file, "w");
@@ -1439,50 +1418,6 @@ void print_parameters_local_pt_multicanonic(GParam const *const param, Time_Util
 	print_configuration_parameters(fp);
 	print_pt_parameters(fp, param);
 	print_multicanonic_parameters(fp, param);
-	print_simul_parameters(fp, param);
-	print_smoothing_parameters(fp, param);
-
-	print_time_utils(fp, timers);
-
-	fclose(fp);
-	}
-
-void print_parameters_local_pt(GParam const *const param, Time_Utils const *const timers)
-	{
-	FILE *fp = fopen(param->d_log_file, "w");
-	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
-
-	fprintf(fp, "+--------------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_local_pt |\n");
-	fprintf(fp, "+--------------------------------------------+\n\n");
-
-	print_configuration_parameters(fp);
-	print_pt_parameters(fp, param);
-	#ifdef MULTICANONICAL_MODE
-	print_multicanonic_parameters(fp, param);
-	#endif
-	print_simul_parameters(fp, param);
-	print_smoothing_parameters(fp, param);
-
-	print_time_utils(fp, timers);
-
-	fclose(fp);
-	}
-
-void print_parameters_local_pt_gf(GParam const *const param, Time_Utils const *const timers)
-	{
-	FILE *fp = fopen(param->d_log_file, "w");
-	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
-
-	fprintf(fp, "+-----------------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_local_pt_gf |\n");
-	fprintf(fp, "+-----------------------------------------------+\n\n");
-
-	print_configuration_parameters(fp);
-	print_pt_parameters(fp, param);
-	#ifdef MULTICANONICAL_MODE
-	print_multicanonic_parameters(fp, param);
-	#endif
 	print_simul_parameters(fp, param);
 	print_smoothing_parameters(fp, param);
 
@@ -1616,74 +1551,14 @@ void print_parameters_polycorr(GParam *param, Time_Utils const *const timers)
 	fclose(fp);
 	}
 
-void print_parameters_t0(GParam *param, Time_Utils const *const timers)
-	{
-	FILE *fp = fopen(param->d_log_file, "w");
-	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
-
-	fprintf(fp, "+--------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_t0 |\n");
-	fprintf(fp, "+--------------------------------------+\n\n");
-
-	print_configuration_parameters(fp);
-
-	fprintf(fp, "number of colors: %d\n", NCOLOR);
-	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-
-	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(int i = 1; i < STDIM; i++)
-		{
-		fprintf(fp, "x%d", param->d_size[i]);
-		}
-	fprintf(fp, "\n\n");
-	fprintf(fp, "randseed: %u\n", param->d_randseed);
-	fprintf(fp, "\n");
-	fprintf(fp, "gfstep:	%lf\n", param->d_gfstep);
-	fprintf(fp, "\n");
-
-	print_time_utils(fp, timers);
-
-	fclose(fp);
-	}
-
-void print_parameters_gf(GParam *param, Time_Utils const *const timers)
+void print_parameters_conf_measures(GParam *param, Time_Utils const *const timers)
 	{
 	FILE *fp = fopen(param->d_log_file, "w");
 	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
 
 	fprintf(fp, "+-------------------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_gradient_flow |\n");
+	fprintf(fp, "| Simulation details for yang_mills_conf_measures |\n");
 	fprintf(fp, "+-------------------------------------------------+\n\n");
-
-	print_configuration_parameters(fp);
-
-	fprintf(fp, "number of colors: %d\n", NCOLOR);
-	fprintf(fp, "spacetime dimensionality: %d\n\n", STDIM);
-
-	fprintf(fp, "lattice: %d", param->d_size[0]);
-	for(int i = 1; i < STDIM; i++)
-		{
-		fprintf(fp, "x%d", param->d_size[i]);
-		}
-	fprintf(fp, "\n\n");
-	fprintf(fp, "randseed: %u\n", param->d_randseed);
-	fprintf(fp, "\n");
-
-	print_smoothing_parameters(fp, param);
-
-	print_time_utils(fp, timers);
-
-	fclose(fp);
-	}
-
-void print_parameters_agf(GParam *param, Time_Utils const *const timers)
-	{
-	FILE *fp = fopen(param->d_log_file, "w");
-	REQUIRE(fp != NULL, "failed to open log file %s", param->d_log_file);
-
-	fprintf(fp, "+----------------------------------------------------------+\n");
-	fprintf(fp, "| Simulation details for yang_mills_adaptive_gradient_flow |\n");
-	fprintf(fp, "+----------------------------------------------------------+\n\n");
 
 	print_configuration_parameters(fp);
 
@@ -1839,7 +1714,7 @@ void print_parameters_tuning_pt_mc(GParam const *const param, Time_Utils const *
 
 void print_template_volume_parameters(FILE *fp)
 	{
-	fprintf(fp, "size 12 4 4 12  # Nt Nx Ny Nz\n");
+	fprintf(fp, "size 12 4 4 12  # lattice sizes along space-time directions 0 (time), 1, ...\n");
 	fprintf(fp, "\n");
 	}
 
@@ -1851,19 +1726,19 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "theta  0.5\n");
 	#endif
 	fprintf(fp, "\n");
-	fprintf(fp, "sample     10\n");
-	fprintf(fp, "thermal    0\n");
-	fprintf(fp, "overrelax  5\n");
-	fprintf(fp, "measevery  1\n");
+	fprintf(fp, "sample     10 # total number of Monte Carlo steps\n");
+	fprintf(fp, "thermal     0 # number of thermalization steps before measurements\n");
+	fprintf(fp, "overrelax   5 # number of overrelaxation sweeps for heatbath sweep (the set of all these sweeps counts as 1 MC step)\n");
+	fprintf(fp, "measevery   1 # number of MC steps between measurements\n");
 	fprintf(fp, "\n");
 
 	fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
-	fprintf(fp, "saveconf_back_every      5  # if 0 does not save, else save backup configurations every ... updates\n");
-	fprintf(fp, "saveconf_analysis_every  5  # if 0 does not save, else save configurations for analysis every ... updates\n");
+	fprintf(fp, "saveconf_back_every      5  # if 0, do not save; otherwise, save backup configurations every this many MC steps\n");
+	fprintf(fp, "saveconf_analysis_every  5  # if 0, do not save; otherwise, save configurations for analysis every this many MC steps\n");
 	fprintf(fp, "\n");
 
-	fprintf(fp, "randseed 0    # (0=time)\n");
-	fprintf(fp, "walltime 24   # wall time in hours\n");
+	fprintf(fp, "randseed 0    # RNG seed (0=time)\n");
+	fprintf(fp, "walltime 24   # execution wall time in hours\n");
 	fprintf(fp, "\n");
 
 	fprintf(fp, "# Observables to measure\n");
@@ -1886,12 +1761,12 @@ void print_template_simul_parameters(FILE *fp)
 void print_template_pt_parameters(FILE *fp)
 	{
 	fprintf(fp, "# Parallel tempering parameters\n");
-	fprintf(fp, "defect_dir    0             # choose direction of defect boundary: 0->t, 1->x, 2->y, 3->z\n");
-	fprintf(fp, "defect_size   2 2 2         # size of the defect (order: y-size z-size t-size)\n");
-	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replica ____ boundary conditions coefficients\n");
+	fprintf(fp, "defect_dir    0             # space-time direction orthogonal to the topological defect\n");
+	fprintf(fp, "defect_size   2 2 2         # sizes of the defect along its dimensions (skipping defect_dir)\n");
+	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replica, followed by corresponding boundary conditions coefficients\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "# Hierarchical update parameters\n");
-	fprintf(fp, "# Order: num of hierarc levels ____ extension of rectangles ____ num of sweeps per rectangle\n");
+	fprintf(fp, "# number of hierarchical levels, extensions of rectangles, sweeps per rectangle\n");
 	fprintf(fp, "hierarc_upd 2    2 1    1 1\n");
 	fprintf(fp, "\n");
 	}
@@ -1899,41 +1774,41 @@ void print_template_pt_parameters(FILE *fp)
 void print_template_twist_parameters(FILE *fp)
 	{
 	fprintf(fp, "# Twist parameters\n");
-	fprintf(fp, "k_twist 0 0 0 1 0 0 # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...\n");
+	fprintf(fp, "k_twist 0 0 0 1 0 0    # twist parameter on the plane (0,1), (0,2), ..., (0,STDIM-1), (1, 2), ...\n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_adaptive_gradflow_parameters(FILE *fp)
 	{
-	fprintf(fp, "# For adaptive gradient flow evolution\n");
-	fprintf(fp, "agf_length       10    # total integration time for adaptive gradient flow\n");
-	fprintf(fp, "agf_step       0.01    # initial integration step for adaptive gradient flow\n");
-	fprintf(fp, "agf_meas_each     1    # time interval between measures during adaptive gradient flow\n");
-	fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adaptive gradient flow\n");
-	fprintf(fp, "agf_time_bin      0    # error threshold on time of measures for adaptive gradient flow\n");
+	fprintf(fp, "# For gradient flow evolution with adaptive-step integrator\n");
+	fprintf(fp, "agf_length       10    # total integration time\n");
+	fprintf(fp, "agf_step       0.01    # initial integration step\n");
+	fprintf(fp, "agf_meas_each     1    # time interval between measurements\n");
+	fprintf(fp, "agf_delta     0.001    # error threshold on gauge links for adapting the integration step\n");
+	fprintf(fp, "agf_time_bin      0    # error threshold on time at which measure are taken\n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_gradflow_parameters(FILE *fp)
 	{
-	fprintf(fp, "# For gradient flow evolution\n");
-	fprintf(fp, "gfstep      0.01    # integration step for gradient flow\n");
-	fprintf(fp, "num_gfsteps  100    # number of integration steps for gradient flow\n");
-	fprintf(fp, "gf_meas_each   5    # compute observables every <gfstep_each> integration steps during the gradient flow\n");
+	fprintf(fp, "# For gradient flow evolution with fixed-step integrator\n");
+	fprintf(fp, "gfstep      0.01    # integration step\n");
+	fprintf(fp, "num_gfsteps  100    # total number of integration steps\n");
+	fprintf(fp, "gf_meas_each   5    # number of integration steps between measurements\n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_cooling_parameters(FILE *fp)
 	{
 	fprintf(fp, "# For cooling\n");
-	fprintf(fp, "coolsteps             3  # number of cooling steps to be used\n");
-	fprintf(fp, "coolrepeat            5  # number of times 'coolsteps' are repeated\n");
+	fprintf(fp, "coolsteps             3  # number of cooling sweeps between measurements\n");
+	fprintf(fp, "coolrepeat            5  # number of measurements during cooling\n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_metro_parameters(FILE *fp)
 	{
-	fprintf(fp, "epsilon_metro    0.25  #distance from the identity of the random matrix for metropolis\n");
+	fprintf(fp, "epsilon_metro    0.25  # distance from the identity of the random matrix for metropolis\n");
 	fprintf(fp, "\n");
 	}
 
@@ -1953,17 +1828,17 @@ void print_template_multicanonic_parameters(FILE *fp)
 void print_template_multicanonic_tuning_parameters(FILE *fp)
 	{
 	fprintf(fp, "# Multicanonic tuning parameters\n");
-	fprintf(fp, "topo_tuning_thr           0.05 # Tuning ends if topo potential changes less than this threshold\n");
-	fprintf(fp, "topo_tuning_stp           0.1  # Maximum variation of topo_potential at each point every step \n");
-	fprintf(fp, "topo_tuning_save_every    1    # Save topo_potential at each point every step \n");
-	fprintf(fp, "topo_tuning_even          1    # Force topo_potential to be even during tuning (0 = False, 1 = True) \n");
+	fprintf(fp, "topo_tuning_thr           0.05 # tuning ends if topo potential changes less than this threshold\n");
+	fprintf(fp, "topo_tuning_stp           0.1  # maximum variation of topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_save_every    1    # save topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_even          1    # force topo_potential to be even during tuning (0 = False, 1 = True) \n");
 	fprintf(fp, "\n");
 	}
 
 void print_template_multilevel_parameters(FILE *fp)
 	{
 	fprintf(fp, "# For multilevel\n");
-	fprintf(fp, "multihit         10  # number of multihit step\n");
+	fprintf(fp, "multihit         10  # number of multihit steps\n");
 	fprintf(fp, "ml_step           2  # timeslices for multilevel (from largest to smallest)\n");
 	fprintf(fp, "ml_upd           10  # number of updates for various levels\n");
 	fprintf(fp, "ml_file      ml.dat  # multilevel output file\n");

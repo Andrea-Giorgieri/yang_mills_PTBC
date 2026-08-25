@@ -22,7 +22,7 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const *const geo, GParam cons
 double action_with_defect(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int a, int b, long r, int i, int j);
 
 
-void real_main(char *in_file)
+void real_main(char const *in_file)
 	{
 	long const r_fixed = 0;
 	double complex z, Z_a, Z_b;

@@ -51,13 +51,14 @@ void real_main(char *in_file, long step, long stop_index)
 	init_meas_utils(&meas_aux, &param, 0);
 
 	// find and init first conf
-	while(init_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
+	while(step < stop_index && init_gauge_conf_step(&GC, &param, step) == 0)
+		step++;
 
-	REQUIRE(step <= stop_index, "no configuration found up to update index %ld", stop_index);
+	REQUIRE(step < stop_index, "no configuration found before update index %ld", stop_index);
 	stop_timer(&(timers.init_timer));
 
 	// perform measures and load next conf
-	while(step <= stop_index)
+	while(step < stop_index)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -65,7 +66,9 @@ void real_main(char *in_file, long step, long stop_index)
 		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
 		stop_timer(&(timers.meas_timer));
 
-		while(read_gauge_conf_step(&GC, &param, step++) == 0 && step <= stop_index);
+		do
+			step++;
+		while(step < stop_index && read_gauge_conf_step(&GC, &param, step) == 0);
 
 		stop_timer(&(timers.step_timer));
 		if(wall_time_check(&timers) == 1) break;
@@ -83,7 +86,7 @@ void real_main(char *in_file, long step, long stop_index)
 	free_geometry(&geo, &param);
 
 	// print simulation details
-	print_parameters_agf(&param, &timers);
+	print_parameters_conf_measures(&param, &timers);
 	}
 
 void print_template_input(void)
@@ -113,7 +116,7 @@ int main(int argc, char **argv)
 		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 
-		printf("Perform measures on saved configurations in a given range of indices generated with a given input file\n");
+		printf("Perform measurements on saved configurations with index in a range [start, stop) and generated with a given input file\n");
 		printf("Usage: %s input_file start_index stop_index\n\n", argv[0]);
 
 		print_compilation_details();
@@ -134,7 +137,7 @@ int main(int argc, char **argv)
 
 	REQUIRE(start_index >= 0, "start_index must be non-negative");
 	REQUIRE(stop_index >= 0, "stop_index must be non-negative");
-	REQUIRE(stop_index >= start_index, "stop_index must be >= start_index");
+	REQUIRE(stop_index > start_index, "stop_index must be larger than start_index");
 
 	real_main(argv[1], start_index, stop_index);
 

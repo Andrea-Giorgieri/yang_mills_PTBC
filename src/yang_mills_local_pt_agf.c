@@ -18,7 +18,7 @@
 #include"../include/random.h"
 #include"../include/timing.h"
 
-void real_main(char *in_file)
+void real_main(char const *in_file)
 	{
 	Gauge_Conf *GC;
 	Geometry geo;
@@ -58,19 +58,33 @@ void real_main(char *in_file)
 	// initialize rectangles for hierarchical update and swap
 	init_rect_utils(&rect_aux, &param);
 
-	// init swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
+	// initialize swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
 	init_acc_utils(&acc_counters, &param);
 
-	// init auxiliary arrays and lattices for measurements, open data files
+	// initialize auxiliary arrays and lattices for measurements, open data files
 	init_meas_utils_replica(&meas_aux, &param);
 
-	// initialize gauge configurations replica and volume defects
+	// initialize gauge configuration of all replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 
 	stop_timer(&(timers.init_timer));
 
+	// if number of MC updates is set to 0, perform measures on initialized configuration
+	if(param.d_sample == 0)
+		{
+		start_timer(&(timers.step_timer));
+		start_timer(&(timers.meas_timer));
+		perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
+		#ifdef REPLICA_MEAS_MODE
+		for(int i = 1; i < param.d_N_replica_pt; i++)
+			perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
+		#endif
+		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.step_timer));
+		}
+
 	// Monte Carlo begin
-	for(int count=0; count < param.d_sample; count++)
+	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
@@ -80,23 +94,22 @@ void real_main(char *in_file)
 		stop_timer(&(timers.update_timer));
 		print_conf_labels(swaptrackfilep, GC, &param);
 
-		// perform measures only on homogeneous configuration
+		// perform measures only on physical replica, unless REPLICA_MEAS_MODE is enabled
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			start_timer(&(timers.meas_timer));
 			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
-
 			#ifdef REPLICA_MEAS_MODE
-			for (int i=1; i<param.d_N_replica_pt; i++)
+			for(int i = 1; i < param.d_N_replica_pt; i++)
 				perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
 			#endif
 			stop_timer(&(timers.meas_timer));
 			}
 
-		// save configurations for backup
-		if(param.d_saveconf_back_every!=0)
+		// save configuration of all replica for backup
+		if(param.d_saveconf_back_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_back_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_replica_on_file(GC, &param);
@@ -105,10 +118,10 @@ void real_main(char *in_file)
 				}
 			}
 
-		// save homogeneous configuration for offline analysis
-		if(param.d_saveconf_analysis_every!=0)
+		// save configuration of physical replica for offline analysis
+		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(GC[0].update_index % param.d_saveconf_analysis_every == 0 )
+			if(GC[0].update_index % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
 				strcat(name, "_step_");
@@ -123,17 +136,17 @@ void real_main(char *in_file)
 				}
 			}
 		stop_timer(&(timers.step_timer));
-		if (wall_time_check(&timers) == 1) break;
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
 
 	// close swap tracking file
-	if (param.d_N_replica_pt > 1) fclose(swaptrackfilep);
+	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save configurations
-	if (param.d_saveconf_back_every!=0) write_replica_on_file(GC, &param);
+	if(param.d_saveconf_back_every != 0) write_replica_on_file(GC, &param);
 
 	// print simulation details
 	print_parameters_local_pt_agf(&param, &timers);
@@ -174,6 +187,8 @@ void print_template_input(void)
 	#endif
 	print_template_simul_parameters(fp);
 	print_template_adaptive_gradflow_parameters(fp);
+	print_template_gradflow_parameters(fp);
+	print_template_cooling_parameters(fp);
 	print_template_output_parameters(fp);
 
 	fclose(fp);

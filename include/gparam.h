@@ -233,14 +233,7 @@ void print_multilevel_parameters(FILE *fp, GParam const *const param);
 
 void print_metro_parameters(FILE *fp, GParam const *const param, double acc);
 
-// print simulation parameters
-void print_parameters_local(GParam const *const param, Time_Utils const *const timers);
-
 void print_parameters_local_agf(GParam const *const param, Time_Utils const *const timers);
-
-void print_parameters_local_pt(GParam const *const param, Time_Utils const *const timers);
-
-void print_parameters_local_pt_gf(GParam const *const param, Time_Utils const *const timers);
 
 void print_parameters_local_pt_agf(GParam const *const param, Time_Utils const *const timers);
 
@@ -254,11 +247,7 @@ void print_parameters_polycorr_long(GParam *param, Time_Utils const *const timer
 
 void print_parameters_polycorr(GParam *param, Time_Utils const *const timers);
 
-void print_parameters_t0(GParam *param, Time_Utils const *const timers);
-
-void print_parameters_gf(GParam *param, Time_Utils const *const timers);
-
-void print_parameters_agf(GParam *param, Time_Utils const *const timers);
+void print_parameters_conf_measures(GParam *param, Time_Utils const *const timers);
 
 void print_parameters_tracedef(GParam const *const param, Time_Utils const *const timers, double acc);
 

@@ -1763,7 +1763,7 @@ void print_template_pt_parameters(FILE *fp)
 	fprintf(fp, "# Parallel tempering parameters\n");
 	fprintf(fp, "defect_dir    0             # space-time direction orthogonal to the topological defect\n");
 	fprintf(fp, "defect_size   2 2 2         # sizes of the defect along its dimensions (skipping defect_dir)\n");
-	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replica, followed by corresponding boundary conditions coefficients\n");
+	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replicas, followed by corresponding boundary conditions coefficients\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "# Hierarchical update parameters\n");
 	fprintf(fp, "# number of hierarchical levels, extensions of rectangles, sweeps per rectangle\n");

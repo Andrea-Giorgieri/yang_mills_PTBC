@@ -8,23 +8,17 @@ bin_PROGRAMS = conf_check \
             debug_twist \
             debug_agf_vs_gf \
             debug_agf_vs_delta \
-            yang_mills_local \
             yang_mills_local_agf \
+            yang_mills_local_pt_agf \
+            yang_mills_conf_measures \
+            yang_mills_tuning_pt_mc \
             yang_mills_polycorr \
             yang_mills_polycorr_long \
             yang_mills_polycorradj \
-            yang_mills_t0 \
             yang_mills_tube_conn \
             yang_mills_tube_conn_long \
             yang_mills_tube_disc \
-            yang_mills_tracedef \
-            yang_mills_local_pt \
-            yang_mills_local_pt_gf \
-            yang_mills_local_pt_agf \
-            yang_mills_conf_measures \
-            yang_mills_gradient_flow \
-            yang_mills_gradflow_all_conf \
-            yang_mills_tuning_pt_mc
+            yang_mills_tracedef
 
 timing = ./include/timing.h \
         ./lib/timing.c
@@ -185,22 +179,6 @@ debug_twist_SOURCES=./src/debug_twist.c \
                           $(tens_prod) \
                           $(u1)
 
-yang_mills_local_SOURCES=./src/yang_mills_local.c \
-                          $(timing) \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
 yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
                           $(timing) \
                           $(align) \
@@ -264,22 +242,6 @@ yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
                                 $(sun) \
                                 $(tens_prod) \
                                 $(u1)
-
-yang_mills_t0_SOURCES=./src/yang_mills_t0.c \
-                       $(timing) \
-                       $(align) \
-                       $(dSFMT)  \
-                       $(endian) \
-                       $(funcpoint) \
-                       $(gauge_conf) \
-                       $(geometry) \
-                       $(gparam) \
-                       ./include/macro.h \
-                       $(random) \
-                       $(su2) \
-                       $(sun) \
-                       $(tens_prod) \
-                       $(u1)
 
 yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
                              $(timing) \
@@ -345,38 +307,6 @@ yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(tens_prod) \
                             $(u1)
 
-yang_mills_local_pt_SOURCES=./src/yang_mills_local_pt.c \
-                          $(timing) \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
-yang_mills_local_pt_gf_SOURCES=./src/yang_mills_local_pt_gf.c \
-                          $(timing) \
-                          $(align) \
-                          $(dSFMT)  \
-                          $(endian) \
-                          $(funcpoint) \
-                          $(gauge_conf) \
-                          $(geometry) \
-                          $(gparam) \
-                          ./include/macro.h \
-                          $(random) \
-                          $(su2) \
-                          $(sun) \
-                          $(tens_prod) \
-                          $(u1)
-
 yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(timing) \
                           $(align) \
@@ -393,39 +323,7 @@ yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(tens_prod) \
                           $(u1)
 
-yang_mills_gradient_flow_SOURCES=./src/yang_mills_gradient_flow.c \
-                       $(timing) \
-                       $(align) \
-                       $(dSFMT)  \
-                       $(endian) \
-                       $(funcpoint) \
-                       $(gauge_conf) \
-                       $(geometry) \
-                       $(gparam) \
-                       ./include/macro.h \
-                       $(random) \
-                       $(su2) \
-                       $(sun) \
-                       $(tens_prod) \
-                       $(u1)
-
 yang_mills_conf_measures_SOURCES=./src/yang_mills_conf_measures.c \
-                       $(timing) \
-                       $(align) \
-                       $(dSFMT)  \
-                       $(endian) \
-                       $(funcpoint) \
-                       $(gauge_conf) \
-                       $(geometry) \
-                       $(gparam) \
-                       ./include/macro.h \
-                       $(random) \
-                       $(su2) \
-                       $(sun) \
-                       $(tens_prod) \
-                       $(u1)
-
-yang_mills_gradflow_all_conf_SOURCES=./src/yang_mills_gradflow_all_conf.c \
                        $(timing) \
                        $(align) \
                        $(dSFMT)  \
@@ -489,6 +387,4 @@ yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
                           $(tens_prod) \
                           $(u1)
 
-AM_CFLAGS = -std=c99 -O3 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
-
-CLEANFILES = dati.dat chi_prime_cool.dat log.dat dati.log conf.dat* twist.dat* ml.dat template_input.example swap_acc.dat* swap_track.dat* multicanonic_acc.dat* topo_tcorr_cool.dat*
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@

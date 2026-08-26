@@ -1,0 +1,15 @@
+*.o
+*.a
+*.so
+*.d
+*.dirstamp
+.deps/
+autom4te.cache/
+config.log
+config.status
+config.cache
+config.h
+config.h.in
+Makefile
+Makefile.in
+

@@ -5,7 +5,7 @@ AC_CONFIG_SRCDIR([./include/macro.h])
 AC_CONFIG_HEADERS([config.h])
 
 
-# overwrite default values
+# Overwrite default compiler flags if not set by the user
 if test x${ac_cv_env_CFLAGS_set} != xset; then
   CFLAGS=''
 fi
@@ -30,7 +30,7 @@ AC_CHECK_HEADERS([math.h], [], [AC_MSG_ERROR([Required header math.h not found.]
 AC_CHECK_HEADERS([openssl/md5.h], [has_md5=yes],
      [AC_MSG_WARN([
    *****
-   openssl/md5.h not found. It will not be possible to asign an hash to a configuration.
+   openssl/md5.h not found. It will not be possible to assign an hash to a configuration.
    *****
      ])])
 
@@ -44,7 +44,7 @@ AC_CHECK_HEADERS([time.h], [], [AC_MSG_ERROR([Required header time.h not found.]
 AC_SEARCH_LIBS([MD5_Init], [crypto], [has_crypto=yes],
      [AC_MSG_WARN([
    *****
-   crypto library not found. It will not be possible to asign an hash to a configuration.
+   crypto library not found. It will not be possible to assign an hash to a configuration.
    *****
      ])])
 
@@ -58,31 +58,35 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 
 
-
-### ENABLING & CO
+### ENABLE OPTIONS
 
 AC_ARG_ENABLE([use-openmp],
-              [  --enable-use-openmp     to enable the use of openmp],
+              [AS_HELP_STRING([--enable-use-openmp],
+                              [to enable the use of OpenMP])],
               [use_openmp=yes],
               [use_openmp=no])
 
 AC_ARG_ENABLE([use-theta],
-              [  --enable-use-theta      to enable the use of an imaginary theta term],
+              [AS_HELP_STRING([--enable-use-theta],
+                              [to enable the use of an imaginary theta term])],
               [use_theta=yes],
               [use_theta=no])
 
 AC_ARG_ENABLE([use-multicanonical],
-              [  --enable-use-multicanonical      to enable the use of the multicanonical algorithm],
+              [AS_HELP_STRING([--enable-use-multicanonical],
+                              [to enable the use of the multicanonical algorithm])],
               [use_multicanonical=yes],
               [use_multicanonical=no])
 
 AC_ARG_ENABLE([meas-replica],
-              [  --enable-meas-replica      to enable the measurement of observables on parallel tempering replicas],
+              [AS_HELP_STRING([--enable-meas-replica],
+                              [to enable the measurement of observables on parallel tempering replicas])],
               [meas_replica=yes],
               [meas_replica=no])
 
 AC_ARG_ENABLE([debug],
-              [  --enable-debug      to enable debug mode],
+              [AS_HELP_STRING([--enable-debug],
+                              [to enable debug mode])],
               [debug=yes],
               [debug=no])
 
@@ -100,7 +104,7 @@ fi
 
 
 
-### VARIABLES
+### CONFIGURATION VARIABLES
 
 AC_ARG_VAR(N_c, the number of colors (default 2))
 
@@ -112,14 +116,14 @@ AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
 
 
-### DEFINE & CO
+### DEFINITIONS
 
 if test x${has_md5}x${has_crypto} = xyesxyes; then
   AC_DEFINE(HASH_MODE,, [Activate the computation of the hash function of the configuration])
 fi
 
 if test x${use_openmp} = xyes; then
-  AC_DEFINE(OPENMP_MODE,, [Enable the use of openmp])
+  AC_DEFINE(OPENMP_MODE,, [Enable the use of OpenMP])
 fi
 
 if test x${use_theta} = xyes; then
@@ -188,17 +192,6 @@ if test x${ST_dim} = x; then
 else
   AC_DEFINE_UNQUOTED(STDIM, ${ST_dim}, [Spacetime dimensionality])
 fi
-
-if test x${N_c} = x1; then
-  if test x${ST_dim} = x2; then
-    AC_DEFINE(TOPCHARGE,, [Enable the calculation of topological quantities])
-  fi
-else
-  if test x${ST_dim} = x4; then
-    AC_DEFINE(TOPCHARGE,, [Enable the calculation of topological quantities])
-  fi
-fi
-
 
 
 ### CONDITIONALS

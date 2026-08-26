@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Enable debug mode */
+#undef DEBUG
+
 /* Activate the computation of the hash function of the configuration */
 #undef HASH_MODE
 
@@ -60,7 +63,7 @@
 /* Number of threads to be used in OpenMP */
 #undef NTHREADS
 
-/* Enable the use of openmp */
+/* Enable the use of OpenMP */
 #undef OPENMP_MODE
 
 /* Name of package */
@@ -97,9 +100,6 @@
 
 /* Enable the use of an imaginary theta term */
 #undef THETA_MODE
-
-/* Enable the calculation of topological quantities */
-#undef TOPCHARGE
 
 /* Version number of package */
 #undef VERSION

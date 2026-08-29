@@ -1,19 +1,19 @@
 #ifndef GAUGE_CONF_UPDATE_MULTICANONIC_C
 #define GAUGE_CONF_UPDATE_MULTICANONIC_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
-#include<math.h>
+#include <math.h>
+#include <stdlib.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
-#include<stdlib.h>
 
-#include"../include/memalign.h"
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
+#include "../include/gauge_group.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
+#include "../include/random.h"
 
 // initialize stored topcharge and lattice_copy_cold
 void init_multicanonic_gauge_conf(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
@@ -279,7 +279,7 @@ double compute_topo_potential(int const a, double x, GParam const *const param)
 
 
 // TODO: remove, debug only
-void compute_topo_potential_debug(char *filename, double x_min, double x_max, double x_stp, GParam const *const param)
+void compute_topo_potential_debug(char *filename, double const x_min, double const x_max, double const x_stp, GParam const *const param)
 	{
 	FILE *fp = fopen(filename, "w");
 	REQUIRE(fp != NULL, "failed to open the file %s", filename);

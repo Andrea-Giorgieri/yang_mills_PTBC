@@ -1,36 +1,22 @@
 #ifndef KP_TEST_C
 #define KP_TEST_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#ifdef OPENMP_MODE
-#include<omp.h>
-#endif
+#include "../include/gauge_group.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
-
-void real_main(char *in_file)
+void real_main(char const *in_file)
 	{
 	GAUGE_GROUP link, staple, matrix, link_aux;
 	GParam param;
 	Time_Utils timers;
-
-	double reE, imE, reEU, imEU, reEUb, imEUb;
-
-	// to disable nested parallelism
-	#ifdef OPENMP_MODE
-	// omp_set_nested(0); // deprecated
-	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
-	#endif
 
 	// read input file
 	readinput(in_file, &param);
@@ -73,15 +59,15 @@ void real_main(char *in_file)
 
 		// plaquette with link
 		times(&matrix, &link, &staple);
-		reE = retr(&matrix);
-		imE = imtr(&matrix);
+		double const reE = retr(&matrix);
+		double const imE = imtr(&matrix);
 
 		// plaquette with unitarized link
 		equal(&link_aux, &link);
 		unitarize(&link_aux);
 		times(&matrix, &link_aux, &staple);
-		reEU = retr(&matrix);
-		imEU = imtr(&matrix);
+		double const reEU = retr(&matrix);
+		double const imEU = imtr(&matrix);
 
 		// plaquette with badly-unitarized link
 		equal(&link_aux, &link);
@@ -91,8 +77,8 @@ void real_main(char *in_file)
 		unitarize(&link_aux);
 		#endif
 		times(&matrix, &link_aux, &staple);
-		reEUb = retr(&matrix);
-		imEUb = imtr(&matrix);
+		double const reEUb = retr(&matrix);
+		double const imEUb = imtr(&matrix);
 
 		// unitarize link?
 		//unitarize_SuN(&link_aux);

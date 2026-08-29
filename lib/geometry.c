@@ -1,14 +1,16 @@
 #ifndef GEOMETRY_C
 #define GEOMETRY_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/geometry.h"
 
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdlib.h>
+#ifdef OPENMP_MODE
+#include <omp.h>
+#endif
 
-#include"../include/memalign.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
 
 #if STDIM == 4
 
@@ -47,24 +49,9 @@ const int g_indep_perm_dir[4][3] = {
 #endif
 
 
-// single index 4d = even/odd lexicographic index 4d
-// single index 3d = even/odd lexicographic index 3d
-void init_indexing_lexeo(void)
-	{
-	cart_to_si = &cart_to_lexeo;
-	si_to_cart = &lexeo_to_cart;
-	lex_to_si = &lex_to_lexeo;
-	si_to_lex = &lexeo_to_lex;
-	sisp_and_t_to_si_compute = &lexeosp_and_t_to_lexeo;
-	si_to_sisp_and_t_compute = &lexeo_to_lexeosp_and_t;
-	si_to_sisp_and_mu_compute = &lexeo_to_lexeosp_and_mu;
+// general functions
 
-	// for rectangles
-	cart_to_si_rect = &cart_to_lexeo_rect;
-	}
-
-
-// initialize geometry
+// initialize geometry struc
 void init_geometry(Geometry *geo, GParam const *const param)
 	{
 	// allocate memory
@@ -140,7 +127,7 @@ void init_geometry(Geometry *geo, GParam const *const param)
 	}
 
 
-// free memory
+// free geometry struc
 void free_geometry(Geometry *geo, GParam const *const param)
 	{
 	for(long r = 0; r < param->d_volume; r++)
@@ -167,18 +154,7 @@ void free_geometry(Geometry *geo, GParam const *const param)
 	}
 
 
-long nnp(Geometry const *const geo, long r, int i);
-
-
-long nnm(Geometry const *const geo, long r, int i);
-
-
-long sisp_and_t_to_si(Geometry const *const geo, long sisp, int t);
-
-
-void si_to_sisp_and_t(long *sisp, int *t, Geometry const *const geo, long si);
-
-
+// test consistency of geometry functions
 void test_geometry(Geometry const *const geo, GParam const *const param)
 	{
 	int cart[STDIM], cartsp[STDIM - 1], t;
@@ -243,40 +219,7 @@ void test_geometry(Geometry const *const geo, GParam const *const param)
 	}
 
 
-//plane i-j -> single index, for twist factors
-int dirs_to_si(int const i, int const j)
-	{
-	#ifdef DEBUG
-	ASSERT(i != j, "directions cannot be equal (%d)", i);
-	#endif
-	if(i < j) return i * (2 * STDIM - 3 - i) / 2 + j - 1;                 //clockwise
-	return j * (2 * STDIM - 3 - j) / 2 + i - 1 + STDIM * (STDIM - 1) / 2; //anticlockwise
-	}
-
-
-// check if lexeo index r is on the defect
-int is_on_defect(long const r, GParam const *const param)
-	{
-	int cartcoord[STDIM];
-	si_to_cart(cartcoord, r, param);
-	for(int i = 0; i < STDIM; i++)
-		{
-		if(i == param->d_defect_dir)
-			{
-			if(cartcoord[i] != param->d_size[i] - 1) return 0;
-			}
-		else
-			{
-			int i_defect = i;
-			if(i > param->d_defect_dir) i_defect -= 1;
-			if(cartcoord[i] >= param->d_L_defect[i_defect]) return 0;
-			}
-		}
-	return 1;
-	}
-
-
-//------------ these are not to be used outside geometry.c ----------------
+// functions for switching between indexing methods inside geometry.c
 
 // cartesian coordinates -> lexicographic index
 long cart_to_lex(int const *const cartcoord, GParam const *const param)
@@ -779,24 +722,8 @@ long cart_to_lexeop(int const *const cartcoord, GParam const *const param)
 	return offset + lexeo_shell;
 	}
 
-// geometry for rectangles to be used for hierarchical update during parallel tempering
 
-// reduce a generic integer component in the interval [0,L_max-1]
-int periodic_condition(int const coord, int const L_max)
-	{
-	return (coord % L_max + L_max) % L_max;
-	}
-
-
-// i-th direction orthogonal to mu
-int orthogonal_dir(int const mu, int const i)
-	{
-	return (i < mu) ? i : i + 1;
-	}
-
-
-// cartesian -> lexicographic eo (on a given rectangle)
-// this function should not be used outside geometry.c
+// cartesian -> lexicographic eo on a given rectangle
 long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect)
 	{
 	int eo = 0;
@@ -812,6 +739,99 @@ long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect)
 	return (eo * (rect->d_vol_rect) + res) / 2; // even sites first
 	}
 
+
+//plane i-j -> single index, for twist factors
+int dirs_to_si(int const i, int const j)
+	{
+	#ifdef DEBUG
+	ASSERT(i != j, "directions cannot be equal (%d)", i);
+	#endif
+	if(i < j) return i * (2 * STDIM - 3 - i) / 2 + j - 1;                 //clockwise
+	return j * (2 * STDIM - 3 - j) / 2 + i - 1 + STDIM * (STDIM - 1) / 2; //anticlockwise
+	}
+
+
+// utilities and distances with periodic boundary conditions
+
+// check if lexeo index r is on the defect
+int is_on_defect(long const r, GParam const *const param)
+	{
+	int cartcoord[STDIM];
+	si_to_cart(cartcoord, r, param);
+	for(int i = 0; i < STDIM; i++)
+		{
+		if(i == param->d_defect_dir)
+			{
+			if(cartcoord[i] != param->d_size[i] - 1) return 0;
+			}
+		else
+			{
+			int i_defect = i;
+			if(i > param->d_defect_dir) i_defect -= 1;
+			if(cartcoord[i] >= param->d_L_defect[i_defect]) return 0;
+			}
+		}
+	return 1;
+	}
+
+
+// i-th direction orthogonal to mu
+int orthogonal_dir(int const mu, int const i)
+	{
+	return (i < mu) ? i : i + 1;
+	}
+
+
+// reduce a generic integer component in the interval [0,L_max-1]
+int periodic_condition(int const coord, int const L_max)
+	{
+	return (coord % L_max + L_max) % L_max;
+	}
+
+
+// distance between sites i and j on a 1D-ring with L sites
+int ring_distance(int const i, int const j, int const L)
+	{
+	int const d = abs(i - j);
+	return (d < L - d) ? d : L - d;
+	}
+
+
+// distance of site i from the link j -> j+1 on a 1D-ring with L sites
+int link_ring_distance(int const i, int const j, int const L)
+	{
+	int const d0 = ring_distance(i, j, L);
+	int const d1 = ring_distance(i, periodic_condition(j + 1, L), L);
+	return (d0 < d1) ? d0 : d1;
+	}
+
+
+// square distance between sites i and j on a periodic lattice
+double square_distance(long const i, long const j, GParam const *const param)
+	{
+	int x[STDIM], y[STDIM];
+	double res = 0.0;
+
+	si_to_cart(x, i, param); // i --> x
+	si_to_cart(y, j, param); // j --> y
+
+	for(int mu = 0; mu < STDIM; ++mu)
+		{
+		const double L = (double) param->d_size[mu];
+		const double half_L = 0.5 * L;
+		double d = (double) labs(x[mu] - y[mu]);
+
+		// periodic boundary conditions
+		if(d > half_L) d = L - d;
+
+		res += d * d;
+		}
+
+	return res;
+	}
+
+
+// geometry of rectangles used in the hierarchical update during parallel tempering
 
 void init_rect(Rectangle *rect, int L_R, GParam const *const param)
 	{
@@ -1061,48 +1081,6 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 		free(rect_aux->topcharge_rect);
 		#endif
 		}
-	}
-
-
-// distance between sites i and j on a 1D-ring with L sites
-int ring_distance(int const i, int const j, int const L)
-	{
-	int const d = abs(i - j);
-	return (d < L - d) ? d : L - d;
-	}
-
-
-// distance of site i from the link j -> j+1 on a 1D-ring with L sites
-int link_ring_distance(int const i, int const j, int const L)
-	{
-	int const d0 = ring_distance(i, j, L);
-	int const d1 = ring_distance(i, periodic_condition(j + 1, L), L);
-	return (d0 < d1) ? d0 : d1;
-	}
-
-
-// square distance between sites i and j on a periodic lattice
-double square_distance(long const i, long const j, GParam const *const param)
-	{
-	int x[STDIM], y[STDIM];
-	double res = 0.0;
-
-	si_to_cart(x, i, param); // i --> x
-	si_to_cart(y, j, param); // j --> y
-
-	for(int mu = 0; mu < STDIM; ++mu)
-		{
-		const double L = (double) param->d_size[mu];
-		const double half_L = 0.5 * L;
-		double d = (double) labs(x[mu] - y[mu]);
-
-		// periodic boundary conditions
-		if(d > half_L) d = L - d;
-
-		res += d * d;
-		}
-
-	return res;
 	}
 
 

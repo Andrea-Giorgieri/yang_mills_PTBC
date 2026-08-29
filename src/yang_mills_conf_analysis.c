@@ -1,22 +1,20 @@
-#ifndef YM_CM_C
-#define YM_CM_C
+#ifndef YM_CONF_ANALYSIS_C
+#define YM_CONF_ANALYSIS_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
 void real_main(char *in_file, long step, long stop_index)
 	{
@@ -44,7 +42,6 @@ void real_main(char *in_file, long step, long stop_index)
 	initrand(param.d_randseed);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// init meas utils
@@ -86,7 +83,7 @@ void real_main(char *in_file, long step, long stop_index)
 	free_geometry(&geo, &param);
 
 	// print simulation details
-	print_parameters_conf_measures(&param, &timers);
+	print_parameters_conf_analysis(&param, &timers);
 	}
 
 void print_template_input(void)

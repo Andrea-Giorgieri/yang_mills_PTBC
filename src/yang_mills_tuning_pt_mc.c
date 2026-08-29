@@ -1,22 +1,20 @@
 #ifndef YM_TUNING_PT_MC_C
 #define YM_TUNING_PT_MC_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
 void real_main(char const *in_file)
 	{
@@ -59,7 +57,6 @@ void real_main(char const *in_file)
 	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize arrays and flags for tuning of topo_potential
@@ -68,16 +65,30 @@ void real_main(char const *in_file)
 	// initialize rectangles for hierarchical update and swap
 	init_rect_utils(&rect_aux, &param);
 
-	// init swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
+	// initialize swap acceptance and multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
 	init_acc_utils(&acc_counters, &param);
 
-	// init auxiliary arrays and lattices for measurements, open data files
+	// initialize auxiliary arrays and lattices for measurements, open data files
 	init_meas_utils_replica(&meas_aux, &param);
 
-	// initialize gauge configurations replica and volume defects
+	// initialize gauge configuration of all replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 
 	stop_timer(&(timers.init_timer));
+
+	// if number of MC updates is set to 0, perform measures on initialized configuration
+	if(param.d_sample == 0)
+		{
+		start_timer(&(timers.step_timer));
+		start_timer(&(timers.meas_timer));
+		perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
+		#ifdef REPLICA_MEAS_MODE
+		for(int i = 1; i < param.d_N_replica_pt; i++)
+			perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
+		#endif
+		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.step_timer));
+		}
 
 	// Monte Carlo begin
 	for(count = 0; count < param.d_sample; count++)
@@ -85,21 +96,24 @@ void real_main(char const *in_file)
 		start_timer(&(timers.step_timer));
 
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
+		start_timer(&(timers.update_timer));
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
+		stop_timer(&(timers.update_timer));
 		print_conf_labels(swaptrackfilep, GC, &param);
 
-		// perform measures only on homogeneous configuration
+		// perform measures only on physical replica, unless REPLICA_MEAS_MODE is enabled
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
+			start_timer(&(timers.meas_timer));
 			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
-
 			#ifdef REPLICA_MEAS_MODE
 			for(int i = 1; i < param.d_N_replica_pt; i++)
 				perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
 			#endif
+			stop_timer(&(timers.meas_timer));
 			}
 
-		// save configurations for backup
+		// save configuration of all replica for backup
 		if(param.d_saveconf_back_every != 0)
 			{
 			if(GC[0].update_index % param.d_saveconf_back_every == 0)
@@ -111,7 +125,7 @@ void real_main(char const *in_file)
 				}
 			}
 
-		// save homogeneous configuration for offline analysis
+		// save configuration of physical replica for offline analysis
 		if(param.d_saveconf_analysis_every != 0)
 			{
 			if(GC[0].update_index % param.d_saveconf_analysis_every == 0)
@@ -208,8 +222,10 @@ void print_template_input(void)
 	print_template_simul_parameters(fp);
 	print_template_adaptive_gradflow_parameters(fp);
 	print_template_output_parameters(fp);
+
 	fclose(fp);
 	}
+
 
 int main(int argc, char **argv)
 	{

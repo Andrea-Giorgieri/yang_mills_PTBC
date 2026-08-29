@@ -1,17 +1,10 @@
 #ifndef TIMING_H
 #define TIMING_H
 
-#include"macro.h"
+#include "macro.h"
 
-#include<math.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
+#include <stdio.h>
 
-#ifdef OPENMP_MODE
-#include<omp.h>
-#endif
 
 typedef struct Timer
 	{

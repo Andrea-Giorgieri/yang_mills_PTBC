@@ -1,15 +1,11 @@
 #ifndef MACRO_H
 #define MACRO_H
 
-#include"../config.h"
+#include "../config.h"
 
-#if NCOLOR == 1
-    #define GAUGE_GROUP U1
-#elif NCOLOR == 2
-    #define GAUGE_GROUP Su2
-#else
-    #define GAUGE_GROUP SuN
-#endif
+// to activate posix_memalign in stdlib.h (needs to be defined before stdlib is included)
+#define _POSIX_C_SOURCE 200809L
+#include <stdlib.h>
 
 #define MIN_VALUE 1.0e-13
 #define INT_ALIGN 16
@@ -25,7 +21,6 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
 
 // function to access matrix elements
 #define m(X,Y) ((X) * NCOLOR + (Y))
-#define madj(X,Y) ((X) * (NCOLOR * NCOLOR - 1) + (Y))
 
 // function to validate conditions
 #define REQUIRE(cond, ...)                                    \
@@ -62,7 +57,6 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
     fprintf(stderr, "[PROBE] %s:%d:%s: %s = %g\n",            \
             __FILE__, __LINE__, __func__, #x, (double)(x))
 
-
 // function to print flags
 #define HERE(msg)                                             \
     do {                                                      \
@@ -70,6 +64,18 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
                 __FILE__, __LINE__, __func__, (msg));         \
     } while(0)
 
+// function to check pointer alignment
+#ifdef DEBUG
+#include <stdint.h>
+#define IS_ALIGNED(p, byte_align)                             \
+do {                                                          \
+    REQUIRE((uintptr_t)(p) % (size_t)(byte_align) == 0,       \
+    "pointer is not aligned to %zu bytes",                    \
+    (size_t)(byte_align));                                    \
+} while (0)
+#else
+#define IS_ALIGNED(p, byte_align) ((void)0)
+#endif
 
 // way to print a macro: if
 // #define val1 val2
@@ -80,8 +86,5 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #endif
-
-// to activate posix_memalign in stdlib.h
-#define _POSIX_C_SOURCE 200809L
 
 #endif

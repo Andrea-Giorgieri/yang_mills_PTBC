@@ -1,15 +1,14 @@
 #ifndef MEMALIGN_C
 #define MEMALIGN_C
 
-#include"../include/macro.h"
-#include"../include/memalign.h"
-#include"../include/gauge_conf.h"
-#include"../include/gparam.h"
+#include "../include/macro.h"
+#include "../include/memalign.h"
 
-#include<math.h>
-#include<complex.h>
-#include<stdio.h>
-#include<stdlib.h>
+#include <complex.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../include/gauge_conf.h"
 
 
 void allocate_array_int(int **const array, long size, char const *const file, int line)
@@ -161,33 +160,6 @@ void allocate_array_TensProd_pointer_pointer(TensProd ****const array, long size
 	if(posix_memalign((void **) array, (size_t) DOUBLE_ALIGN, (size_t) size * sizeof(TensProd **)) != 0)
 		{
 		fprintf(stderr, "Problems allocating an array of ptrs to ptrs to TensProd! (%s, %d)\n", file, line);
-		exit(EXIT_FAILURE);
-		}
-	}
-
-void allocate_array_TensProdAdj(TensProdAdj **const array, long size, char const *const file, int line)
-	{
-	if(posix_memalign((void **) array, (size_t) DOUBLE_ALIGN, (size_t) size * sizeof(TensProdAdj)) != 0)
-		{
-		fprintf(stderr, "Problems allocating an array of TensProdAdjs! (%s, %d)\n", file, line);
-		exit(EXIT_FAILURE);
-		}
-	}
-
-void allocate_array_TensProdAdj_pointer(TensProdAdj ***const array, long size, char const *const file, int line)
-	{
-	if(posix_memalign((void **) array, (size_t) DOUBLE_ALIGN, (size_t) size * sizeof(TensProdAdj *)) != 0)
-		{
-		fprintf(stderr, "Problems allocating an array of ptrs to TensProdAdj! (%s, %d)\n", file, line);
-		exit(EXIT_FAILURE);
-		}
-	}
-
-void allocate_array_TensProdAdj_pointer_pointer(TensProdAdj ****const array, long size, char const *const file, int line)
-	{
-	if(posix_memalign((void **) array, (size_t) DOUBLE_ALIGN, (size_t) size * sizeof(TensProdAdj **)) != 0)
-		{
-		fprintf(stderr, "Problems allocating an array of ptrs to ptrs to TensProdAdj! (%s, %d)\n", file, line);
 		exit(EXIT_FAILURE);
 		}
 	}

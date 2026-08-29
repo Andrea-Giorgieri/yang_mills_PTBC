@@ -1,17 +1,18 @@
 #ifndef CONF_CHECK_C
 #define CONF_CHECK_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
+#include <complex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef HASH_MODE
-#include<openssl/md5.h>
+#include <openssl/md5.h>
 #endif
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
 
-#include"../include/function_pointers.h"
-#include"../include/memalign.h"
+#include "../include/gauge_group.h"
+#include "../include/memalign.h"
 
 // get the spacetime dimension
 void getspacetimedim(char *infile, int *dim)

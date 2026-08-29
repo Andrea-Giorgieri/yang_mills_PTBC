@@ -1,20 +1,20 @@
 #ifndef DEBUG_U1_C
 #define DEBUG_U1_C
 
-#include"../include/macro.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/u1.h"
-#include"../include/u1_upd.h"
+#include "../include/macro.h"
 
-#include<math.h>
-#include<stdio.h>
-#include<stdlib.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/u1.h"
+#include "../include/u1_upd.h"
 
 int main(void)
 	{
-	unsigned int seed = 0;
-	double energy;
+	unsigned int const seed = 0;
 	GParam param;
 
 	U1 M, N, L, T, id_U1;
@@ -78,9 +78,9 @@ int main(void)
 	rand_matrix_U1(&M);
 	rand_matrix_U1(&N);
 	rand_matrix_U1(&L);
-	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
-	times_U1(&T, &M, &N);  // T=M*N
-	energy = retr_U1(&T);  // initial energy
+	plus_equal_U1(&N, &L);       // N+=L,  M in U(1), N no   (M=link, N=staple)
+	times_U1(&T, &M, &N);        // T=M*N
+	double energy = retr_U1(&T); // initial energy
 	single_overrelaxation_U1(&M, &N);
 	times_U1(&T, &M, &N);  // T=M*N
 	energy -= retr_U1(&T); // -=final energy

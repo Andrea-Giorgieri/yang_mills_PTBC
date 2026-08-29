@@ -1,22 +1,24 @@
 #ifndef GAUGE_CONF_MEAS_C
 #define GAUGE_CONF_MEAS_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<math.h>
-#include<complex.h>
+#include <complex.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#ifdef OPENMP_MODE
+#include <omp.h>
+#endif
 
-#include"../include/gparam.h"
-#include"../include/memalign.h"
-#include"../include/function_pointers.h"
-#include"../include/geometry.h"
-#include"../include/gauge_conf.h"
-#include"../include/tens_prod.h"
-
-#include<time.h> // DEBUG
+#include "../include/gauge_group.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
+#include "../include/tens_prod.h"
 
 
 // return 1/Nc*ReTr[P_ji(r)] with P_ji(r) the plaquette in position r with positive directions (j,i)
@@ -573,6 +575,9 @@ void polyakov_adj(Gauge_Conf const *const GC,
 
 	#else
 
+	(void) GC;
+	(void) geo;
+	(void) param;
 	*repoly = 0.0;
 
 	#endif
@@ -666,7 +671,7 @@ double loc_topcharge(Gauge_Conf const *const GC,
 		}
 	return loc_charge * charge_norm;
 
-	#elif (STDIM==2 && NCOLOR==1)
+	#elif (STDIM == 2 && NCOLOR == 1)
 
 	GAUGE_GROUP u1matrix;
 
@@ -679,7 +684,6 @@ double loc_topcharge(Gauge_Conf const *const GC,
 	(void) geo;
 	(void) param;
 	(void) r;
-	REQUIRE(0, "unsupported configuration for topological charge: STDIM=%d, NCOLOR=%d", STDIM, NCOLOR);
 	return 0.0;
 
 	#endif
@@ -981,7 +985,7 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 	{
 	int i;
 	double plaqs = 0.0, plaqt = 0.0, clover_energy = 0.0, charge = 0.0, chi_prime = 0.0, multipolyre = 0.0, multipolyim = 0.0; // =0.0 to suppress gcc warning
-	double polyre[STDIM], polyim[STDIM], polyre_pwrs[MAX_POLY_PWR], polyim_pwrs[MAX_POLY_PWR], charge_prime[STDIM];
+	double polyre[STDIM] = {0}, polyim[STDIM] = {0}, charge_prime[STDIM] = {0}, polyre_pwrs[MAX_POLY_PWR], polyim_pwrs[MAX_POLY_PWR];
 	double action1 = 0.0, action2 = 0.0, action3 = 0.0, potential = 0.0;
 
 	// perform meas
@@ -1692,217 +1696,6 @@ void perform_measures_polycorr(Gauge_Conf *const GC,
 	}
 
 
-// to optimize the number of hits to be used in multilevel for the adjoint representation
-void optimize_multihit_polycorradj(Gauge_Conf *const GC,
-                                   Geometry const *const geo,
-                                   GParam const *const param,
-                                   FILE *datafilep)
-	{
-	int const max_hit = 50;
-	int const dir = 1;
-	double const inv_n2 = 1.0 / ((double) NCOLOR * NCOLOR);
-
-	double *poly_array;
-	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
-
-	#ifdef THETA_MODE
-	compute_clovers(GC, geo, param, 0);
-	#endif
-
-	fprintf(datafilep, "Multihit optimization: \n");
-	fprintf(datafilep, "the smaller the value the better the multihit\n");
-
-	for(int mh = 1; mh < max_hit; mh++)
-		{
-		time_t time1, time2;
-		time(&time1);
-
-		// polyakov loop in the adjoint representation computation
-		for(long r = 0; r < param->d_space_vol[0]; r++)
-			{
-			#if NCOLOR == 1
-			ASSERT(0, "adjoint representation is trivial for NCOLOR == 1 ");
-			poly_array[r] = 0.0;
-			#else
-			GAUGE_GROUP matrix, tmp;
-			one(&matrix);
-			for(int i = 0; i < param->d_size[0]; i++)
-				{
-				multihit(GC, geo, param, sisp_and_t_to_si(geo, r, i), 0, mh, &tmp);
-				times_equal(&matrix, &tmp);
-				}
-
-			//trace of the matrix in the fundamental representation
-			double const tr_N_re = retr(&matrix);
-			double const tr_N_im = imtr(&matrix);
-			double const tr2_N2 = tr_N_re * tr_N_re + tr_N_im * tr_N_im;
-
-			//trace of the matrix in adjoint representation
-			poly_array[r] = (tr2_N2 - inv_n2) / (1.0 - inv_n2);
-			#endif
-			}
-
-		// average correlator computation
-		double poly_corr = 0.0;
-		double poly_corr_abs = 0.0;
-		for(long r = 0; r < param->d_space_vol[0]; r++)
-			{
-			long r1 = sisp_and_t_to_si(geo, r, 0);
-			for(int i = 0; i < param->d_dist_poly; i++)
-				{
-				r1 = nnp(geo, r1, dir);
-				}
-			int t_tmp;
-			long r2;
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
-
-			poly_corr += poly_array[r] * poly_array[r2];
-			poly_corr_abs += fabs(poly_array[r] * poly_array[r2]);
-			}
-		poly_corr *= param->d_inv_space_vol[0];
-		poly_corr_abs *= param->d_inv_space_vol[0];
-
-		// fluctuation of the average correlator computation
-		double poly_corr_fluct = 0.0;
-		for(long r = 0; r < param->d_space_vol[0]; r++)
-			{
-			long r1 = sisp_and_t_to_si(geo, r, 0);
-			for(int i = 0; i < param->d_dist_poly; i++)
-				{
-				r1 = nnp(geo, r1, dir);
-				}
-			int t_tmp;
-			long r2;
-			si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1, t_tmp is unused
-
-			poly_corr_fluct += fabs(poly_array[r] * poly_array[r2] - poly_corr);
-			}
-		poly_corr_fluct *= param->d_inv_space_vol[0];
-
-		time(&time2);
-		double const diff_sec = difftime(time2, time1);
-		fprintf(datafilep, "%d	% 18.12e	% 18.12e (time:%g)\n", mh, poly_corr_abs * sqrt(mh), poly_corr_fluct * sqrt(mh), diff_sec);
-		fflush(datafilep);
-		}
-
-	free(poly_array);
-	}
-
-
-// to optimize the multilevel (adjoint representation)
-void optimize_multilevel_polycorradj(Gauge_Conf *const GC,
-                                     Geometry const *const geo,
-                                     GParam const *const param,
-                                     FILE *datafilep)
-	{
-	double *poly_array;
-	allocate_array_double(&poly_array, param->d_space_vol[0], __FILE__, __LINE__);
-
-	fprintf(datafilep, "Multilevel optimization: ");
-	fprintf(datafilep, "the smaller the value the better the update\n");
-
-	multilevel_polycorradj(GC,
-	                       geo,
-	                       param,
-	                       param->d_size[0]);
-
-	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long r = 0; r < param->d_space_vol[0]; r++)
-			{
-			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]));
-			}
-		}
-
-	// averages
-	double poly_corr = 0.0;
-	double poly_corr_abs = 0.0;
-	for(long r = 0; r < param->d_space_vol[0]; r++)
-		{
-		poly_array[r] = retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
-
-		poly_corr += poly_array[r];
-		poly_corr_abs += fabs(poly_array[r]);
-		}
-	poly_corr *= param->d_inv_space_vol[0];
-	poly_corr_abs *= param->d_inv_space_vol[0];
-
-	// fluctuations
-	double poly_corr_fluct = 0.0;
-	for(long r = 0; r < param->d_space_vol[0]; r++)
-		{
-		poly_corr_fluct += fabs(poly_array[r] - poly_corr);
-		}
-	poly_corr_fluct *= param->d_inv_space_vol[0];
-
-	// normalizations
-	for(int i = 0; i < NLEVELS; i++)
-		{
-		poly_corr_abs *= sqrt(param->d_ml_upd[i]);
-		poly_corr_fluct *= sqrt(param->d_ml_upd[i]);
-		}
-	poly_corr_abs *= sqrt(param->d_multihit);
-	poly_corr_fluct *= sqrt(param->d_multihit);
-
-	fprintf(datafilep, "% 18.12e % 18.12e ", poly_corr_abs, poly_corr_fluct);
-	for(int i = 0; i < NLEVELS; i++)
-		{
-		fprintf(datafilep, "(%d, %d) ", param->d_ml_step[i], param->d_ml_upd[i]);
-		}
-	fprintf(datafilep, "(1, %d) \n", param->d_multihit);
-	fflush(datafilep);
-
-	free(poly_array);
-	}
-
-
-// perform the computation of the polyakov loop correlator in the adjoint representation with the multilevel algorithm
-void perform_measures_polycorradj(Gauge_Conf *const GC,
-                                  Geometry const *const geo,
-                                  GParam const *const param,
-                                  Meas_Utils *meas_aux)
-	{
-	#ifndef OPT_MULTIHIT
-	#ifndef OPT_MULTILEVEL
-
-	multilevel_polycorradj(GC, geo, param, param->d_size[0]);
-
-	for(int i = 1; i < param->d_size[0] / param->d_ml_step[0]; i++)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long r = 0; r < param->d_space_vol[0]; r++)
-			{
-			times_equal_TensProdAdj(&(GC->ml_polycorradj[0][0][r]), &(GC->ml_polycorradj[0][i][r]));
-			}
-		}
-
-	double res = 0.0;
-	for(long r = 0; r < param->d_space_vol[0]; r++)
-		{
-		res += retr_TensProdAdj(&(GC->ml_polycorradj[0][0][r]));
-		}
-	res *= param->d_inv_space_vol[0];
-
-	fprintf(meas_aux->datafilep, "% 18.12e\n", res);
-	fflush(meas_aux->datafilep);
-	#endif
-	#endif
-
-	#ifdef OPT_MULTIHIT
-	optimize_multihit_polycorradj(GC, geo, param, meas_aux->datafilep);
-	#endif
-
-	#ifdef OPT_MULTILEVEL
-	optimize_multilevel_polycorradj(GC, geo, param, meas_aux->datafilep);
-	#endif
-	}
-
-
 // to optimize the multilevel
 void optimize_multilevel_polycorr_long(Gauge_Conf *const GC,
                                        GParam const *const param,
@@ -2167,6 +1960,37 @@ void perform_measures_tube_conn_long(Gauge_Conf *const GC,
 
 	fprintf(meas_aux->datafilep, "\n");
 	fflush(meas_aux->datafilep);
+	}
+
+
+void perform_multilevel_update_and_measures(Gauge_Conf *const GC,
+                                            Geometry const *const geo,
+	                                        GParam const *const param,
+	                                        Meas_Utils *meas_aux,
+	                                        Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR:
+			perform_measures_polycorr(GC, geo, param, meas_aux);
+			break;
+		case POLYCORR_LONG:
+			perform_measures_polycorr_long(GC, param, meas_aux);
+			break;
+		case TUBE_DISC:
+			perform_measures_tube_disc(GC, geo, param, meas_aux);
+			break;
+		case TUBE_CONN:
+			perform_measures_tube_conn(GC, geo, param, meas_aux);
+			break;
+		case TUBE_CONN_LONG:
+			perform_measures_tube_conn_long(GC, param, meas_aux);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
+		}
 	}
 
 

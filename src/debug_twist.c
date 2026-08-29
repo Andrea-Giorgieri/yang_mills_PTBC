@@ -1,15 +1,18 @@
 #ifndef DEBUG_TWIST_C
 #define DEBUG_TWIST_C
 
-#include"../include/macro.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/function_pointers.h"
-#include"../include/sun.h"
-#include"../include/gauge_conf.h"
+#include "../include/macro.h"
 
-#include<math.h>
-#include<stdlib.h>
+#include <complex.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../include/gauge_group.h"
+#include "../include/gauge_conf.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/sun.h"
 
 void print_complex(double complex z);
 
@@ -47,7 +50,6 @@ void real_main(char const *in_file)
 	param.d_charge_slices_meas = 1;
 
 	initrand(param.d_randseed);
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 	init_gauge_conf_replica(&GC, &geo, &param);
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
@@ -300,7 +302,7 @@ void real_main(char const *in_file)
 	printf("\nALL TESTS ENDED\n\n");
 	}
 
-void conf_translation_dir(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int dir)
+void conf_translation_dir(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int const dir)
 	{
 	// copy the conf in an auxiliary one (should be defined outside and passed to the function?), including the twist factors
 	Gauge_Conf aux_conf;

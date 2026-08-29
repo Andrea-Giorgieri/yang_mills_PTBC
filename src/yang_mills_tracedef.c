@@ -1,22 +1,20 @@
 #ifndef YM_TRACEDEF_C
 #define YM_TRACEDEF_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
 void real_main(char const *in_file)
 	{
@@ -47,13 +45,12 @@ void real_main(char const *in_file)
 	initrand(param.d_randseed);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
-	// init meas utils
+	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
 	// acceptance of the metropolis update
@@ -61,27 +58,42 @@ void real_main(char const *in_file)
 
 	stop_timer(&(timers.init_timer));
 
-	// Monte Carlo begin (count starts from 1 to avoid problems using %)
-	for(int count = 1; count < param.d_sample + 1; count++)
+	// if number of MC updates is set to 0, perform measures on initialized configuration
+	if(param.d_sample == 0)
+		{
+		start_timer(&(timers.step_timer));
+		start_timer(&(timers.meas_timer));
+		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
+		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.step_timer));
+		}
+
+	// Monte Carlo begin
+	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
+		// update configuration
+		start_timer(&(timers.update_timer));
 		update_with_trace_def(&GC, &geo, &param, &acc_local);
 		acc += acc_local;
+		stop_timer(&(timers.update_timer));
 
-		if(count % param.d_measevery == 0 && count >= param.d_thermal)
+		// perform measures
+		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 			{
+			start_timer(&(timers.meas_timer));
 			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
+			stop_timer(&(timers.meas_timer));
 			}
 
 		// save configuration for backup
 		if(param.d_saveconf_back_every != 0)
 			{
-			if(count % param.d_saveconf_back_every == 0)
+			if(GC.update_index % param.d_saveconf_back_every == 0)
 				{
 				// simple
 				write_conf_on_file(&GC, &param);
-
 				// backup copy
 				write_conf_on_file_back(&GC, &param);
 				}
@@ -90,14 +102,21 @@ void real_main(char const *in_file)
 		// save configuration for offline analysis
 		if(param.d_saveconf_analysis_every != 0)
 			{
-			if(count % param.d_saveconf_analysis_every == 0)
+			if(GC.update_index % param.d_saveconf_analysis_every == 0)
 				{
 				strcpy(name, param.d_conf_file);
+				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC.update_index);
 				strcat(name, aux);
 				write_conf_on_file_with_name(&GC, &param, name);
+
+				strcpy(name, param.d_twist_file);
+				strcat(name, "_step_");
+				strcat(name, aux);
+				write_twist_on_file_with_name(&GC, &param, name);
 				}
 			}
+
 		stop_timer(&(timers.step_timer));
 		if(wall_time_check(&timers) == 1) break;
 		}
@@ -133,12 +152,15 @@ void print_template_input(void)
 	REQUIRE(fp != NULL, "failed to open template_input.example");
 
 	print_template_volume_parameters(fp);
-	fprintf(fp, "htracedef  1.1\n");
-	fprintf(fp, "\n");
+	print_template_twist_parameters(fp);
 	print_template_simul_parameters(fp);
+	fprintf(fp, "htracedef  1.1\n");
 	print_template_metro_parameters(fp);
+	print_template_adaptive_gradflow_parameters(fp);
+	print_template_gradflow_parameters(fp);
 	print_template_cooling_parameters(fp);
 	print_template_output_parameters(fp);
+
 	fclose(fp);
 	}
 
@@ -148,7 +170,7 @@ int main(int argc, char **argv)
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
-		int twisted_bc = 0;
+		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 
 		printf("Usage: %s input_file\n\n", argv[0]);

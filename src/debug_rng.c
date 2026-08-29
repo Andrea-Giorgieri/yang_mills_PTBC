@@ -1,11 +1,10 @@
 #ifndef DEBUG_RNG_C
 #define DEBUG_RNG_C
 
-#include"../include/macro.h"
-#include"../include/random.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-#include<stdio.h>
-#include<stdlib.h>
+#include "../include/random.h"
 
 int main(void)
 	{

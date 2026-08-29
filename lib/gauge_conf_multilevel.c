@@ -2,18 +2,17 @@
 #define GAUGE_CONF_MULTI_C
 
 #include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
 #include <complex.h>
 #ifdef OPENMP_MODE
 #include <omp.h>
 #endif
-#include <stdlib.h>
 
-#include "../include/memalign.h"
-#include "../include/function_pointers.h"
-#include "../include/gauge_conf.h"
+#include "../include/gauge_group.h"
 #include "../include/gparam.h"
 #include "../include/tens_prod.h"
+
 
 static inline int get_ml_level(GParam const *const param, int const dt)
 	{
@@ -26,7 +25,7 @@ static inline int get_ml_level(GParam const *const param, int const dt)
 	}
 
 
-void multihit(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, long r, int dir, int num_hit, GAUGE_GROUP *G)
+void multihit(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, long const r, int const dir, int const num_hit, GAUGE_GROUP *G)
 	{
 	if(num_hit > 0)
 		{
@@ -127,7 +126,6 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 			long const r = geo->d_sip_to_si[s];
 			int t;
 			long rsp;
-
 			si_to_sisp_and_t(&rsp, &t, geo, r);
 			if(t % param->d_ml_step[level] != 0 || dir == 0)
 				heatbath(GC, geo, param, r, dir);
@@ -138,7 +136,6 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 			long const r = geo->d_sip_to_si[s];
 			int t;
 			long rsp;
-
 			si_to_sisp_and_t(&rsp, &t, geo, r);
 			if(t % param->d_ml_step[level] != 0 || dir == 0)
 				heatbath(GC, geo, param, r, dir);
@@ -162,7 +159,6 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 				long const r = geo->d_sip_to_si[s];
 				int t;
 				long rsp;
-
 				si_to_sisp_and_t(&rsp, &t, geo, r);
 				if(t % param->d_ml_step[level] != 0 || dir == 0)
 					overrelaxation(GC, geo, param, r, dir);
@@ -176,7 +172,6 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 				long const r = geo->d_sip_to_si[s];
 				int t;
 				long rsp;
-
 				si_to_sisp_and_t(&rsp, &t, geo, r);
 				if(t % param->d_ml_step[level] != 0 || dir == 0)
 					overrelaxation(GC, geo, param, r, dir);
@@ -187,7 +182,6 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 				long const r = geo->d_sip_to_si[s];
 				int t;
 				long rsp;
-
 				si_to_sisp_and_t(&rsp, &t, geo, r);
 				if(t % param->d_ml_step[level] != 0 || dir == 0)
 					overrelaxation(GC, geo, param, r, dir);
@@ -195,15 +189,7 @@ void update_for_multilevel(Gauge_Conf *GC, Geometry const *const geo, GParam con
 			}
 		}
 
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for collapse(2) num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < volume; r++)
-		{
-		for(int dir = 0; dir < STDIM; dir++)
-			unitarize(&GC->lattice[r][dir]);
-		}
+	accept_gauge_conf(GC, param);
 	}
 
 
@@ -218,21 +204,6 @@ static inline void zero_polycorr_level(Gauge_Conf *const GC, GParam const *const
 		long const r = raux / param->d_ml_num_slices[level];
 		int const slice = (int) (raux % param->d_ml_num_slices[level]);
 		zero_TensProd(&GC->ml_polycorr[level][slice][r]);
-		}
-	}
-
-
-// initialize ml_polycorradj[level] to 0
-static inline void zero_polycorradj_level(Gauge_Conf *const GC, GParam const *const param, int const level)
-	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long raux = 0; raux < param->d_space_vol[0] * param->d_ml_num_slices[level]; raux++)
-		{
-		long const r = raux / param->d_ml_num_slices[level];
-		int const slice = (int) (raux % param->d_ml_num_slices[level]);
-		zero_TensProdAdj(&GC->ml_polycorradj[level][slice][r]);
 		}
 	}
 
@@ -284,21 +255,6 @@ static inline void normalize_polycorr_level(Gauge_Conf *const GC, GParam const *
 		long const r = raux / param->d_ml_num_slices[level];
 		int const slice = (int) (raux % param->d_ml_num_slices[level]);
 		times_equal_real_TensProd(&GC->ml_polycorr[level][slice][r], 1.0 / (double) param->d_ml_upd[level]);
-		}
-	}
-
-
-// normalize ml_polycorradj[level]
-static inline void normalize_polycorradj_level(Gauge_Conf *const GC, GParam const *const param, int const level)
-	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long raux = 0; raux < param->d_space_vol[0] * param->d_ml_num_slices[level]; raux++)
-		{
-		long const r = raux / param->d_ml_num_slices[level];
-		int const slice = (int) (raux % param->d_ml_num_slices[level]);
-		times_equal_real_TensProdAdj(&GC->ml_polycorradj[level][slice][r], 1.0 / (double) param->d_ml_upd[level]);
 		}
 	}
 
@@ -396,26 +352,6 @@ static inline void accumulate_polycorr_intermediate_level(Gauge_Conf *const GC, 
 	}
 
 
-static inline void accumulate_polycorradj_intermediate_level(Gauge_Conf *const GC, GParam const *const param, int const level)
-	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long raux = 0; raux < param->d_space_vol[0] * param->d_ml_num_slices[level]; raux++)
-		{
-		TensProdAdj TP;
-		long const r = raux / param->d_ml_num_slices[level];
-		int const slice = (int) (raux % param->d_ml_num_slices[level]);
-		one_TensProdAdj(&TP);
-		for(int j = 0; j < param->d_ml_step[level] / param->d_ml_step[level + 1]; j++)
-			{
-			times_equal_TensProdAdj(&TP, &GC->ml_polycorradj[level + 1][slice * param->d_ml_step[level] / param->d_ml_step[level + 1] + j][r]);
-			}
-		plus_equal_TensProdAdj(&GC->ml_polycorradj[level][slice][r], &TP);
-		}
-	}
-
-
 static inline void accumulate_polycorr_polyplaq_intermediate_level(Gauge_Conf *const GC, GParam const *const param, int const level)
 	{
 	#ifdef OPENMP_MODE
@@ -497,27 +433,6 @@ static inline void accumulate_polycorr_innermost_level(Gauge_Conf *const GC, Geo
 		si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
 		TensProd_init(&TP, &GC->loc_poly[slice][r], &GC->loc_poly[slice][r2]);
 		plus_equal_TensProd(&GC->ml_polycorr[NLEVELS - 1][slice][r], &TP);
-		}
-	}
-
-
-static inline void accumulate_polycorradj_innermost_level(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
-	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long raux = 0; raux < param->d_space_vol[0] * param->d_ml_num_slices[NLEVELS - 1]; raux++)
-		{
-		TensProdAdj TP;
-		long const r = raux / param->d_ml_num_slices[NLEVELS - 1];
-		int const slice = (int) (raux % param->d_ml_num_slices[NLEVELS - 1]);
-		long r1 = sisp_and_t_to_si(geo, r, 0); // r is a 3d index, r1 is the 4d index value of (r,t=0)
-		for(int j = 0; j < param->d_dist_poly; j++) r1 = nnp(geo, r1, 1);
-		long r2;
-		int t_tmp;
-		si_to_sisp_and_t(&r2, &t_tmp, geo, r1); // r2 is the spatial value of r1
-		TensProdAdj_init(&TP, &GC->loc_poly[slice][r], &GC->loc_poly[slice][r2]);
-		plus_equal_TensProdAdj(&GC->ml_polycorradj[NLEVELS - 1][slice][r], &TP);
 		}
 	}
 
@@ -620,53 +535,6 @@ void multilevel_polycorr(Gauge_Conf *GC, Geometry const *const geo, GParam const
 
 	// normalize ml_polycorr[level]
 	normalize_polycorr_level(GC, param, level);
-	}
-
-
-// multilevel for polyakov correlator in the adjoint representation
-void multilevel_polycorradj(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int const dt)
-	{
-	// d_size[0] >= d_ml_step[0] > d_ml_step[1] > ...
-
-	// determine the level to be used
-	const int level = get_ml_level(param, dt);
-
-	if(level == -1)
-		{
-		multilevel_polycorradj(GC, geo, param, param->d_ml_step[0]);
-		return;
-		}
-
-	REQUIRE(level >= 0 && level < NLEVELS, "invalid multilevel level");
-
-	// initialize ml_polycorradj[level] to zero
-	zero_polycorradj_level(GC, param, level);
-
-	// perform the update
-	for(int upd = 0; upd < param->d_ml_upd[level]; ++upd)
-		{
-		update_for_multilevel(GC, geo, param, level);
-
-		if(level == NLEVELS - 1)
-			{
-			// compute the Polyakov loop restricted to the slice
-			compute_local_poly(GC, geo, param);
-
-			// compute the tensor products and update ml_polycorradj[level]
-			accumulate_polycorradj_innermost_level(GC, geo, param);
-			}
-		else
-			{
-			// recursive call to next level
-			multilevel_polycorradj(GC, geo, param, param->d_ml_step[level + 1]);
-
-			// update ml_polycorradj[level] with ml_polycorradj[level + 1]
-			accumulate_polycorradj_intermediate_level(GC, param, level);
-			}
-		}
-
-	// normalize ml_polycorr[level]
-	normalize_polycorradj_level(GC, param, level);
 	}
 
 
@@ -960,6 +828,25 @@ void multilevel_tube_conn_long_zero(Gauge_Conf *GC, Geometry const *const geo, G
 		{
 		// normalize polycorr[0], polyplaq[0] and polyplaqconn[0]
 		normalize_polycorr_polyplaq_polyplaqconn_long_level0(GC, param);
+		}
+	}
+
+
+void perform_multilevel_long_update_zero(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int const iteration,
+                                         Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR_LONG:
+			multilevel_polycorr_long_zero(GC, geo, param, iteration);
+			break;
+		case TUBE_CONN_LONG:
+			multilevel_tube_conn_long_zero(GC, geo, param, iteration);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
 		}
 	}
 

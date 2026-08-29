@@ -1,22 +1,21 @@
 #ifndef DEBUG_AGF_VS_DELTA_C
 #define DEBUG_AGF_VS_DELTA_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
 
 void real_main(char const *in_file)
 	{
@@ -75,17 +74,16 @@ void real_main(char const *in_file)
 	step_filep0 = fopen("step_file0.dat", "a");
 	if(step_filep0 == NULL) step_filep0 = fopen("step_file0.dat", "w");
 	step_filep1 = fopen("step_file1.dat", "a");
-	if(step_filep1 == NULL) step_filep0 = fopen("step_file1.dat", "w");
+	if(step_filep1 == NULL) step_filep1 = fopen("step_file1.dat", "w");
 	step_filep2 = fopen("step_file2.dat", "a");
-	if(step_filep2 == NULL) step_filep0 = fopen("step_file2.dat", "w");
+	if(step_filep2 == NULL) step_filep2 = fopen("step_file2.dat", "w");
 	step_filep3 = fopen("step_file3.dat", "a");
-	if(step_filep3 == NULL) step_filep0 = fopen("step_file3.dat", "w");
+	if(step_filep3 == NULL) step_filep3 = fopen("step_file3.dat", "w");
 
 	// open swap tracking file
 	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize gauge configurations replica and volume defects

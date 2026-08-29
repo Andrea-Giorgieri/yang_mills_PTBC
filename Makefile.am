@@ -2,7 +2,6 @@ bin_PROGRAMS = conf_check \
             conf_txt_to_bin \
             debug_rng \
             debug_su2 \
-            debug_su2_adj \
             debug_sun \
             debug_u1 \
             debug_twist \
@@ -10,22 +9,16 @@ bin_PROGRAMS = conf_check \
             debug_agf_vs_delta \
             yang_mills_local_agf \
             yang_mills_local_pt_agf \
-            yang_mills_conf_measures \
+            yang_mills_conf_analysis \
             yang_mills_tuning_pt_mc \
-            yang_mills_polycorr \
-            yang_mills_polycorr_long \
-            yang_mills_polycorradj \
-            yang_mills_tube_conn \
-            yang_mills_tube_conn_long \
-            yang_mills_tube_disc \
+            yang_mills_multilevel \
+            yang_mills_multilevel_long \
             yang_mills_tracedef
 
 timing = ./include/timing.h \
         ./lib/timing.c
 
-align = ./include/aligncheck.h \
-        ./include/memalign.h \
-        ./lib/aligncheck.c \
+align = ./include/memalign.h \
         ./lib/memalign.c
 
 dSFMT = ./include/dSFMT-common.h \
@@ -46,8 +39,7 @@ dSFMT = ./include/dSFMT-common.h \
 endian = ./include/endianness.h  \
          ./lib/endianness.c
 
-funcpoint = ./include/function_pointers.h \
-            ./lib/function_pointers.c
+gauge_group = ./include/gauge_group.h
 
 gauge_conf = ./include/gauge_conf.h \
             ./lib/gauge_conf_def.c \
@@ -68,33 +60,22 @@ random = ./include/myrngparam.h \
          ./lib/random.c
 
 su2 = ./include/su2.h \
-      ./include/su2_upd.h \
-      ./lib/su2.c \
-      ./lib/su2_upd.c
+      ./include/su2_upd.h
 
-sun = ./include/sun_aux.h \
-      ./include/sun.h \
-      ./include/sun_upd.h \
-      ./lib/sun_aux.c \
-      ./lib/sun.c \
-      ./lib/sun_upd.c
+sun = ./include/sun.h \
+      ./include/sun_upd.h
 
-tens_prod = ./include/tens_prod.h \
-            ./include/tens_prod_adj.h \
-            ./lib/tens_prod.c \
-            ./lib/tens_prod_adj.c
+tens_prod = ./include/tens_prod.h
 
 u1 = ./include/u1.h \
-     ./include/u1_upd.h \
-     ./lib/u1.c \
-     ./lib/u1_upd.c
+     ./include/u1_upd.h
 
 conf_check_SOURCES=./src/conf_check.c \
                    $(timing) \
                    $(align) \
                    $(dSFMT) \
                    $(endian) \
-                   $(funcpoint) \
+                   $(gauge_group) \
                    $(gparam) \
                    $(random) \
                    $(su2) \
@@ -106,7 +87,7 @@ conf_txt_to_bin_SOURCES=./src/conf_txt_to_bin.c \
                    $(align) \
                    $(dSFMT) \
                    $(endian) \
-                   $(funcpoint) \
+                   $(gauge_group) \
                    $(gauge_conf) \
                    $(geometry) \
                    $(gparam) \
@@ -131,16 +112,6 @@ debug_su2_SOURCES=./src/debug_su2.c \
                   ./include/macro.h \
                   $(random) \
                   $(su2)
-
-debug_su2_adj_SOURCES=./src/debug_su2_adj.c \
-                      $(timing) \
-                      $(align) \
-                      $(dSFMT) \
-                      $(endian) \
-                      $(gparam) \
-                      ./include/macro.h \
-                      $(random) \
-                      $(su2)
 
 debug_sun_SOURCES=./src/debug_sun.c \
                   $(timing) \
@@ -168,7 +139,7 @@ debug_twist_SOURCES=./src/debug_twist.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \
@@ -184,7 +155,7 @@ yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \
@@ -195,12 +166,12 @@ yang_mills_local_agf_SOURCES=./src/yang_mills_local_agf.c \
                           $(tens_prod) \
                           $(u1)
 
-yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
+yang_mills_multilevel_SOURCES=./src/yang_mills_multilevel.c \
                              $(timing) \
                              $(align) \
                              $(dSFMT)  \
                              $(endian) \
-                             $(funcpoint) \
+                             $(gauge_group) \
                              $(gauge_conf) \
                              $(geometry) \
                              $(gparam) \
@@ -211,12 +182,12 @@ yang_mills_polycorr_SOURCES=./src/yang_mills_polycorr.c \
                              $(tens_prod) \
                              $(u1)
 
-yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
+yang_mills_multilevel_long_SOURCES=./src/yang_mills_multilevel_long.c \
                                   $(timing) \
                                   $(align) \
                                   $(dSFMT)  \
                                   $(endian) \
-                                  $(funcpoint) \
+                                  $(gauge_group) \
                                   $(gauge_conf) \
                                   $(geometry) \
                                   $(gparam) \
@@ -226,77 +197,13 @@ yang_mills_polycorr_long_SOURCES=./src/yang_mills_polycorr_long.c \
                                   $(sun) \
                                   $(tens_prod) \
                                   $(u1)
-
-yang_mills_polycorradj_SOURCES=./src/yang_mills_polycorradj.c \
-                                $(timing) \
-                                $(align) \
-                                $(dSFMT)  \
-                                $(endian) \
-                                $(funcpoint) \
-                                $(gauge_conf) \
-                                $(geometry) \
-                                $(gparam) \
-                                ./include/macro.h \
-                                $(random) \
-                                $(su2) \
-                                $(sun) \
-                                $(tens_prod) \
-                                $(u1)
-
-yang_mills_tube_conn_SOURCES=./src/yang_mills_tube_conn.c \
-                             $(timing) \
-                             $(align) \
-                             $(dSFMT)  \
-                             $(endian) \
-                             $(funcpoint) \
-                             $(gauge_conf) \
-                             $(geometry) \
-                             $(gparam) \
-                             ./include/macro.h \
-                             $(random) \
-                             $(su2) \
-                             $(sun) \
-                             $(tens_prod) \
-                             $(u1)
-
-yang_mills_tube_conn_long_SOURCES=./src/yang_mills_tube_conn_long.c \
-                                  $(timing) \
-                                  $(align) \
-                                  $(dSFMT)  \
-                                  $(endian) \
-                                  $(funcpoint) \
-                                  $(gauge_conf) \
-                                  $(geometry) \
-                                  $(gparam) \
-                                  ./include/macro.h \
-                                  $(random) \
-                                  $(su2) \
-                                  $(sun) \
-                                  $(tens_prod) \
-                                  $(u1)
-
-yang_mills_tube_disc_SOURCES=./src/yang_mills_tube_disc.c \
-                             $(timing) \
-                             $(align) \
-                             $(dSFMT)  \
-                             $(endian) \
-                             $(funcpoint) \
-                             $(gauge_conf) \
-                             $(geometry) \
-                             $(gparam) \
-                             ./include/macro.h \
-                             $(random) \
-                             $(su2) \
-                             $(sun) \
-                             $(tens_prod) \
-                             $(u1)
 
 yang_mills_tracedef_SOURCES=./src/yang_mills_tracedef.c \
                             $(timing) \
                             $(align) \
                             $(dSFMT)  \
                             $(endian) \
-                            $(funcpoint) \
+                            $(gauge_group) \
                             $(gauge_conf) \
                             $(geometry) \
                             $(gparam) \
@@ -312,7 +219,7 @@ yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \
@@ -323,12 +230,12 @@ yang_mills_local_pt_agf_SOURCES=./src/yang_mills_local_pt_agf.c \
                           $(tens_prod) \
                           $(u1)
 
-yang_mills_conf_measures_SOURCES=./src/yang_mills_conf_measures.c \
+yang_mills_conf_analysis_SOURCES=./src/yang_mills_conf_analysis.c \
                        $(timing) \
                        $(align) \
                        $(dSFMT)  \
                        $(endian) \
-                       $(funcpoint) \
+                       $(gauge_group) \
                        $(gauge_conf) \
                        $(geometry) \
                        $(gparam) \
@@ -344,7 +251,7 @@ debug_agf_vs_gf_SOURCES=./src/debug_agf_vs_gf.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \
@@ -360,7 +267,7 @@ debug_agf_vs_delta_SOURCES=./src/debug_agf_vs_delta.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \
@@ -376,7 +283,7 @@ yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
                           $(align) \
                           $(dSFMT)  \
                           $(endian) \
-                          $(funcpoint) \
+                          $(gauge_group) \
                           $(gauge_conf) \
                           $(geometry) \
                           $(gparam) \

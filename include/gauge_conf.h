@@ -1,21 +1,19 @@
 #ifndef GAUGE_CONF_H
 #define GAUGE_CONF_H
 
-#include"macro.h"
+#include "macro.h"
 
-#include<complex.h>
+#include <complex.h>
+#include <stdio.h>
 #ifdef HASH_MODE
-#include<openssl/md5.h>
+#include <openssl/md5.h>
 #endif
-#include<stdio.h>
 
-#include"gparam.h"
-#include"geometry.h"
-#include"u1.h"
-#include"su2.h"
-#include"sun.h"
-#include"tens_prod.h"
-#include"tens_prod_adj.h"
+#include "gauge_group.h"
+#include "geometry.h"
+#include "gparam.h"
+#include "tens_prod.h"
+
 
 typedef struct Gauge_Conf
 	{
@@ -42,9 +40,6 @@ typedef struct Gauge_Conf
 	// for computing the polyakov loop correlator with multilevel
 	TensProd ***ml_polycorr; // [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
 	GAUGE_GROUP **loc_poly;  // [d_size[0]/d_ml_step[NLEVELS-1]] [space_vol] auxiliary vector to be used in the multilevel
-
-	// for computing the polyakov loop correlator in the adjoint rep. with multilevel
-	TensProdAdj ***ml_polycorradj; // [NLEVELS] [d_size[0]/d_ml_step[i]] [space_vol]
 
 	// for the disconnected correlator for string width
 	TensProd **ml_polyplaq;   // [NLEVELS] [only slice 0] [space_vol]
@@ -245,45 +240,47 @@ void compute_md5sum_conf(char *res, // the length is 2*MD5_DIGEST_LENGTH
                          Gauge_Conf const *const GC,
                          GParam const *const param);
 
-void alloc_polycorr_stuff(Gauge_Conf *GC,
-                          GParam const *const param);
+void allocate_polycorr_stuff(Gauge_Conf *GC,
+                             GParam const *const param);
 
 void free_polycorr_stuff(Gauge_Conf *GC,
                          GParam const *const param);
 
+void allocate_tube_disc_stuff(Gauge_Conf *GC,
+                              GParam const *const param);
+
+void free_tube_disc_stuff(Gauge_Conf *GC,
+                          GParam const *const param);
+
+void allocate_tube_conn_stuff(Gauge_Conf *GC,
+                              GParam const *const param);
+
+void free_tube_conn_stuff(Gauge_Conf *GC,
+                          GParam const *const param);
+
+void allocate_multilevel_arrays(Gauge_Conf *GC,
+                                GParam const *const param,
+                                Multilevel_Obs const ml_obs);
+
+void free_multilevel_arrays(Gauge_Conf *GC,
+                            GParam const *const param,
+                            Multilevel_Obs const ml_obs);
+
 void write_polycorr_on_file(Gauge_Conf const *const GC,
                             GParam const *const param,
-                            int iteration);
+                            int const iteration);
 
-void read_polycorr_from_file(Gauge_Conf const *const GC,
-                             GParam const *const param,
-                             int *iteration);
+void read_polycorr_stuff_from_file(Gauge_Conf const *const GC,
+                                   GParam const *const param,
+                                   int *iteration);
 
 void compute_md5sum_polycorr(char *res, // the length is 2*MD5_DIGEST_LENGTH
                              Gauge_Conf const *const GC,
                              GParam const *const param);
 
-void alloc_polycorradj_stuff(Gauge_Conf *GC,
-                             GParam const *const param);
-
-void free_polycorradj_stuff(Gauge_Conf *GC,
-                            GParam const *const param);
-
-void alloc_tube_disc_stuff(Gauge_Conf *GC,
-                           GParam const *const param);
-
-void free_tube_disc_stuff(Gauge_Conf *GC,
-                          GParam const *const param);
-
-void alloc_tube_conn_stuff(Gauge_Conf *GC,
-                           GParam const *const param);
-
-void free_tube_conn_stuff(Gauge_Conf *GC,
-                          GParam const *const param);
-
 void write_tube_conn_stuff_on_file(Gauge_Conf const *const GC,
                                    GParam const *const param,
-                                   int iteration);
+                                   int const iteration);
 
 void read_tube_conn_stuff_from_file(Gauge_Conf const *const GC,
                                     GParam const *const param,
@@ -291,11 +288,21 @@ void read_tube_conn_stuff_from_file(Gauge_Conf const *const GC,
 
 void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const *const GC, GParam const *const param);
 
-void alloc_clover_array(Gauge_Conf *GC,
-                        GParam const *const param);
+void write_multilevel_status_on_file(Gauge_Conf const *const GC,
+                                     GParam const *const param,
+                                     int const iteration,
+                                     Multilevel_Obs const ml_obs);
 
-void end_clover_array(Gauge_Conf *GC,
-                      GParam const *const param);
+void read_multilevel_status_from_file(Gauge_Conf const *const GC,
+                                      GParam const *const param,
+                                      int *iteration,
+                                      Multilevel_Obs const ml_obs);
+
+void allocate_clover_array(Gauge_Conf *GC,
+                           GParam const *const param);
+
+void free_clover_array(Gauge_Conf *GC,
+                       GParam const *const param);
 
 
 // in gauge_conf_meas.c
@@ -511,21 +518,6 @@ void perform_measures_polycorr(Gauge_Conf *const GC,
                                GParam const *const param,
                                Meas_Utils *meas_aux);
 
-void optimize_multihit_polycorradj(Gauge_Conf *const GC,
-                                   Geometry const *const geo,
-                                   GParam const *const param,
-                                   FILE *datafilep);
-
-void optimize_multilevel_polycorradj(Gauge_Conf *const GC,
-                                     Geometry const *const geo,
-                                     GParam const *const param,
-                                     FILE *datafilep);
-
-void perform_measures_polycorradj(Gauge_Conf *const GC,
-                                  Geometry const *const geo,
-                                  GParam const *const param,
-                                  Meas_Utils *meas_aux);
-
 void optimize_multilevel_polycorr_long(Gauge_Conf *const GC,
                                        GParam const *const param,
                                        FILE *datafilep);
@@ -547,6 +539,12 @@ void perform_measures_tube_conn(Gauge_Conf *const GC,
 void perform_measures_tube_conn_long(Gauge_Conf *const GC,
                                      GParam const *const param,
                                      Meas_Utils *meas_aux);
+
+void perform_multilevel_update_and_measures(Gauge_Conf *const GC,
+                                            Geometry const *const geo,
+                                            GParam const *const param,
+                                            Meas_Utils *meas_aux,
+                                            Multilevel_Obs const ml_obs);
 
 int sprintf_header_datafile_aux(char *const header,
                                 char *const smoothing_method,
@@ -591,9 +589,9 @@ void print_measures_aux(int const num_meas, long const update_index, GParam cons
 void multihit(Gauge_Conf const *const GC,
               Geometry const *const geo,
               GParam const *const param,
-              long r,
-              int dir,
-              int num_hit,
+              long const r,
+              int const dir,
+              int const num_hit,
               GAUGE_GROUP *G);
 
 void compute_local_poly(Gauge_Conf *const GC,
@@ -609,11 +607,6 @@ void multilevel_polycorr(Gauge_Conf *const GC,
                          Geometry const *const geo,
                          GParam const *const param,
                          int dt);
-
-void multilevel_polycorradj(Gauge_Conf *const GC,
-                            Geometry const *const geo,
-                            GParam const *const param,
-                            int dt);
 
 void multilevel_polycorr_long_zero(Gauge_Conf *const GC,
                                    Geometry const *const geo,
@@ -642,6 +635,12 @@ void multilevel_tube_conn_long_zero(Gauge_Conf *const GC,
                                     Geometry const *const geo,
                                     GParam const *const param,
                                     int iteration);
+
+void perform_multilevel_long_update_zero(Gauge_Conf *GC,
+	                                     Geometry const *const geo,
+	                                     GParam const *const param,
+	                                     int const iteration,
+	                                     Multilevel_Obs const ml_obs);
 
 // in gauge_conf_upd.c
 void calcstaples_wilson(Gauge_Conf const *const GC,
@@ -779,12 +778,12 @@ void cooling_lex_site_lex_dir(Gauge_Conf *const GC,
                               GParam const *const param);
 
 void cooling_lex_dir_lex_site(Gauge_Conf *const GC,
-							  Geometry const *const geo,
-							  GParam const *const param);
+                              Geometry const *const geo,
+                              GParam const *const param);
 
 void cooling_lexeo_site_lex_dir(Gauge_Conf *const GC,
-								Geometry const *const geo,
-								GParam const *const param);
+                                Geometry const *const geo,
+                                GParam const *const param);
 
 void cooling_rnd_dir_rndeo_site(Gauge_Conf *const GC,
                                 Geometry const *const geo,
@@ -947,7 +946,7 @@ double compute_topo_potential(int const,
                               GParam const *const);
 
 void compute_topo_potential_debug(char *filename,
-                                  double x_min, double x_max, double x_stp,
+                                  double const x_min, double const x_max, double const x_stp,
                                   GParam const *const param);
 
 double multicanonic_topcharge_cooling(Gauge_Conf *const,

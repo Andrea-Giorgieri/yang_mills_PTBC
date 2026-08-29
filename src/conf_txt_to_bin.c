@@ -1,24 +1,19 @@
 #ifndef CONF_TXT_TO_BIN_C
 #define CONF_TXT_TO_BIN_C
 
-#include"../include/macro.h"
-#ifdef HASH_MODE
-#include<openssl/md5.h>
-#endif
+#include "../include/macro.h"
 
+#include <complex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include<math.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
-#include"../include/memalign.h"
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/gparam.h"
+#include "../include/gauge_conf.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
 
 
 void get_conf_files(char const *const arg1, char const *const arg2, char const *const arg3,
@@ -80,7 +75,7 @@ void set_param_for_writing_conf(int const *const sizes, int twist_mu, int twist_
 	}
 
 
-void parse_line(char *line, int *cartcoord, int *mu, int *i, int *j, double *re, double *im)
+void parse_line(char const *line, int *cartcoord, int *mu, int *i, int *j, double *re, double *im)
 	{
 	int step;
 	char const *line_ptr = line;
@@ -117,10 +112,6 @@ void check_valid_line(int const *const cartcoord, int mu, int i, int j, GParam c
 
 void init_gauge_conf_from_txt(char const *const conf_file_in, Gauge_Conf *const GC, GParam const *const param)
 	{
-	char line[STD_STRING_LENGTH];
-	int mu, i, j, cartcoord[STDIM];
-	double re, im;
-
 	FILE *fp = fopen(conf_file_in, "r");
 	REQUIRE(fp != NULL, "failed to open file %s", conf_file_in);
 
@@ -138,6 +129,10 @@ void init_gauge_conf_from_txt(char const *const conf_file_in, Gauge_Conf *const 
 	#if NCOLOR < 3
 	REQUIRE(0, "not implemented");
 	#else
+	char line[STD_STRING_LENGTH];
+	int mu, i, j, cartcoord[STDIM];
+	double re, im;
+
 	while(fscanf(fp, "%[^\n]\n", line) != EOF)
 		{
 		parse_line(line, cartcoord, &mu, &i, &j, &re, &im);
@@ -210,11 +205,11 @@ void free_gauge_conf_from_txt(Gauge_Conf *GC, GParam const *const param)
 int main(int argc, char **argv)
 	{
 	#if NCOLOR < 3
-
-	printf("This program can be used only for NCOLOR > 2\n");
+	(void) argc;
+	(void) argv;
+	printf("This program can only be used for NCOLOR > 2\n");
 
 	#else
-
 	char conf_file_in[STD_STRING_LENGTH], conf_file_out[STD_STRING_LENGTH], twist_file_out[STD_STRING_LENGTH];
 	int twist_mu, twist_nu, twist_k, sizes[STDIM];
 	Gauge_Conf GC;
@@ -237,7 +232,6 @@ int main(int argc, char **argv)
 
 	set_param_for_writing_conf(sizes, twist_mu, twist_nu, twist_k, conf_file_out, twist_file_out, &param);
 
-	init_indexing_lexeo();
 	init_gauge_conf_from_txt(conf_file_in, &GC, &param);
 	init_twist_cond_from_txt(&GC, &param);
 	fprintf(stdout, "Done reading input conf\n");

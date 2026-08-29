@@ -1,13 +1,12 @@
 #ifndef GPARAM_H
 #define GPARAM_H
 
-#include"macro.h"
-#include"timing.h"
+#include "macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
-#include<complex.h>
+#include <stdio.h>
+#include <time.h>
+
+#include "timing.h"
 
 // cooling implementations
 typedef enum
@@ -18,6 +17,17 @@ typedef enum
 	LEXEO_SITE_LEX_DIR,
 	RND_DIR_RNDEO_SITE
 	} Cooling_Type;
+
+// multilevel observables
+typedef enum
+	{
+	NONE,
+	POLYCORR,
+	POLYCORR_LONG,
+	TUBE_DISC,
+	TUBE_CONN,
+	TUBE_CONN_LONG,
+	} Multilevel_Obs;
 
 typedef struct GParam
 	{
@@ -104,6 +114,8 @@ typedef struct GParam
 	int d_agf_num_meas;
 
 	// for multilevel
+	char d_ml_obs_str[STD_STRING_LENGTH];
+	Multilevel_Obs d_ml_obs;
 	int d_multihit;
 	int d_ml_step[NLEVELS];
 	int d_ml_upd[NLEVELS];
@@ -243,19 +255,15 @@ void print_parameters_debug_agf_vs_delta(GParam const *const param, time_t time_
 
 void print_parameters_local_pt_multicanonic(GParam const *const param, Time_Utils const *const timers);
 
-void print_parameters_polycorr_long(GParam *param, Time_Utils const *const timers);
-
-void print_parameters_polycorr(GParam *param, Time_Utils const *const timers);
-
-void print_parameters_conf_measures(GParam *param, Time_Utils const *const timers);
+void print_parameters_conf_analysis(GParam *param, Time_Utils const *const timers);
 
 void print_parameters_tracedef(GParam const *const param, Time_Utils const *const timers, double acc);
 
-void print_parameters_tube_disc(GParam *param, Time_Utils const *const timers);
+void print_parameters_polycorr_long(GParam *param, Time_Utils const *const timers);
 
-void print_parameters_tube_conn(GParam *param, Time_Utils const *const timers);
+void print_parameters_multilevel_long(GParam *param, Time_Utils const *const timers);
 
-void print_parameters_tube_conn_long(GParam *param, Time_Utils const *const timers);
+void print_parameters_multilevel(GParam *param, Time_Utils const *const timers);
 
 void print_parameters_tuning_pt_mc(GParam const *const param, Time_Utils const *const timers, int count);
 

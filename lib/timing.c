@@ -1,17 +1,15 @@
 #ifndef TIMING_C
 #define TIMING_C
 
-#include"../include/macro.h"
-#include"../include/timing.h"
+#include "../include/macro.h"
+#include "../include/timing.h"
 
-#include<math.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
 double get_wtime(void)

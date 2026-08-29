@@ -1,19 +1,19 @@
 #ifndef GAUGE_CONF_UPD_C
 #define GAUGE_CONF_UPD_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
-#include<math.h>
+#include <math.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
-#include<stdlib.h>
+#include <stdlib.h>
 
-#include"../include/memalign.h"
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
+#include "../include/memalign.h"
+#include "../include/gauge_group.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
 
 // compute the staple in position r, direction i and save it in M
 void calcstaples_wilson(Gauge_Conf const *const GC,
@@ -186,7 +186,8 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 
 	#ifndef THETA_MODE
 	calcstaples_wilson(GC, geo, param, r, i, M);
-	#else
+
+	#elif STDIM == 4
 	// the theta term is written as
 	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood[\mu][\nu][0] sood[\mu][\nu][1]} )
 	// the independent permutations are 0123 0231 0312
@@ -338,6 +339,8 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 	times_equal_real(&topo_M, topo_staple_coeff);
 	plus_equal(M, &topo_M);
 
+	#else
+	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
 	}
 
@@ -523,7 +526,8 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 
 	#ifndef THETA_MODE
 	calcstaples_wilson_with_defect(GC, geo, param, r, i, M);
-	#else
+
+	#elif STDIM == 4
 	// the theta term is written as
 	// theta/(128 pi^2) \sum_{ind. perm.} ReTr(Q_{\mu\nu}(Q-Q^{dag})_{sood[\mu][\nu][0] sood[\mu][\nu][1]} )
 	// the independent permutations are 0123 0231 0312
@@ -678,6 +682,8 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 	times_equal_real(&topo_M, topo_staple_coeff);
 	plus_equal(M, &topo_M);
 
+	#else
+	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
 	}
 

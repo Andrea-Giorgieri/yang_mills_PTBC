@@ -1,31 +1,27 @@
 #ifndef SU2_H
 #define SU2_H
 
-#include"macro.h"
-#include"tens_prod.h"
-#include"tens_prod_adj.h"
+#include "macro.h"
 
-#include<complex.h>
-#include<math.h>
-#include<stdio.h>
+#include <complex.h>
+#include <math.h>
+#include <stdio.h>
 
-//
-// An Su2 matrix is represented as comp[0]+i\sum_{j=1}^3 comp[j]\sigma_j where
+#include "endianness.h"
+#include "random.h"
+
+
+// An SU(2) matrix is represented as comp[0]+i\sum_{j=1}^3 comp[j]\sigma_j where
 // sigma_j are Pauli matrices, comp[j] are real and \sum_{j=0}^3 comp[j]^2=1
-//
 typedef struct Su2
 	{
 	double comp[4] __attribute__((aligned(DOUBLE_ALIGN)));
 	} Su2;
 
+// basic operations
 
-typedef struct Su2Adj
-	{
-	double comp[9] __attribute__((aligned(DOUBLE_ALIGN)));
-	} Su2Adj;
-
-
-inline void init_Su2(Su2 *restrict A, double vec[4])
+// A from vec
+static inline void init_Su2(Su2 *restrict A, double vec[4])
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -39,7 +35,7 @@ inline void init_Su2(Su2 *restrict A, double vec[4])
 
 
 // A=1
-inline void one_Su2(Su2 *restrict A)
+static inline void one_Su2(Su2 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -53,7 +49,7 @@ inline void one_Su2(Su2 *restrict A)
 
 
 // A=0
-inline void zero_Su2(Su2 *restrict A)
+static inline void zero_Su2(Su2 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -67,7 +63,7 @@ inline void zero_Su2(Su2 *restrict A)
 
 
 // A=B
-inline void equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -86,7 +82,7 @@ inline void equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A=B^{dag}
-inline void equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -104,8 +100,10 @@ inline void equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	}
 
 
+// additions and subtractions
+
 // A+=B
-inline void plus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void plus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -124,7 +122,7 @@ inline void plus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A+=B^{dag}
-inline void plus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void plus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -143,7 +141,7 @@ inline void plus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A-=B
-inline void minus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void minus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -162,7 +160,7 @@ inline void minus_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A-=(r*B)
-inline void minus_equal_times_real_Su2(Su2 *restrict A, Su2 const *const restrict B, double r)
+static inline void minus_equal_times_real_Su2(Su2 *restrict A, Su2 const *const restrict B, double const r)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -173,15 +171,15 @@ inline void minus_equal_times_real_Su2(Su2 *restrict A, Su2 const *const restric
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	A->comp[0] -= (r * B->comp[0]);
-	A->comp[1] -= (r * B->comp[1]);
-	A->comp[2] -= (r * B->comp[2]);
-	A->comp[3] -= (r * B->comp[3]);
+	A->comp[0] -= r * B->comp[0];
+	A->comp[1] -= r * B->comp[1];
+	A->comp[2] -= r * B->comp[2];
+	A->comp[3] -= r * B->comp[3];
 	}
 
 
 // A-=B^{dag}
-inline void minus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void minus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -199,96 +197,10 @@ inline void minus_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	}
 
 
-// A=b*B+c*C
-inline void lin_comb_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
-	{
-	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
-	#endif
-
-	#ifdef __INTEL_COMPILER
-	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
-	#endif
-
-	A->comp[0] = b * B->comp[0] + c * C->comp[0];
-	A->comp[1] = b * B->comp[1] + c * C->comp[1];
-	A->comp[2] = b * B->comp[2] + c * C->comp[2];
-	A->comp[3] = b * B->comp[3] + c * C->comp[3];
-	}
-
-
-// A=b*B^{dag}+c*C
-inline void lin_comb_dag1_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
-	{
-	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
-	#endif
-
-	#ifdef __INTEL_COMPILER
-	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
-	#endif
-
-	A->comp[0] = b * B->comp[0] + c * C->comp[0];
-	A->comp[1] = -b * B->comp[1] + c * C->comp[1];
-	A->comp[2] = -b * B->comp[2] + c * C->comp[2];
-	A->comp[3] = -b * B->comp[3] + c * C->comp[3];
-	}
-
-
-// A=b*B+c*C^{dag}
-inline void lin_comb_dag2_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
-	{
-	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
-	#endif
-
-	#ifdef __INTEL_COMPILER
-	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
-	#endif
-
-	A->comp[0] = b * B->comp[0] + c * C->comp[0];
-	A->comp[1] = b * B->comp[1] - c * C->comp[1];
-	A->comp[2] = b * B->comp[2] - c * C->comp[2];
-	A->comp[3] = b * B->comp[3] - c * C->comp[3];
-	}
-
-
-// A=b*B^{dag}+c*C^{dag}
-inline void lin_comb_dag12_Su2(Su2 *restrict A, double b, Su2 const *const restrict B, double c, Su2 const *const restrict C)
-	{
-	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
-	#endif
-
-	#ifdef __INTEL_COMPILER
-	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
-	#endif
-
-	A->comp[0] = b * B->comp[0] + c * C->comp[0];
-	A->comp[1] = -b * B->comp[1] - c * C->comp[1];
-	A->comp[2] = -b * B->comp[2] - c * C->comp[2];
-	A->comp[3] = -b * B->comp[3] - c * C->comp[3];
-	}
-
+// multiplications
 
 // A*=r
-inline void times_equal_real_Su2(Su2 *restrict A, double r)
+static inline void times_equal_real_Su2(Su2 *restrict A, double const r)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -302,7 +214,7 @@ inline void times_equal_real_Su2(Su2 *restrict A, double r)
 
 
 // A*=r
-inline void times_equal_complex_Su2(Su2 *restrict A, double complex r)
+static inline void times_equal_complex_Su2(Su2 *restrict A, double complex const r)
 	{
 	#ifdef DEBUG
 	ASSERT(fabs(cimag(r)) < MIN_VALUE, "trying to multiply an SU(2) matrix by a non-real number");
@@ -320,7 +232,7 @@ inline void times_equal_complex_Su2(Su2 *restrict A, double complex r)
 
 
 // A*=B
-inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -331,10 +243,10 @@ inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	register double a0 = A->comp[0];
-	register double a1 = A->comp[1];
-	register double a2 = A->comp[2];
-	register double a3 = A->comp[3];
+	register double const a0 = A->comp[0];
+	register double const a1 = A->comp[1];
+	register double const a2 = A->comp[2];
+	register double const a3 = A->comp[3];
 
 	A->comp[0] = a0 * B->comp[0] - a1 * B->comp[1] - a2 * B->comp[2] - a3 * B->comp[3];
 	A->comp[1] = a0 * B->comp[1] + a1 * B->comp[0] - a2 * B->comp[3] + a3 * B->comp[2];
@@ -344,7 +256,7 @@ inline void times_equal_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A*=B^{dag}
-inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
+static inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -355,10 +267,10 @@ inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	register double a0 = A->comp[0];
-	register double a1 = A->comp[1];
-	register double a2 = A->comp[2];
-	register double a3 = A->comp[3];
+	register double const a0 = A->comp[0];
+	register double const a1 = A->comp[1];
+	register double const a2 = A->comp[2];
+	register double const a3 = A->comp[3];
 
 	A->comp[0] = a0 * B->comp[0] + a1 * B->comp[1] + a2 * B->comp[2] + a3 * B->comp[3];
 	A->comp[1] = -a0 * B->comp[1] + a1 * B->comp[0] + a2 * B->comp[3] - a3 * B->comp[2];
@@ -368,7 +280,7 @@ inline void times_equal_dag_Su2(Su2 *restrict A, Su2 const *const restrict B)
 
 
 // A=B*C
-inline void times_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
+static inline void times_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -390,7 +302,7 @@ inline void times_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *c
 
 
 // A=B^{dag}*C
-inline void times_dag1_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
+static inline void times_dag1_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -412,7 +324,7 @@ inline void times_dag1_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 con
 
 
 // A=B*C^{dag}
-inline void times_dag2_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
+static inline void times_dag2_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -434,7 +346,7 @@ inline void times_dag2_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 con
 
 
 // A=B^{dag}*C^{dag}
-inline void times_dag12_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
+static inline void times_dag12_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 const *const restrict C)
 	{
 	#ifdef DEBUG
 	ASSERT(A != B, "the same pointer is used twice");
@@ -455,16 +367,149 @@ inline void times_dag12_Su2(Su2 *restrict A, Su2 const *const restrict B, Su2 co
 	}
 
 
-// random SU(2) matrix
-void rand_matrix_Su2(Su2 *A);
+// linear combinations
+
+// A=b*B+c*C
+static inline void lin_comb_Su2(Su2 *restrict A, double const b, Su2 const *const restrict B, double const c, Su2 const *const restrict C)
+	{
+	#ifdef DEBUG
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
+	#endif
+
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
+	#endif
+
+	A->comp[0] = b * B->comp[0] + c * C->comp[0];
+	A->comp[1] = b * B->comp[1] + c * C->comp[1];
+	A->comp[2] = b * B->comp[2] + c * C->comp[2];
+	A->comp[3] = b * B->comp[3] + c * C->comp[3];
+	}
 
 
-// random SU(2) matrix with p0 given (used in the update)
-void rand_matrix_p0_Su2(double p0, Su2 *A);
+// A=b*B^{dag}+c*C
+static inline void lin_comb_dag1_Su2(Su2 *restrict A, double const b, Su2 const *const restrict B, double const c, Su2 const *const restrict C)
+	{
+	#ifdef DEBUG
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
+	#endif
+
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
+	#endif
+
+	A->comp[0] = b * B->comp[0] + c * C->comp[0];
+	A->comp[1] = -b * B->comp[1] + c * C->comp[1];
+	A->comp[2] = -b * B->comp[2] + c * C->comp[2];
+	A->comp[3] = -b * B->comp[3] + c * C->comp[3];
+	}
 
 
-// sqrt of the determinant
-inline double sqrtdet_Su2(Su2 const *const restrict A)
+// A=b*B+c*C^{dag}
+static inline void lin_comb_dag2_Su2(Su2 *restrict A, double const b, Su2 const *const restrict B, double const c, Su2 const *const restrict C)
+	{
+	#ifdef DEBUG
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
+	#endif
+
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
+	#endif
+
+	A->comp[0] = b * B->comp[0] + c * C->comp[0];
+	A->comp[1] = b * B->comp[1] - c * C->comp[1];
+	A->comp[2] = b * B->comp[2] - c * C->comp[2];
+	A->comp[3] = b * B->comp[3] - c * C->comp[3];
+	}
+
+
+// A=b*B^{dag}+c*C^{dag}
+static inline void lin_comb_dag12_Su2(Su2 *restrict A, double const b, Su2 const *const restrict B, double const c, Su2 const *const restrict C)
+	{
+	#ifdef DEBUG
+	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT(A != C, "the same pointer is used twice");
+	ASSERT(B != C, "the same pointer is used twice");
+	#endif
+
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
+	__assume_aligned(&(C->comp), DOUBLE_ALIGN);
+	#endif
+
+	A->comp[0] = b * B->comp[0] + c * C->comp[0];
+	A->comp[1] = -b * B->comp[1] - c * C->comp[1];
+	A->comp[2] = -b * B->comp[2] - c * C->comp[2];
+	A->comp[3] = -b * B->comp[3] - c * C->comp[3];
+	}
+
+
+// random generation
+
+// A=random
+static inline void rand_matrix_Su2(Su2 *restrict A)
+	{
+	register double p0, p1, p2, p3, r2;
+
+	do
+		{
+		p0 = 1.0 - 2.0 * casuale();
+		p1 = 1.0 - 2.0 * casuale();
+		p2 = 1.0 - 2.0 * casuale();
+		p3 = 1.0 - 2.0 * casuale();
+
+		r2 = p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3;
+		} while(r2 > 1.0);
+
+	double const invr = 1.0 / sqrt(r2);
+
+	A->comp[0] = p0 * invr;
+	A->comp[1] = p1 * invr;
+	A->comp[2] = p2 * invr;
+	A->comp[3] = p3 * invr;
+	}
+
+
+// A=random with given p0 (used in the update)
+static inline void rand_matrix_p0_Su2(double const p0, Su2 *restrict A)
+	{
+	register double p1, p2, p3, r2;
+
+	do
+		{
+		p1 = 1.0 - 2.0 * casuale();
+		p2 = 1.0 - 2.0 * casuale();
+		p3 = 1.0 - 2.0 * casuale();
+
+		r2 = p1 * p1 + p2 * p2 + p3 * p3;
+		} while(r2 > 1.0);
+
+	double const scale = sqrt((1.0 - p0 * p0) / r2);
+
+	A->comp[0] = p0;
+	A->comp[1] = p1 * scale;
+	A->comp[2] = p2 * scale;
+	A->comp[3] = p3 * scale;
+	}
+
+
+// norms and traces
+
+// \sqrt{Det[A]}
+static inline double sqrtdet_Su2(Su2 const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -474,8 +519,8 @@ inline double sqrtdet_Su2(Su2 const *const restrict A)
 	}
 
 
-// l2 norm of the matrix
-inline double norm_Su2(Su2 const *const restrict A)
+// l2 norm
+static inline double norm_Su2(Su2 const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -485,17 +530,32 @@ inline double norm_Su2(Su2 const *const restrict A)
 	}
 
 
-// relative distance between matrices
-inline double relative_dist_Su2(Su2 const *const restrict A, Su2 const *const restrict B)
+// ReTr[A]/N
+static inline double retr_Su2(Su2 const *const restrict A)
+	{
+	return A->comp[0];
+	}
+
+
+// ImTr[A]/N
+static inline double imtr_Su2(Su2 const *const restrict A)
+	{
+	(void) A; // to suppress compilation warning of unused variable
+	return 0.0;
+	}
+
+
+// norm(A - B) / (1/2 * \sqrt{norm(A - 1)**2 + norm(B - 1)**2})
+static inline double relative_dist_Su2(Su2 const *const restrict A, Su2 const *const restrict B)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	__assume_aligned(&(B->comp), DOUBLE_ALIGN);
 	#endif
 
-	double aux_ApB = 1.0 - 0.5 * (A->comp[0] + B->comp[0]);
-	double aux_AxB = 1.0 - (A->comp[0] * B->comp[0] + A->comp[1] * B->comp[1] + A->comp[2] * B->comp[2] + A->comp[3] * B->comp[3]);
-	double check = 2.83 * MIN_VALUE;
+	double const aux_ApB = 1.0 - 0.5 * (A->comp[0] + B->comp[0]);
+	double const aux_AxB = 1.0 - (A->comp[0] * B->comp[0] + A->comp[1] * B->comp[1] + A->comp[2] * B->comp[2] + A->comp[3] * B->comp[3]);
+	double const check = 2.83 * MIN_VALUE;
 	if(aux_ApB <= check || aux_AxB <= check)
 		{
 		return 0.0;
@@ -504,20 +564,10 @@ inline double relative_dist_Su2(Su2 const *const restrict A, Su2 const *const re
 	}
 
 
-// real part of the trace /2
-inline double retr_Su2(Su2 const *const restrict A) { return A->comp[0]; }
+// unitarization and exponentiation
 
-
-// imaginary part of the trace /2
-inline double imtr_Su2(Su2 const *const restrict A)
-	{
-	(void) A; // to suppress compilation warning of unused variable
-	return 0.0;
-	}
-
-
-// unitarize the matrix
-inline void unitarize_Su2(Su2 *restrict A)
+// unitarize A
+static inline void unitarize_Su2(Su2 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
@@ -534,20 +584,27 @@ inline void unitarize_Su2(Su2 *restrict A)
 
 
 // traceless antihermitian part
-inline void ta_Su2(Su2 *restrict A) { A->comp[0] = 0; }
+static inline void ta_Su2(Su2 *restrict A)
+	{
+	#ifdef __INTEL_COMPILER
+	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
+	#endif
+
+	A->comp[0] = 0;
+	}
 
 
 // exponential of the traceless antihermitian part
-inline void taexp_Su2(Su2 *restrict A)
+static inline void taexp_Su2(Su2 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
 	__assume_aligned(&(A->comp), DOUBLE_ALIGN);
 	#endif
 
 	// comp[0] is neglected since we consider the ta part
-	double norm = (A->comp[1] * A->comp[1]);
-	norm += (A->comp[2] * A->comp[2]);
-	norm += (A->comp[3] * A->comp[3]);
+	double norm = A->comp[1] * A->comp[1];
+	norm += A->comp[2] * A->comp[2];
+	norm += A->comp[3] * A->comp[3];
 	norm = sqrt(norm);
 
 	double const v1 = A->comp[1] / norm;
@@ -563,135 +620,136 @@ inline void taexp_Su2(Su2 *restrict A)
 	}
 
 
+// I/O operations
+
 // print on screen
-void print_on_screen_Su2(Su2 const *const A);
-
-
-// print on file
-void print_on_file_Su2(FILE *fp, Su2 const *const A);
-
-
-// print on binary file without changing endiannes
-void print_on_binary_file_noswap_Su2(FILE *fp, Su2 const *const A);
-
-
-// print on binary file changing endiannes
-void print_on_binary_file_swap_Su2(FILE *fp, Su2 const *const A);
-
-
-// print on binary file in big endian format
-void print_on_binary_file_bigen_Su2(FILE *fp, Su2 const *const A);
-
-
-// read from file
-void read_from_file_Su2(FILE *fp, Su2 *A);
-
-
-// read from binary file without changing endiannes
-void read_from_binary_file_noswap_Su2(FILE *fp, Su2 *A);
-
-
-// read from binary file changing endiannes
-void read_from_binary_file_swap_Su2(FILE *fp, Su2 *A);
-
-
-// read from binary file written in big endian
-void read_from_binary_file_bigen_Su2(FILE *fp, Su2 *A);
-
-
-// initialize tensor product
-inline void TensProd_init_Su2(TensProd *restrict TP, Su2 const *const restrict A1, Su2 const *const restrict A2)
+static inline void print_on_screen_Su2(Su2 const *const restrict A)
 	{
-	#ifdef DEBUG
-	ASSERT(A1 != A2, "the same pointer is used twice");
-	#endif
-
-	#ifdef __INTEL_COMPILER
-	__assume_aligned(&(A1->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(A2->comp), DOUBLE_ALIGN);
-	__assume_aligned(&(TP->comp), DOUBLE_ALIGN);
-	#endif
-
-	double complex aux1[4] __attribute__((aligned(DOUBLE_ALIGN)));
-	double complex aux2[4] __attribute__((aligned(DOUBLE_ALIGN)));
-
-	#define m2(X, Y) ((X)*2 + (Y))
-
-	// reconstruct the complex form of the matrices
-	aux1[m2(0, 0)] = A1->comp[0] + I * A1->comp[3];
-	aux1[m2(0, 1)] = A1->comp[2] + I * A1->comp[1];
-	aux1[m2(1, 0)] = -A1->comp[2] + I * A1->comp[1];
-	aux1[m2(1, 1)] = A1->comp[0] - I * A1->comp[3];
-
-	aux2[m2(0, 0)] = A2->comp[0] + I * A2->comp[3];
-	aux2[m2(0, 1)] = A2->comp[2] + I * A2->comp[1];
-	aux2[m2(1, 0)] = -A2->comp[2] + I * A2->comp[1];
-	aux2[m2(1, 1)] = A2->comp[0] - I * A2->comp[3];
-
+	//fprintf(stdout, "% 10.4e % 10.4e % 10.4e % 10.4e\n", A->comp[0], A->comp[1], A->comp[2], A->comp[3]);
+	double complex f[2][2];
+	f[0][0] = A->comp[0] + A->comp[3] * I;
+	f[0][1] = A->comp[2] + A->comp[1] * I;
+	f[1][0] = -A->comp[2] + A->comp[1] * I;
+	f[1][1] = A->comp[0] - A->comp[3] * I;
 	for(int i = 0; i < 2; i++)
 		{
 		for(int j = 0; j < 2; j++)
 			{
-			for(int k = 0; k < 2; k++)
-				{
-				for(int l = 0; l < 2; l++)
-					{
-					TP->comp[i][j][k][l] = conj(aux1[m2(i, j)]) * aux2[m2(k, l)];
-					}
-				}
+			fprintf(stdout, "(% 5.3f % 5.3f) ", creal(f[i][j]), cimag(f[i][j]));
 			}
+		fprintf(stdout, "\n");
 		}
-
-	#undef m2
+	fprintf(stdout, "\n");
 	}
 
 
-// convert the fundamental representation matrix B to the adjoint representation matrix A
-inline void fund_to_adj_Su2(Su2Adj *restrict A, Su2 const *const restrict B)
+// print on file
+static inline void print_on_file_Su2(FILE *fp, Su2 const *const restrict A)
 	{
-	A->comp[0] = (pow(B->comp[0], 2) + pow(B->comp[1], 2) - pow(B->comp[2], 2) - pow(B->comp[3], 2));
-	A->comp[1] = 2 * (B->comp[0] * B->comp[3] + B->comp[1] * B->comp[2]);
-	A->comp[2] = 2 * (-B->comp[0] * B->comp[2] + B->comp[1] * B->comp[3]);
-	A->comp[3] = 2 * (-B->comp[0] * B->comp[3] + B->comp[1] * B->comp[2]);
-	A->comp[4] = (pow(B->comp[0], 2) - pow(B->comp[1], 2) + pow(B->comp[2], 2) - pow(B->comp[3], 2));
-	A->comp[5] = 2 * (B->comp[0] * B->comp[1] + B->comp[2] * B->comp[3]);
-	A->comp[6] = 2 * (B->comp[0] * B->comp[2] + B->comp[1] * B->comp[3]);
-	A->comp[7] = 2 * (-B->comp[0] * B->comp[1] + B->comp[2] * B->comp[3]);
-	A->comp[8] = (pow(B->comp[0], 2) - pow(B->comp[1], 2) - pow(B->comp[2], 2) + pow(B->comp[3], 2));
+	int const err = fprintf(fp, "% 18.12e % 18.12e % 18.12e % 18.12e\n", A->comp[0], A->comp[1], A->comp[2], A->comp[3]);
+	REQUIRE(err >= 0, "failed to write an SU(2) matrix on a file");
 	}
 
 
-// initialize tensor product in the adjoint representation
-// using two matrices in the fundamental representation
-inline void TensProdAdj_init_Su2(TensProdAdj *restrict TP, Su2 const *const restrict A1, Su2 const *const restrict A2)
+// print on binary file without changing endiannes
+static inline void print_on_binary_file_noswap_Su2(FILE *fp, Su2 const *const restrict A)
 	{
-	#ifdef DEBUG
-	ASSERT(A1 != A2, "the same pointer is used twice");
-	#endif
+	size_t err = 0;
+	err += fwrite(&A->comp[0], sizeof(double), 1, fp);
+	err += fwrite(&A->comp[1], sizeof(double), 1, fp);
+	err += fwrite(&A->comp[2], sizeof(double), 1, fp);
+	err += fwrite(&A->comp[3], sizeof(double), 1, fp);
+	REQUIRE(err == 4, "failed to write an SU(2) matrix on a file in binary mode");
+	}
 
-	#define m2adj(X, Y) ((X)*3 + (Y))
 
-	Su2Adj A1adj __attribute__((aligned(DOUBLE_ALIGN)));
-	Su2Adj A2adj __attribute__((aligned(DOUBLE_ALIGN)));
+// print on binary file changing endiannes
+static inline void print_on_binary_file_swap_Su2(FILE *fp, Su2 const *const restrict A)
+	{
+	double tmp;
+	size_t err = 0;
 
-	fund_to_adj_Su2(&A1adj, A1);
-	fund_to_adj_Su2(&A2adj, A2);
+	tmp = A->comp[0];
+	SwapBytesDouble(&tmp);
+	err += fwrite(&tmp, sizeof(double), 1, fp);
 
-	for(int i = 0; i < 3; i++)
+	tmp = A->comp[1];
+	SwapBytesDouble(&tmp);
+	err += fwrite(&tmp, sizeof(double), 1, fp);
+
+	tmp = A->comp[2];
+	SwapBytesDouble(&tmp);
+	err += fwrite(&tmp, sizeof(double), 1, fp);
+
+	tmp = A->comp[3];
+	SwapBytesDouble(&tmp);
+	err += fwrite(&tmp, sizeof(double), 1, fp);
+	REQUIRE(err == 4, "failed to write an SU(2) matrix on a file in binary mode with swapped endianness");
+	}
+
+
+// print on binary file in big endian format
+static inline void print_on_binary_file_bigen_Su2(FILE *fp, Su2 const *const restrict A)
+	{
+	if(endian() == 0) // little endian machine
 		{
-		for(int j = 0; j < 3; j++)
-			{
-			for(int k = 0; k < 3; k++)
-				{
-				for(int l = 0; l < 3; l++)
-					{
-					TP->comp[i][j][k][l] = (A1adj.comp[m2adj(i, j)]) * (A2adj.comp[m2adj(k, l)]);
-					}
-				}
-			}
+		print_on_binary_file_swap_Su2(fp, A);
 		}
+	else
+		{
+		print_on_binary_file_noswap_Su2(fp, A);
+		}
+	}
 
-	#undef m2adj
+
+// read from file
+static inline void read_from_file_Su2(FILE *fp, Su2 *restrict A)
+	{
+	int const err = fscanf(fp, "%lg %lg %lg %lg", &A->comp[0], &A->comp[1], &A->comp[2], &A->comp[3]);
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file");
+	}
+
+
+// read from binary file without changing endiannes
+static inline void read_from_binary_file_noswap_Su2(FILE *fp, Su2 *restrict A)
+	{
+	size_t err = 0;
+	err += fread(&A->comp[0], sizeof(double), 1, fp);
+	err += fread(&A->comp[1], sizeof(double), 1, fp);
+	err += fread(&A->comp[2], sizeof(double), 1, fp);
+	err += fread(&A->comp[3], sizeof(double), 1, fp);
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file in binary mode");
+	}
+
+
+// read from binary file changing endiannes
+static inline void read_from_binary_file_swap_Su2(FILE *fp, Su2 *restrict A)
+	{
+	size_t err = 0;
+	err += fread(&A->comp[0], sizeof(double), 1, fp);
+	err += fread(&A->comp[1], sizeof(double), 1, fp);
+	err += fread(&A->comp[2], sizeof(double), 1, fp);
+	err += fread(&A->comp[3], sizeof(double), 1, fp);
+	REQUIRE(err == 4, "failed to read an SU(2) matrix from a file in binary mode with swapped endianness");
+
+	SwapBytesDouble((void *) &A->comp[0]);
+	SwapBytesDouble((void *) &A->comp[1]);
+	SwapBytesDouble((void *) &A->comp[2]);
+	SwapBytesDouble((void *) &A->comp[3]);
+	}
+
+
+// read from binary file written in big endian
+static inline void read_from_binary_file_bigen_Su2(FILE *fp, Su2 *restrict A)
+	{
+	if(endian() == 0) // little endian machine
+		{
+		read_from_binary_file_swap_Su2(fp, A);
+		}
+	else
+		{
+		read_from_binary_file_noswap_Su2(fp, A);
+		}
 	}
 
 

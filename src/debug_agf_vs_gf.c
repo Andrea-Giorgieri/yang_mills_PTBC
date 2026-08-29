@@ -1,22 +1,20 @@
 #ifndef DEBUG_AGF_VS_GF_C
 #define DEBUG_AGF_VS_GF_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<time.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
 
 void real_main(char const *in_file)
 	{
@@ -48,7 +46,6 @@ void real_main(char const *in_file)
 	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize gauge configurations replica and volume defects

@@ -1,20 +1,20 @@
 #ifndef DEBUG_SU2_C
 #define DEBUG_SU2_C
 
-#include"../include/macro.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/su2.h"
-#include"../include/su2_upd.h"
+#include "../include/macro.h"
 
-#include<math.h>
-#include<stdio.h>
-#include<stdlib.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/su2.h"
+#include "../include/su2_upd.h"
 
 int main(void)
 	{
-	unsigned int seed = 0;
-	double energy;
+	unsigned int const seed = 0;
 	GParam param;
 
 	Su2 M, N, L, T, id_SU2;
@@ -79,8 +79,8 @@ int main(void)
 	rand_matrix_Su2(&L);
 	plus_equal_Su2(&N, &L); // N+=L,  M in SU(2), N no   (M=link, N=staple)
 
-	times_Su2(&T, &M, &N); // T=M*N
-	energy = retr_Su2(&T); // initial energy
+	times_Su2(&T, &M, &N);        // T=M*N
+	double energy = retr_Su2(&T); // initial energy
 	single_overrelaxation_Su2(&M, &N);
 	times_Su2(&T, &M, &N);  // T=M*N
 	energy -= retr_Su2(&T); // -=final energy

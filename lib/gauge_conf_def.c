@@ -1,22 +1,25 @@
 #ifndef GAUGE_CONF_DEF_C
 #define GAUGE_CONF_DEF_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
-#ifdef HASH_MODE
-#include<openssl/md5.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef OPENMP_MODE
+#include <omp.h>
 #endif
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<math.h>
+#ifdef HASH_MODE
+#include <openssl/md5.h>
+#endif
 
-#include"../include/function_pointers.h"
-#include"../include/gparam.h"
-#include"../include/geometry.h"
-#include"../include/gauge_conf.h"
-#include"../include/tens_prod.h"
-#include"../include/memalign.h"
+#include "../include/gauge_group.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
+#include "../include/tens_prod.h"
 
 
 void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const *const param)
@@ -394,7 +397,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 	allocate_lattice_with_copy(GC, param);
 
 	#ifdef THETA_MODE
-	alloc_clover_array(GC, param);
+	allocate_clover_array(GC, param);
 	#endif
 
 	// initialize lattice:
@@ -442,10 +445,12 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 		int nu = 0;
 		int k_mu_nu = 0;
 
+		#if NCOLOR > 2
 		#if NCOLOR % 2 == 0
-		double complex const zf = cexp(I * PI / (double) NCOLOR);
+		double complex const zf= cexp(I * PI / (double) NCOLOR);
 		#else
-		double complex const zf= 1.0 + I * 0.0;
+		double complex const zf = 1.0 + I * 0.0;
+		#endif
 		#endif
 
 		// check if twist is non-trivial and save parameters (only last occurrence)
@@ -699,8 +704,6 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 	#ifdef HASH_MODE
 	char md5sum_new[2 * MD5_DIGEST_LENGTH + 1];
 	char md5sum_old[2 * MD5_DIGEST_LENGTH + 1];
-	#else
-	char md5sum_old[2 * STD_STRING_LENGTH + 1] = {0};
 	#endif
 
 	// open the configuration file in txt to read the header
@@ -720,8 +723,13 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 		REQUIRE(tmp_i == param->d_size[i], "the %d-th size of the configuration (%d) does not coincide with the size parameter (%d)", i, tmp_i, param->d_size[i]);
 		}
 
+	#ifdef HASH_MODE
 	err = fscanf(fp, "%ld %s\n", &(GC->update_index), md5sum_old);
 	REQUIRE(err == 2, "failed to read the update index and md5sum from the file %s", filename);
+	#else
+	err = fscanf(fp, "%ld \n", &(GC->update_index));
+	REQUIRE(err == 1, "failed to read the update index from the file %s", filename);
+	#endif
 	fclose(fp);
 
 	// open the configuration file in binary to read the links
@@ -813,7 +821,7 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const *const param)
 	free(GC->Z);
 	free(GC->Z_copy);
 	#ifdef THETA_MODE
-	end_clover_array(GC, param);
+	free_clover_array(GC, param);
 	#endif
 	}
 
@@ -1087,7 +1095,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 	allocate_Z_with_copy(GC, param);
 
 	#ifdef THETA_MODE
-	alloc_clover_array(GC, param);
+	allocate_clover_array(GC, param);
 	#endif
 
 	#ifdef OPENMP_MODE
@@ -1158,7 +1166,7 @@ void compute_md5sum_conf(char *res, Gauge_Conf const *const GC, GParam const *co
 
 
 // allocate the ml_polycorr arrays and related stuff
-void alloc_polycorr_stuff(Gauge_Conf *GC, GParam const *const param)
+void allocate_polycorr_stuff(Gauge_Conf *GC, GParam const *const param)
 	{
 	allocate_array_TensProd_pointer_pointer(&(GC->ml_polycorr), NLEVELS, __FILE__, __LINE__);
 	for(int i = 0; i < NLEVELS; i++)
@@ -1196,20 +1204,109 @@ void free_polycorr_stuff(Gauge_Conf *GC,
 	}
 
 
+// allocate the ml_polycorr, polyplaq arrays and related stuff
+void allocate_tube_disc_stuff(Gauge_Conf *GC,
+                              GParam const *const param)
+	{
+	allocate_polycorr_stuff(GC, param);
+
+	allocate_array_TensProd_pointer(&(GC->ml_polyplaq), NLEVELS, __FILE__, __LINE__);
+	for(int i = 0; i < NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaq[i]), param->d_space_vol[0], __FILE__, __LINE__);
+
+	allocate_array_double_complex(&(GC->loc_plaq), param->d_space_vol[0], __FILE__, __LINE__);
+	}
+
+
+// free the ml_polycorr, ml_polyplaq arrays and relates stuff
+void free_tube_disc_stuff(Gauge_Conf *GC,
+                          GParam const *const param)
+	{
+	free_polycorr_stuff(GC, param);
+	for(int i = 0; i < NLEVELS; i++) free(GC->ml_polyplaq[i]);
+	free(GC->ml_polyplaq);
+	free(GC->loc_plaq);
+	}
+
+
+// allocate the polycorr, polyplaq, polyplaqconn arrays and related stuff
+void allocate_tube_conn_stuff(Gauge_Conf *GC,
+                              GParam const *const param)
+	{
+	allocate_tube_disc_stuff(GC, param);
+	allocate_array_TensProd_pointer(&(GC->ml_polyplaqconn), NLEVELS, __FILE__, __LINE__);
+	for(int i = 0; i < NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaqconn[i]), param->d_space_vol[0], __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP(&(GC->loc_plaqconn), param->d_space_vol[0], __FILE__, __LINE__);
+	}
+
+
+// free the polycorr, polyplaq, polyplaqconn arrays and related stuff
+void free_tube_conn_stuff(Gauge_Conf *GC,
+                          GParam const *const param)
+	{
+	free_tube_disc_stuff(GC, param);
+	for(int i = 0; i < NLEVELS; i++) free(GC->ml_polyplaqconn[i]);
+	free(GC->ml_polyplaqconn);
+	free(GC->loc_plaqconn);
+	}
+
+
+void allocate_multilevel_arrays(Gauge_Conf *GC, GParam const *const param, Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR:
+		case POLYCORR_LONG:
+			allocate_polycorr_stuff(GC, param);
+			break;
+		case TUBE_DISC:
+			allocate_tube_disc_stuff(GC, param);
+			break;
+		case TUBE_CONN:
+		case TUBE_CONN_LONG:
+			allocate_tube_conn_stuff(GC, param);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
+		}
+	}
+
+
+void free_multilevel_arrays(Gauge_Conf *GC, GParam const *const param, Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR:
+		case POLYCORR_LONG:
+			free_polycorr_stuff(GC, param);
+			break;
+		case TUBE_DISC:
+			free_tube_disc_stuff(GC, param);
+			break;
+		case TUBE_CONN:
+		case TUBE_CONN_LONG:
+			free_tube_conn_stuff(GC, param);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
+		}
+	}
+
+
 // save ml_polycorr[0] arrays on file
 void write_polycorr_on_file(Gauge_Conf const *const GC,
                             GParam const *const param,
-                            int iteration)
+                            int const iteration)
 	{
+	FILE *fp;
 	#ifdef HASH_MODE
 	char md5sum[2 * MD5_DIGEST_LENGTH + 1];
+	compute_md5sum_polycorr(md5sum, GC, param);
 	#else
 	char md5sum[2 * STD_STRING_LENGTH + 1] = {0};
-	#endif
-	FILE *fp;
-
-	#ifdef HASH_MODE
-	compute_md5sum_polycorr(md5sum, GC, param);
 	#endif
 
 	// open the configuration file in text mode
@@ -1233,24 +1330,28 @@ void write_polycorr_on_file(Gauge_Conf const *const GC,
 
 
 // read ml_polycorr[0] arrays from file
-void read_polycorr_from_file(Gauge_Conf const *const GC,
-                             GParam const *const param,
-                             int *iteration)
+void read_polycorr_stuff_from_file(Gauge_Conf const *const GC,
+                                   GParam const *const param,
+                                   int *iteration)
 	{
 	long loc_space_vol;
 	FILE *fp;
 	#ifdef HASH_MODE
 	char md5sum_new[2 * MD5_DIGEST_LENGTH + 1];
 	char md5sum_old[2 * MD5_DIGEST_LENGTH + 1];
-	#else
-	char md5sum_old[2 * STD_STRING_LENGTH + 1] = {0};
 	#endif
 
 	// open the multilevel file in text mode to read the header
 	fp = fopen(param->d_ml_file, "r");
 	REQUIRE(fp != NULL, "failed to open the file %s", param->d_ml_file);
+
+	#ifdef HASH_MODE
 	int err = fscanf(fp, "%ld %d %s\n", &loc_space_vol, iteration, md5sum_old);
 	REQUIRE(err == 3, "failed to read the header of the multilevel file %s", param->d_ml_file);
+	#else
+	int err = fscanf(fp, "%ld %d \n", &loc_space_vol, iteration);
+	REQUIRE(err == 2, "failed to read the header of the multilevel file %s", param->d_ml_file);
+	#endif
 	REQUIRE(loc_space_vol == param->d_space_vol[0], "space volume in multilevel file %s does not coincide with the input parameters", param->d_ml_file);
 	fclose(fp);
 
@@ -1327,113 +1428,18 @@ void compute_md5sum_polycorr(char *res, Gauge_Conf const *const GC, GParam const
 	}
 
 
-// allocate the ml_polycorradj arrays
-void alloc_polycorradj_stuff(Gauge_Conf *GC,
-                             GParam const *const param)
-	{
-	allocate_array_TensProdAdj_pointer_pointer(&(GC->ml_polycorradj), NLEVELS, __FILE__, __LINE__);
-	for(int i = 0; i < NLEVELS; i++)
-		{
-		allocate_array_TensProdAdj_pointer(&(GC->ml_polycorradj[i]), param->d_size[0] / param->d_ml_step[i], __FILE__, __LINE__);
-		for(int j = 0; j < (param->d_size[0] / param->d_ml_step[i]); j++)
-			{
-			allocate_array_TensProdAdj(&(GC->ml_polycorradj[i][j]), param->d_space_vol[0], __FILE__, __LINE__);
-			}
-		}
-	allocate_array_GAUGE_GROUP_pointer(&(GC->loc_poly), param->d_size[0] / param->d_ml_step[NLEVELS - 1], __FILE__, __LINE__);
-	for(int i = 0; i < param->d_size[0] / param->d_ml_step[NLEVELS - 1]; i++)
-		allocate_array_GAUGE_GROUP(&(GC->loc_poly[i]), param->d_space_vol[0], __FILE__, __LINE__);
-	}
-
-
-// free the ml_polycorradj arrays
-void free_polycorradj_stuff(Gauge_Conf *GC,
-                            GParam const *const param)
-	{
-	for(int i = 0; i < NLEVELS; i++)
-		{
-		for(int j = 0; j < (param->d_size[0] / param->d_ml_step[i]); j++)
-			{
-			free(GC->ml_polycorradj[i][j]);
-			}
-		free(GC->ml_polycorradj[i]);
-		}
-	free(GC->ml_polycorradj);
-	for(int i = 0; i < param->d_size[0] / param->d_ml_step[NLEVELS - 1]; i++)
-		{
-		free(GC->loc_poly[i]);
-		}
-	free(GC->loc_poly);
-	}
-
-
-// allocate the ml_polycorr, polyplaq arrays and related stuff
-void alloc_tube_disc_stuff(Gauge_Conf *GC,
-                           GParam const *const param)
-	{
-	alloc_polycorr_stuff(GC, param);
-
-	allocate_array_TensProd_pointer(&(GC->ml_polyplaq), NLEVELS, __FILE__, __LINE__);
-	for(int i = 0; i < NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaq[i]), param->d_space_vol[0], __FILE__, __LINE__);
-
-	allocate_array_double_complex(&(GC->loc_plaq), param->d_space_vol[0], __FILE__, __LINE__);
-	}
-
-
-// free the ml_polycorr, ml_polyplaq arrays and relates stuff
-void free_tube_disc_stuff(Gauge_Conf *GC,
-                          GParam const *const param)
-	{
-	free_polycorr_stuff(GC, param);
-	for(int i = 0; i < NLEVELS; i++) free(GC->ml_polyplaq[i]);
-	free(GC->ml_polyplaq);
-	free(GC->loc_plaq);
-	}
-
-
-// allocate the polycorr, polyplaq, polyplaqconn arrays and related stuff
-void alloc_tube_conn_stuff(Gauge_Conf *GC,
-                           GParam const *const param)
-	{
-	alloc_tube_disc_stuff(GC, param);
-	allocate_array_TensProd_pointer(&(GC->ml_polyplaqconn), NLEVELS, __FILE__, __LINE__);
-	for(int i = 0; i < NLEVELS; i++) allocate_array_TensProd(&(GC->ml_polyplaqconn[i]), param->d_space_vol[0], __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP(&(GC->loc_plaqconn), param->d_space_vol[0], __FILE__, __LINE__);
-	}
-
-
-// free the polycorr, polyplaq, polyplaqconn arrays and related stuff
-void free_tube_conn_stuff(Gauge_Conf *GC,
-                          GParam const *const param)
-	{
-	for(int i = 0; i < NLEVELS; i++)
-		{
-		for(int j = 0; j < (param->d_size[0] / param->d_ml_step[i]); j++)
-			{
-			free(GC->ml_polycorr[i][j]);
-			}
-		free(GC->ml_polycorr[i]);
-		}
-	free(GC->ml_polycorr);
-	free(GC->loc_plaqconn);
-	}
-
-
 // save ml_polycorr[0], ml_polyplaq[0] and ml_polyplaqconn[0] arrays on file
 void write_tube_conn_stuff_on_file(Gauge_Conf const *const GC,
                                    GParam const *const param,
-                                   int iteration)
+                                   int const iteration)
 	{
 	#ifdef HASH_MODE
 	char md5sum[2 * MD5_DIGEST_LENGTH + 1];
+	compute_md5sum_tube_conn_stuff(md5sum, GC, param);
 	#else
 	char md5sum[2 * STD_STRING_LENGTH + 1] = {0};
 	#endif
 	FILE *fp;
-
-	#ifdef HASH_MODE
-	compute_md5sum_tube_conn_stuff(md5sum, GC, param);
-	#endif
 
 	// open the configuration file in text mode
 	fp = fopen(param->d_ml_file, "w");
@@ -1472,8 +1478,6 @@ void read_tube_conn_stuff_from_file(Gauge_Conf const *const GC,
 	#ifdef HASH_MODE
 	char md5sum_new[2 * MD5_DIGEST_LENGTH + 1];
 	char md5sum_old[2 * MD5_DIGEST_LENGTH + 1];
-	#else
-	char md5sum_old[2 * STD_STRING_LENGTH + 1] = {0};
 	#endif
 
 	// open the multilevel file in text mode
@@ -1481,8 +1485,13 @@ void read_tube_conn_stuff_from_file(Gauge_Conf const *const GC,
 	REQUIRE(fp != NULL, "failed to open the file %s", param->d_ml_file);
 
 	long loc_space_vol;
+	#ifdef HASH_MODE
 	int err = fscanf(fp, "%ld %d %s\n", &loc_space_vol, iteration, md5sum_old);
 	REQUIRE(err == 3, "failed to read the header of the multilevel file %s", param->d_ml_file);
+	#else
+	int err = fscanf(fp, "%ld %d \n", &loc_space_vol, iteration);
+	REQUIRE(err == 2, "failed to read the header of the multilevel file %s", param->d_ml_file);
+	#endif
 	REQUIRE(loc_space_vol == param->d_space_vol[0], "space volume in the multilevel file %s does not coincide with input parameters", param->d_ml_file);
 	fclose(fp);
 
@@ -1604,9 +1613,51 @@ void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const *const GC, GPara
 	}
 
 
+void write_multilevel_status_on_file(Gauge_Conf const *const GC,
+                                     GParam const *const param,
+                                     int const iteration,
+                                     Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR_LONG:
+			write_polycorr_on_file(GC, param, iteration);
+			break;
+		case TUBE_CONN_LONG:
+			write_tube_conn_stuff_on_file(GC, param, iteration);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
+		}
+	}
+
+
+void read_multilevel_status_from_file(Gauge_Conf const *const GC,
+                                      GParam const *const param,
+                                      int *iteration,
+                                      Multilevel_Obs const ml_obs)
+	{
+	switch(ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR_LONG:
+			read_polycorr_stuff_from_file(GC, param, iteration);
+			break;
+		case TUBE_CONN_LONG:
+			read_tube_conn_stuff_from_file(GC, param, iteration);
+			break;
+		default:
+			REQUIRE(0, "unknown multilevel observable (%d)\n", (int)ml_obs);
+		}
+	}
+
+
 // allocate the clovers arrays
-void alloc_clover_array(Gauge_Conf *GC,
-                        GParam const *const param)
+void allocate_clover_array(Gauge_Conf *GC,
+                           GParam const *const param)
 	{
 	allocate_array_GAUGE_GROUP_pointer_pointer(&(GC->clover_array), param->d_volume, __FILE__, __LINE__);
 	for(long r = 0; r < param->d_volume; r++)
@@ -1618,8 +1669,8 @@ void alloc_clover_array(Gauge_Conf *GC,
 
 
 // free the clovers arrays
-void end_clover_array(Gauge_Conf *GC,
-                      GParam const *const param)
+void free_clover_array(Gauge_Conf *GC,
+                       GParam const *const param)
 	{
 	for(long r = 0; r < param->d_volume; r++)
 		{

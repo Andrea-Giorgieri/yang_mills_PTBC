@@ -1,17 +1,17 @@
 #ifndef RANDOM_C
 #define RANDOM_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<limits.h>
-#include<math.h>
+#include <limits.h>
+#include <math.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
-#include<time.h>
+#include <time.h>
 
-#include"../include/dSFMT.h"
-#include"../include/random.h"
+#include "../include/dSFMT.h"
+#include "../include/random.h"
 
 
 // this is the status of the random number generator

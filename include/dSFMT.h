@@ -1,6 +1,6 @@
 #pragma once
 
-#include"myrngparam.h"
+#include "myrngparam.h"
 
 /**
  * @file dSFMT.h

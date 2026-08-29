@@ -1,20 +1,21 @@
 #ifndef DEBUG_SUN_C
 #define DEBUG_SUN_C
 
-#include"../include/macro.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/sun.h"
-#include"../include/sun_upd.h"
+#include "../include/macro.h"
 
-#include<math.h>
-#include<stdlib.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/sun.h"
+#include "../include/sun_upd.h"
 
 
 int main(void)
 	{
-	unsigned int seed = 0;
-	double energy;
+	unsigned int const seed = 0;
 	GParam param;
 
 	SuN M, N, L, T;
@@ -69,8 +70,8 @@ int main(void)
 	rand_matrix_SuN(&L);
 	plus_equal_SuN(&N, &L); // N+=L,  M in SU(N), N no   (M=link, N=staple)
 
-	times_SuN(&T, &M, &N); // T=M*N
-	energy = retr_SuN(&T); // initial energy
+	times_SuN(&T, &M, &N);        // T=M*N
+	double energy = retr_SuN(&T); // initial energy
 	single_overrelaxation_SuN(&M, &N);
 	times_SuN(&T, &M, &N);  // T=M*N
 	energy -= retr_SuN(&T); // -=final energy

@@ -1,22 +1,20 @@
 #ifndef YM_LOCAL_PT_AGF_C
 #define YM_LOCAL_PT_AGF_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
 void real_main(char const *in_file)
 	{
@@ -52,7 +50,6 @@ void real_main(char const *in_file)
 	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize rectangles for hierarchical update and swap
@@ -135,6 +132,7 @@ void real_main(char const *in_file)
 				write_twist_on_file_with_name(&(GC[0]), &param, name);
 				}
 			}
+
 		stop_timer(&(timers.step_timer));
 		if(wall_time_check(&timers) == 1) break;
 		}
@@ -193,6 +191,7 @@ void print_template_input(void)
 
 	fclose(fp);
 	}
+
 
 int main(int argc, char **argv)
 	{

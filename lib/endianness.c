@@ -1,9 +1,9 @@
 #ifndef ENDIANNESS_C
 #define ENDIANNESS_C
 
-#include<stdlib.h>
+#include "../include/endianness.h"
 
-#include"../include/endianness.h"
+#include <stdlib.h>
 
 int endian(void)
 	{

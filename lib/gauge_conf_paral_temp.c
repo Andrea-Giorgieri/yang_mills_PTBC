@@ -1,21 +1,21 @@
 #ifndef PARALLEL_TEMPERING_C
 #define PARALLEL_TEMPERING_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
+#include "../include/gauge_conf.h"
 
-#include<malloc.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<math.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef OPENMP_MODE
+#include <omp.h>
+#endif
 
-#include"../include/memalign.h"
-#include"../include/gparam.h"
-#include"../include/geometry.h"
-#include"../include/gauge_conf.h"
-#include"../include/random.h"
-#include"../include/function_pointers.h"
-#include"../include/su2.h"
-#include"../include/su2_upd.h"
+#include "../include/gauge_group.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/memalign.h"
+#include "../include/random.h"
 
 
 // swaps are parallelized, evaluation of swap probabilities is parallelized

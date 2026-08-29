@@ -1,5 +1,5 @@
-#ifndef YM_LOCAL_AGF_C
-#define YM_LOCAL_AGF_C
+#ifndef YM_MULTILEVEL_LONG_C
+#define YM_MULTILEVEL_LONG_C
 
 #include "../include/macro.h"
 
@@ -25,8 +25,6 @@ void real_main(char const *in_file)
 	Meas_Utils meas_aux;
 	Time_Utils timers;
 
-	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
-
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
 	// omp_set_nested(0); // deprecated
@@ -35,6 +33,27 @@ void real_main(char const *in_file)
 
 	// read input file
 	readinput(in_file, &param);
+
+	int size_1 = param.d_size[1];
+	for(int i = 2; i < STDIM; i++)
+		REQUIRE(param.d_size[i] == size_1, "all the spatial sizes must be equal");
+
+	// switch to long ml_obs for calling the appropriate functions
+	switch(param.d_ml_obs)
+		{
+		case NONE:
+			break;
+		case POLYCORR:
+		case POLYCORR_LONG:
+			param.d_ml_obs = POLYCORR_LONG;
+			break;
+		case TUBE_CONN:
+		case TUBE_CONN_LONG:
+			param.d_ml_obs = TUBE_CONN_LONG;
+			break;
+		default:
+			REQUIRE(0, "unsupported multilevel observable %s for long simulations\n", param.d_ml_obs_str);
+		}
 
 	// initialize timers
 	init_time_utils(&timers, param.d_walltime);
@@ -50,90 +69,76 @@ void real_main(char const *in_file)
 	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
+	// initialize multilevel arrays
+	allocate_multilevel_arrays(&GC, &param, param.d_ml_obs);
+
 	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
+	// initialize multilevel state
+	int iteration = -1;
+	if(param.d_start == 2)
+		{
+		read_multilevel_status_from_file(&GC, &param, &iteration, param.d_ml_obs);
+		}
+
 	stop_timer(&(timers.init_timer));
 
-	// if number of MC updates is set to 0, perform measures on initialized configuration
-	if(param.d_sample == 0)
-		{
-		start_timer(&(timers.step_timer));
-		start_timer(&(timers.meas_timer));
-		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
-		start_timer(&(timers.meas_timer));
-		stop_timer(&(timers.step_timer));
-		}
-
 	// Monte Carlo begin
-	for(int count = 0; count < param.d_sample; count++)
+	start_timer(&(timers.step_timer));
+	if(iteration == -1) // only standard update, no multilevel
 		{
-		start_timer(&(timers.step_timer));
-
-		// update configuration
-		start_timer(&(timers.update_timer));
-		update(&GC, &geo, &param, &acc_counters);
-		stop_timer(&(timers.update_timer));
-
-		// perform measures
-		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
+		for(int count = 0; count < param.d_measevery; count++)
 			{
-			start_timer(&(timers.meas_timer));
-			perform_measures_localobs(&GC, &geo, &param, &meas_aux);
-			stop_timer(&(timers.meas_timer));
+			start_timer(&(timers.update_timer));
+			update(&GC, &geo, &param, &acc_counters);
+			stop_timer(&(timers.update_timer));
 			}
-
-		// save configuration for backup
-		if(param.d_saveconf_back_every != 0)
-			{
-			if(GC.update_index % param.d_saveconf_back_every == 0)
-				{
-				// simple
-				write_conf_on_file(&GC, &param);
-				// backup copy
-				write_conf_on_file_back(&GC, &param);
-				}
-			}
-
-		// save configuration for offline analysis
-		if(param.d_saveconf_analysis_every != 0)
-			{
-			if(GC.update_index % param.d_saveconf_analysis_every == 0)
-				{
-				strcpy(name, param.d_conf_file);
-				strcat(name, "_step_");
-				sprintf(aux, "%ld", GC.update_index);
-				strcat(name, aux);
-				write_conf_on_file_with_name(&GC, &param, name);
-
-				strcpy(name, param.d_twist_file);
-				strcat(name, "_step_");
-				strcat(name, aux);
-				write_twist_on_file_with_name(&GC, &param, name);
-				}
-			}
-
-		stop_timer(&(timers.step_timer));
-		if(wall_time_check(&timers) == 1) break;
+		// next time, start multilevel
+		iteration = 0;
 		}
+	else
+		{
+		start_timer(&(timers.update_timer));
+		perform_multilevel_long_update_zero(&GC, &geo, &param, iteration, param.d_ml_obs);
+		iteration += 1;
+		stop_timer(&(timers.update_timer));
+		if(iteration == param.d_ml_level0_repeat)
+			{
+			// end of multilevel, only standard updates next time
+			start_timer(&(timers.meas_timer));
+			perform_multilevel_update_and_measures(&GC, &geo, &param, &meas_aux, param.d_ml_obs);
+			stop_timer(&(timers.meas_timer));
+			iteration = -1;
+			}
+		}
+	stop_timer(&(timers.step_timer));
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
 
+	// save multilevel stuff
+	write_multilevel_status_on_file(&GC, &param, iteration, param.d_ml_obs);
+
+	// save configuration
+	write_conf_on_file(&GC, &param);
+	if(param.d_saveconf_back_every != 0)
+		{
+		// backup copy
+		write_conf_on_file_back(&GC, &param);
+		}
+
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);
 
-	// save configuration
-	if(param.d_saveconf_back_every != 0)
-		{
-		write_conf_on_file(&GC, &param);
-		}
-
 	// print simulation details
-	print_parameters_local_agf(&param, &timers);
+	print_parameters_multilevel_long(&param, &timers);
 
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
+
+	// free multilevel arrays
+	free_multilevel_arrays(&GC, &param, param.d_ml_obs);
 
 	// free geometry
 	free_geometry(&geo, &param);
@@ -148,9 +153,9 @@ void print_template_input(void)
 	print_template_volume_parameters(fp);
 	print_template_twist_parameters(fp);
 	print_template_simul_parameters(fp);
-	print_template_adaptive_gradflow_parameters(fp);
-	print_template_gradflow_parameters(fp);
-	print_template_cooling_parameters(fp);
+	print_template_multilevel_parameters(fp);
+	fprintf(fp, "ml_level0_repeat  1 # number of times level0 is repeated in long simulations\n");
+	fprintf(fp, "\n");
 	print_template_output_parameters(fp);
 
 	fclose(fp);

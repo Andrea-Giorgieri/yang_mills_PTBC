@@ -1,22 +1,20 @@
-#ifndef YM_TUBE_CONN_LONG_C
-#define YM_TUBE_CONN_LONG_C
+#ifndef YM_MULTILEVEL_C
+#define YM_MULTILEVEL_C
 
-#include"../include/macro.h"
+#include "../include/macro.h"
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef OPENMP_MODE
-#include<omp.h>
+#include <omp.h>
 #endif
 
-#include"../include/function_pointers.h"
-#include"../include/gauge_conf.h"
-#include"../include/geometry.h"
-#include"../include/gparam.h"
-#include"../include/random.h"
-#include"../include/timing.h"
+#include "../include/gauge_conf.h"
+#include "../include/geometry.h"
+#include "../include/gparam.h"
+#include "../include/random.h"
+#include "../include/timing.h"
 
 void real_main(char const *in_file)
 	{
@@ -26,6 +24,8 @@ void real_main(char const *in_file)
 	Acc_Utils acc_counters;
 	Meas_Utils meas_aux;
 	Time_Utils timers;
+
+	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -49,79 +49,79 @@ void real_main(char const *in_file)
 	initrand(param.d_randseed);
 
 	// initialize geometry
-	init_indexing_lexeo();
 	init_geometry(&geo, &param);
 
 	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
-	// allocate ml_polycorr, ml_polyplaq and ml_polyplaqconn arrays
-	alloc_tube_conn_stuff(&GC, &param);
+	// initialize multilevel arrays
+	allocate_multilevel_arrays(&GC, &param, param.d_ml_obs);
 
-	// init meas utils
+	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
 	stop_timer(&(timers.init_timer));
 
-	// Monte Carlo begin
-	if(param.d_start != 2) // NEW SIMULATION
+	// if number of MC updates is set to 0, perform measures on initialized configuration
+	if(param.d_sample == 0)
 		{
 		start_timer(&(timers.step_timer));
-		for(int count = 0; count < param.d_measevery; count++)
-			{
-			update(&GC, &geo, &param, &acc_counters);
-			}
-
-		// save configuration
-		write_conf_on_file(&GC, &param);
-		// backup copy
-		write_conf_on_file_back(&GC, &param);
-
-		// save multilevel stuff
-		write_tube_conn_stuff_on_file(&GC, &param, 0);
-
+		start_timer(&(timers.meas_timer));
+		perform_multilevel_update_and_measures(&GC, &geo, &param, &meas_aux, param.d_ml_obs);
+		start_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
 		}
-	else // CONTINUATION OF PREVIOUS SIMULATION
+
+	// Monte Carlo begin
+	for(int count = 0; count < param.d_sample; count++)
 		{
 		start_timer(&(timers.step_timer));
 
-		int iteration;
+		// update configuration
+		start_timer(&(timers.update_timer));
+		update(&GC, &geo, &param, &acc_counters);
+		stop_timer(&(timers.update_timer));
 
-		// read multilevel stuff
-		read_tube_conn_stuff_from_file(&GC, &param, &iteration);
-
-		if(iteration < 0) // update the conf, no multilevel
+		// perform measures
+		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
 			{
-			for(int count = 0; count < param.d_measevery; count++)
-				{
-				update(&GC, &geo, &param, &acc_counters);
-				}
-
-			// save configuration
-			write_conf_on_file(&GC, &param);
-			// backup copy
-			write_conf_on_file_back(&GC, &param);
-
-			// save multilevel stuff
-			write_tube_conn_stuff_on_file(&GC, &param, 0);
+			start_timer(&(timers.meas_timer));
+			perform_multilevel_update_and_measures(&GC, &geo, &param, &meas_aux, param.d_ml_obs);
+			stop_timer(&(timers.meas_timer));
 			}
-		else // iteration >=0, perform multilevel
+
+		// save configuration for backup
+		if(param.d_saveconf_back_every != 0)
 			{
-			multilevel_tube_conn_long_zero(&GC, &geo, &param, iteration);
-			iteration += 1;
-			if(iteration == param.d_ml_level0_repeat)
+			if(GC.update_index % param.d_saveconf_back_every == 0)
 				{
-				// print the measure
-				perform_measures_tube_conn_long(&GC, &param, &meas_aux);
-
-				iteration = -1; // next time the conf will be updated, no multilevel
+				// simple
+				write_conf_on_file(&GC, &param);
+				// backup copy
+				write_conf_on_file_back(&GC, &param);
 				}
-
-			// save multilevel stuff
-			write_tube_conn_stuff_on_file(&GC, &param, iteration);
 			}
+
+		// save configuration for offline analysis
+		if(param.d_saveconf_analysis_every != 0)
+			{
+			if(GC.update_index % param.d_saveconf_analysis_every == 0)
+				{
+				strcpy(name, param.d_conf_file);
+				strcat(name, "_step_");
+				sprintf(aux, "%ld", GC.update_index);
+				strcat(name, aux);
+				write_conf_on_file_with_name(&GC, &param, name);
+
+				strcpy(name, param.d_twist_file);
+				strcat(name, "_step_");
+				strcat(name, aux);
+				write_twist_on_file_with_name(&GC, &param, name);
+				}
+			}
+
 		stop_timer(&(timers.step_timer));
+		if(wall_time_check(&timers) == 1) break;
 		}
 
 	// Monte Carlo end
@@ -137,13 +137,13 @@ void real_main(char const *in_file)
 		}
 
 	// print simulation details
-	print_parameters_polycorr_long(&param, &timers);
+	print_parameters_multilevel(&param, &timers);
 
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
 
-	// free ml_polycorr
-	free_polycorr_stuff(&GC, &param);
+	// free multilevel arrays
+	free_multilevel_arrays(&GC, &param, param.d_ml_obs);
 
 	// free geometry
 	free_geometry(&geo, &param);
@@ -156,14 +156,11 @@ void print_template_input(void)
 	REQUIRE(fp != NULL, "failed to open template_input.example");
 
 	print_template_volume_parameters(fp);
+	print_template_twist_parameters(fp);
 	print_template_simul_parameters(fp);
 	print_template_multilevel_parameters(fp);
-	fprintf(fp, "ml_level0_repeat  1 # number of times level0 is repeated in long sim.\n");
-	fprintf(fp, "dist_poly         2 # distance between the polyakov loop\n");
-	fprintf(fp, "transv_dist       2 # transverse distance from the polyakov correlator\n");
-	fprintf(fp, "plaq_dir        1 0 # plaquette orientation for flux tube\n");
-	fprintf(fp, "\n");
 	print_template_output_parameters(fp);
+
 	fclose(fp);
 	}
 
@@ -173,7 +170,7 @@ int main(int argc, char **argv)
 	if(argc != 2)
 		{
 		int parallel_tempering = 0;
-		int twisted_bc = 0;
+		int twisted_bc = 1;
 		print_authors(parallel_tempering, twisted_bc);
 
 		printf("Usage: %s input_file\n\n", argv[0]);
@@ -192,4 +189,3 @@ int main(int argc, char **argv)
 	}
 
 #endif
-

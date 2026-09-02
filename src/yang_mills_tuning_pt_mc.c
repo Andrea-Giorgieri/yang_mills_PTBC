@@ -29,7 +29,6 @@ void real_main(char const *in_file)
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH];
 	int count, tune_check;
-	FILE *swaptrackfilep;
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
@@ -52,9 +51,6 @@ void real_main(char const *in_file)
 
 	// initialize random generator
 	initrand(param.d_randseed);
-
-	// open swap tracking file
-	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
 	init_geometry(&geo, &param);
@@ -99,7 +95,7 @@ void real_main(char const *in_file)
 		start_timer(&(timers.update_timer));
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
 		stop_timer(&(timers.update_timer));
-		print_conf_labels(swaptrackfilep, GC, &param);
+		print_conf_labels(GC, &param, &acc_counters);
 
 		// perform measures only on physical replica, unless REPLICA_MEAS_MODE is enabled
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
@@ -170,9 +166,6 @@ void real_main(char const *in_file)
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
-
-	// close swap tracking file
-	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save topo potential
 	write_topo_potential(&param, param.d_topo_potential_file);

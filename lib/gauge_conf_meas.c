@@ -803,7 +803,7 @@ void topcharge_slices(Gauge_Conf const *const GC,
                       GParam const *const param,
                       int const mu,
                       double *slices,
-                      int meas_count,
+                      int const meas_count,
                       FILE *filep)
 	{
 	int const L_mu = param->d_size[mu];
@@ -831,7 +831,7 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
                         int const mu,
                         int const nu,
                         Meas_Utils *const meas_aux,
-                        int meas_count)
+                        int const meas_count)
 	{
 	int const L_mu = param->d_size[mu];
 	int const L_nu = param->d_size[nu];
@@ -876,45 +876,20 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
 	}
 
 
-// TODO: just to check how cooling destroys topological correlations, remove
-void check_correlation_decay_cooling(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param, double *ratio)
-	{
-	Gauge_Conf helperconf;
-	init_gauge_conf_from_gauge_conf(&helperconf, GC, param);
-
-	for(int i = 0; i < (param->d_coolrepeat); i++)
-		{
-		cooling(&helperconf, geo, param, param->d_coolsteps, LEX_DIR_LEXEO_SITE);
-		double const Q = fabs(topcharge(&helperconf, geo, param));
-		double satd = 0.0;
-
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) reduction(+ : satd)
-		#endif
-		for(long r = 0; r < (param->d_volume); r++)
-			{
-			satd += fabs(loc_topcharge(&helperconf, geo, param, r));
-			}
-		ratio[i] = 1.0 - Q / satd;
-		}
-	free_gauge_conf(&helperconf, param);
-	}
-
-
 // compute the correlator of the local topological charge
 // after "ncool" cooling steps up to spatial distance "dist"
 void loc_topcharge_corr(Gauge_Conf *const GC,
                         Geometry const *const geo,
                         GParam const *const param,
-                        int ncool,
-                        int dist,
+                        int const ncool,
+                        int const dist,
                         double *res)
 	{
 	#if STDIM < 2
 	for(int i = 0; i < dist; i++)
 		res[i] = 0.0;
 	#else
-	// TODO: refactor with meas_aux
+	// TODO: refactor with meas_aux, use some fast fourier transform library
 	double *charge_array;
 	allocate_array_double(&charge_array, param->d_volume, __FILE__, __LINE__);
 

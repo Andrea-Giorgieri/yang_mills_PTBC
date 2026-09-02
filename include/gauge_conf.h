@@ -61,13 +61,12 @@ typedef struct Gauge_Conf
 
 
 // to compute swap and multicanonic acceptances during parallel tempering evolution
-// TODO: refactor swaptrackfilep with this?
 typedef struct Acc_Utils
 	{
 	long *num_accepted_swap; // number of accepted swaps during parallel tempering
 	long *num_swap;          // number of proposed swaps during parallel tempering
 	double *metro_swap_prob; // to store swap probabilities
-	//FILE *swaptrackfilep;		// pointer to file to track replicas during parallel tempering
+	FILE *swaptrackfilep;    // pointer to file to track replicas during parallel tempering
 
 	long *num_accepted_metro_multicanonic; // number of accepted multicanonic Metropolis updates
 	long *num_metro_multicanonic;          // number of proposed multicanonic Metropolis updates
@@ -127,11 +126,9 @@ void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const *const param);
 
 void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const *const param);
 
-void allocate_C(Gauge_Conf *GC, GParam const *const param);
-
 void allocate_Z_with_copy(Gauge_Conf *GC, GParam const *const param);
 
-void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu, int x_nu, int x_obc);
+void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu, int x_nu, int x_obc, int const translation[STDIM]);
 
 void equal_lattice(GAUGE_GROUP *const *const lattice1,
                    GAUGE_GROUP const *const *const lattice2,
@@ -188,8 +185,8 @@ void init_gauge_conf_replica(Gauge_Conf **GC,
                              Geometry const *const geo,
                              GParam const *const param);
 
-void init_bound_cond(Gauge_Conf *GC,
-                     GParam const *const param);
+void init_ptbc_defect(Gauge_Conf *GC,
+                      GParam const *const param);
 
 void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const param,
                                          char const *const filename);
@@ -197,7 +194,7 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 void free_replica(Gauge_Conf *GC,
                   GParam const *const param);
 
-void free_bound_cond(Gauge_Conf *GC,
+void free_ptbc_defect(Gauge_Conf *GC,
                      GParam const *const param);
 
 void free_twist_cond(Gauge_Conf *GC,
@@ -206,7 +203,7 @@ void free_twist_cond(Gauge_Conf *GC,
 void read_gauge_conf_from_file_with_name(Gauge_Conf *GC,
                                          GParam const *const param, char const *const filename);
 
-void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc,
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, int translation[STDIM],
                                          GParam const *const param, char const *const filename);
 
 void free_gauge_conf(Gauge_Conf *GC,
@@ -394,12 +391,6 @@ void polyakov_adj(Gauge_Conf const *const GC,
                   double *impoly);
 
 
-void check_correlation_decay_cooling(Gauge_Conf const *const GC,
-                                     Geometry const *const geo,
-                                     GParam const *const param,
-                                     double *ratio);
-
-
 double loc_topcharge(Gauge_Conf const *const GC,
                      Geometry const *const geo,
                      GParam const *const param,
@@ -429,7 +420,7 @@ void topcharge_slices(Gauge_Conf const *const GC,
                       GParam const *const param,
                       int const mu,
                       double *slices,
-                      int meas_count,
+                      int const meas_count,
                       FILE *filep);
 
 void topcharge_p_slices(Gauge_Conf const *const GC,
@@ -438,7 +429,7 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
                         int const mu,
                         int const nu,
                         Meas_Utils *const meas_aux,
-                        int meas_count);
+                        int const meas_count);
 
 double topo_chi_prime(Gauge_Conf const *const GC,
                       Geometry const *const geo,
@@ -447,8 +438,8 @@ double topo_chi_prime(Gauge_Conf const *const GC,
 void loc_topcharge_corr(Gauge_Conf *const GC,
                         Geometry const *const geo,
                         GParam const *const param,
-                        int ncool,
-                        int dist,
+                        int const ncool,
+                        int const dist,
                         double *res);
 
 void perform_measures_aux(Gauge_Conf *const GC,
@@ -895,6 +886,9 @@ void conf_translation(Gauge_Conf *const GC,
                       Geometry const *const geo,
                       GParam const *const param);
 
+void init_swap_track_file(FILE **swaptrackfilep,
+						  GParam const *const param);
+
 void init_acc_utils(Acc_Utils *acc_counters,
                     GParam const *const param);
 
@@ -904,12 +898,9 @@ void free_acc_utils(Acc_Utils *acc_counters,
 void print_acceptances(Acc_Utils const *const acc_counters,
                        GParam const *const param);
 
-void init_swap_track_file(FILE **swaptrackfilep,
-                          GParam const *const param);
-
-void print_conf_labels(FILE *fp,
-                       Gauge_Conf const *const GC,
-                       GParam const *const param);
+void print_conf_labels(Gauge_Conf const *GC,
+                       GParam const *param,
+                       Acc_Utils const *acc_counters);
 
 // in gauge_conf_multicanonic.c
 void init_multicanonic_gauge_conf(Gauge_Conf *const GC,

@@ -43,6 +43,7 @@ typedef struct Rect_Utils
 
 
 // general functions
+
 void init_geometry(Geometry *geo, GParam const *const param);
 
 void free_geometry(Geometry *geo, GParam const *const param);
@@ -51,6 +52,7 @@ void test_geometry(Geometry const *const geo, GParam const *const param);
 
 
 // functions for switching between indexing methods inside geometry.c
+
 long cart_to_lex(int const *const cartcoord, GParam const *const param);                            // cartesian coordinates -> lexicographic index
 
 void lex_to_cart(int *cartcoord, long lex, GParam const *const param);                              // lexicographic index -> cartesian coordinates
@@ -93,6 +95,7 @@ int dirs_to_si(int const i, int const j);                                       
 
 
 // utilities and distances with periodic boundary conditions
+
 int is_on_defect(long const r, GParam const *const param);
 
 int orthogonal_dir(int const mu, int const i);
@@ -107,6 +110,7 @@ double square_distance(long const i, long const j, GParam const *const param);
 
 
 // geometry of rectangles used in the hierarchical update during parallel tempering
+
 void init_rect(Rectangle *rect, int L_R, GParam const *const param);
 
 void free_rect(Rectangle *rect);

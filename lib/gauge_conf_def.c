@@ -46,16 +46,6 @@ void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const *const param)
 	}
 
 
-void allocate_C(Gauge_Conf *GC, GParam const *const param)
-	{
-	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
-		}
-	}
-
-
 void allocate_Z_with_copy(Gauge_Conf *GC, GParam const *const param)
 	{
 	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
@@ -68,7 +58,7 @@ void allocate_Z_with_copy(Gauge_Conf *GC, GParam const *const param)
 	}
 
 
-void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu, int x_nu, int x_obc)
+void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int const x_mu, int const x_nu, int const x_obc, int const translation[STDIM])
 	{
 	int const si_bulk = param->d_n_planes;
 	#ifdef OPENMP_MODE
@@ -81,15 +71,12 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu,
 		int cartcoord[STDIM];
 		si_to_cart(cartcoord, r, param);
 
-		//for open boundary conditions: the cut is between x_obc and x_obc + 1
-		GC->Z[r][si_bulk] = 1.0 + I * 0.0;
+		// for open boundary conditions: the cut is between x_obc and x_obc + 1
 		if(param->d_obc_dir != -1)
 			{
 			int const dir_obc = param->d_obc_dir;
 			int const r_obc = cartcoord[dir_obc];
 			int const L_obc = param->d_size[dir_obc];
-			int const obc_distance = link_ring_distance(r_obc, x_obc, L_obc);
-			double const bulk_border_distance = (L_obc - param->d_obc_bulk) / 2.0 - obc_distance;
 			if(r_obc == x_obc)
 				{
 				is_on_open_boundary = 1;
@@ -100,22 +87,14 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu,
 				is_on_open_boundary = 1;
 				cut_obc_dir_link = 0;
 				}
-			if(bulk_border_distance > 0.01)
-				{
-				GC->Z[r][si_bulk] = 0.5 + I * 0.0;
-				}
-			if(bulk_border_distance > 1.01)
-				{
-				GC->Z[r][si_bulk] = 0.0 + I * 0.0;
-				}
 			}
-		GC->Z_copy[r][si_bulk] = GC->Z[r][si_bulk];
 
+		// for open and twisted boundary conditions
 		for(int i = 0; i < STDIM; i++)
 			{
 			for(int j = i + 1; j < STDIM; j++)
 				{
-				//for anti-clockwise and clockwise plaquette
+				// for anti-clockwise and clockwise plaquette
 				int const si_ij = dirs_to_si(i, j);
 				int const si_ji = dirs_to_si(j, i);
 
@@ -145,6 +124,20 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu,
 				GC->Z_copy[r][si_ji] = GC->Z[r][si_ji];
 				}
 			}
+
+		// for theta term profile
+		GC->Z[r][si_bulk] = 1.0 + I * 0.0;
+		#ifdef THETA_MODE
+		if(param->d_theta_profile_dir != -1)
+			{
+			int const L_profile = param->d_size[param->d_theta_profile_dir];
+			int const offset = translation[param->d_theta_profile_dir] % L_profile;
+			int const x_profile = cartcoord[param->d_theta_profile_dir];
+			int const x_profile_original = periodic_condition(x_profile - offset, L_profile);
+			GC->Z[r][si_bulk] = param->d_theta_profile[x_profile_original] + I * 0.0;
+			}
+		#endif
+		GC->Z_copy[r][si_bulk] = GC->Z[r][si_bulk];
 		}
 	}
 
@@ -534,7 +527,7 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *co
 
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
-	init_bound_cond(GC, param);
+	init_ptbc_defect(GC, param);
 	#ifdef MULTICANONICAL_MODE
 	init_multicanonic_gauge_conf(GC, geo, param);
 	#else
@@ -610,8 +603,11 @@ int read_gauge_conf_step(Gauge_Conf *GC, GParam const *const param, long step)
 	int x_mu = 0;
 	int x_nu = 0;
 	int x_obc = param->d_obc_default_pos;
-	read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, name);
-	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
+	int translation[STDIM];
+	for(int i = 0; i < STDIM; i++)
+		translation[i] = 0;
+	read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, translation, param, name);
+	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc, translation);
 
 	return 1;
 	}
@@ -643,7 +639,7 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 		((*GC)[i]).conf_label = i;
 		((*GC)[i]).replica_index = i;
 
-		init_bound_cond(&((*GC)[i]), param);
+		init_ptbc_defect(&((*GC)[i]), param);
 
 		#ifdef MULTICANONICAL_MODE
 		init_multicanonic_gauge_conf(&((*GC)[i]), geo, param);
@@ -655,12 +651,19 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 
 
 // initialization of the defect for a single replica
-void init_bound_cond(Gauge_Conf *GC, GParam const *const param)
+void init_ptbc_defect(Gauge_Conf *GC, GParam const *const param)
 	{
 	// allocation of C[r][j]
-	allocate_C(GC, param);
+	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
+	for(long r = 0; r < (param->d_volume); r++)
+		{
+		allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
+		}
 
 	// initialization of C[r][j]
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
 	for(long r = 0; r < param->d_volume; r++)
 		for(int j = 0; j < STDIM; j++)
 			{
@@ -685,14 +688,21 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 	// default open boundary position
 	int x_obc = param->d_obc_default_pos;
 
-	// update twist and open boundary position if starting from stored conf
+	// default translation
+	int translation[STDIM];
+	for(int i = 0; i < STDIM; i++)
+		translation[i] = 0;
+
+	// update twist position, open boundary position and conf translation if starting from stored conf
 	if(param->d_start == 2)
 		{
-		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, param, filename);
+		read_twist_cond_from_file_with_name(&x_mu, &x_nu, &x_obc, translation, param, filename);
 		}
+	for(int i = 0; i < STDIM; i++)
+		GC->translation[i] = translation[i];
 
 	// assign Z on positions x_mu, x_nu,
-	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc);
+	initialize_Z_with_copy(GC, param, x_mu, x_nu, x_obc, translation);
 	}
 
 
@@ -764,7 +774,7 @@ void read_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 	}
 
 
-void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, GParam const *const param, char const *const filename)
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, int translation[STDIM], GParam const *const param, char const *const filename)
 	{
 	int err;
 	FILE *fp = fopen(filename, "r");
@@ -789,9 +799,26 @@ void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, GPara
 	err = fscanf(fp, "%*d %d", x_obc);
 	if(err != 1)
 		{
-		REQUIRE(param->d_obc_dir == -1, "failed to read the OBC direction from the twist file %s", filename);
+		REQUIRE(param->d_obc_dir == -1, "failed to read the OBC position from the twist file %s", filename);
 		*x_obc = param->d_obc_default_pos;
 		}
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		int tmp_i;
+		err = fscanf(fp, "%d", &tmp_i);
+		// TODO: translation is only needed for theta profile, but could be used for twisted and open boundary conditions as well,
+		//       replacing x_mu, x_nu, x_obc. These are kept for backward compatibility.
+		#ifdef THETA_MODE
+		if(param->d_theta_profile_dir != -1)
+			{
+			REQUIRE(err == 1, "failed to read the %d-th translation of the configuration from the twist file %s", i, filename);
+			REQUIRE(tmp_i < param->d_size[i], "the %d-th translation of the configuration (%d) exceeds the size parameter (%d)", i, tmp_i, param->d_size[i]);
+			translation[i] = tmp_i;
+			}
+		#endif
+		}
+
 	fclose(fp);
 	}
 
@@ -831,13 +858,13 @@ void free_replica(Gauge_Conf *GC, GParam const *const param)
 	for(int i = 0; i < param->d_N_replica_pt; i++)
 		{
 		free_gauge_conf(&(GC[i]), param);
-		free_bound_cond(&(GC[i]), param);
+		free_ptbc_defect(&(GC[i]), param);
 		}
 	free(GC);
 	}
 
 
-void free_bound_cond(Gauge_Conf *GC, GParam const *const param)
+void free_ptbc_defect(Gauge_Conf *GC, GParam const *const param)
 	{
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -980,6 +1007,13 @@ void write_twist_on_file_with_name(Gauge_Conf const *const GC,
 			}
 		}
 	fprintf(fp, "%d %d \n", param->d_obc_dir, j);
+
+	for(int i = 0; i < STDIM; i++)
+		{
+		fprintf(fp, "%d ", (int) (GC->translation[i] % param->d_size[i]));
+		}
+	fprintf(fp, "\n");
+
 	fclose(fp);
 	}
 

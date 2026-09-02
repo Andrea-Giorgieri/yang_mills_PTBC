@@ -13,18 +13,18 @@ NTHREADS=112  # Number of OpenMP threads (if OpenMP is enabled)
 NLEVELS=1     # Number of levels in multilevel algorithm
 
 # 1=yes, 0=no
-ENABLE_THETA=1         # Add theta term to the action
-ENABLE_MULTICAN=1      # Add multicanonical potential to the action
-ENABLE_MEAS_REPLICA=1  # Perform measurements on all PTBC replica
-ENABLE_OPENMP=0        # Multithreading with OpenMP
-ENABLE_DEBUG=1         # Perform extra sanity checks and debugging tests
+ENABLE_THETA=0         # Add theta term to the action
+ENABLE_MULTICAN=0      # Add multicanonical potential to the action
+ENABLE_MEAS_REPLICA=0  # Perform measurements on all PTBC replica
+ENABLE_OPENMP=1        # Multithreading with OpenMP
+ENABLE_DEBUG=0         # Perform extra sanity checks and debugging tests
 
 # Available configurations: gcc, leonardo, galileo100, marconi
-COMPILE_CONFIG=gcc
+COMPILE_CONFIG=leonardo
 COMPILE_TARGETS=(all)
 
-BUILD_JOBS=16  # Number of parallel compilation jobs
-BUILD_CLEAN=1  # Completely clean build (1=yes, 0=no)
+BUILD_JOBS=112  # Number of parallel compilation jobs
+BUILD_CLEAN=1   # Completely clean build (1=yes, 0=no)
 
 # ========================================================================
 # Compiler configuration

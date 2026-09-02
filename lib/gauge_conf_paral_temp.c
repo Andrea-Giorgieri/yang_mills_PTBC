@@ -316,6 +316,46 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 	}
 
 
+void init_swap_track_file(FILE **swaptrackfilep, GParam const *const param)
+	{
+	if(param->d_N_replica_pt == 1)
+		{
+		*swaptrackfilep = NULL;
+		return;
+		}
+	int write_header = 0;
+	if(param->d_start == 2) // starting run from saved conf
+		{
+		*swaptrackfilep = fopen(param->d_swap_tracking_file, "r");
+		if(*swaptrackfilep != NULL) // file exists -> close it and re-open it in append mode
+			{
+			fclose(*swaptrackfilep);
+			*swaptrackfilep = fopen(param->d_swap_tracking_file, "a");
+			}
+		else // file does not exist -> create it
+			{
+			*swaptrackfilep = fopen(param->d_swap_tracking_file, "w");
+			write_header = 1;
+			}
+		}
+	else // starting run from scratch
+		{
+		*swaptrackfilep = fopen(param->d_swap_tracking_file, "w");
+		write_header = 1;
+		}
+	REQUIRE(*swaptrackfilep != NULL, "failed to open the swap tracking file %s", param->d_swap_tracking_file);
+	if(write_header == 1)
+		{
+		fprintf(*swaptrackfilep, "# MC_step    conf_labels");
+		#ifdef MULTICANONICAL_MODE
+		fprintf(*swaptrackfilep, "    conf_charges");
+		#endif
+		fprintf(*swaptrackfilep, "\n");
+		fflush(*swaptrackfilep);
+		}
+	}
+
+
 void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 	{
 	if(param->d_N_replica_pt == 1)
@@ -323,6 +363,7 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 		acc_counters->num_accepted_swap = NULL;
 		acc_counters->num_swap = NULL;
 		acc_counters->metro_swap_prob = NULL;
+		acc_counters->swaptrackfilep = NULL;
 		}
 	else
 		{
@@ -334,6 +375,7 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 			acc_counters->num_accepted_swap[i] = 0;
 			acc_counters->num_swap[i] = 0;
 			}
+		init_swap_track_file(&(acc_counters->swaptrackfilep), param);
 		}
 	#ifdef MULTICANONICAL_MODE
 	init_multicanonic_acc_utils(acc_counters, param);
@@ -348,6 +390,7 @@ void free_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 		free(acc_counters->num_accepted_swap);
 		free(acc_counters->num_swap);
 		free(acc_counters->metro_swap_prob);
+		fclose(acc_counters->swaptrackfilep);
 		}
 	else
 		{
@@ -406,54 +449,16 @@ void print_acceptances(Acc_Utils const *const acc_counters, GParam const *const 
 	}
 
 
-void init_swap_track_file(FILE **swaptrackfilep, GParam const *const param)
+void print_conf_labels(Gauge_Conf const *const GC, GParam const *const param, Acc_Utils const *const acc_counters)
 	{
 	if(param->d_N_replica_pt == 1)
 		{
-		*swaptrackfilep = NULL;
+		// to suppress compiler warning of unused variable
+		(void) GC;
+		(void) acc_counters;
 		return;
 		}
-	int write_header = 0;
-	if(param->d_start == 2) // starting run from saved conf
-		{
-		*swaptrackfilep = fopen(param->d_swap_tracking_file, "r");
-		if(*swaptrackfilep != NULL) // file exists -> close it and re-open it in append mode
-			{
-			fclose(*swaptrackfilep);
-			*swaptrackfilep = fopen(param->d_swap_tracking_file, "a");
-			}
-		else // file does not exist -> create it
-			{
-			*swaptrackfilep = fopen(param->d_swap_tracking_file, "w");
-			write_header = 1;
-			}
-		}
-	else // starting run from scratch
-		{
-		*swaptrackfilep = fopen(param->d_swap_tracking_file, "w");
-		write_header = 1;
-		}
-	REQUIRE(*swaptrackfilep != NULL, "failed to open the swap tracking file %s", param->d_swap_tracking_file);
-	if(write_header == 1)
-		{
-		fprintf(*swaptrackfilep, "# MC_step    conf_labels");
-		#ifdef MULTICANONICAL_MODE
-		fprintf(*swaptrackfilep, "    conf_charges");
-		#endif
-		fprintf(*swaptrackfilep, "\n");
-		fflush(*swaptrackfilep);
-		}
-	}
-
-
-void print_conf_labels(FILE *fp, Gauge_Conf const *const GC, GParam const *const param)
-	{
-	if(param->d_N_replica_pt == 1)
-		{
-		(void) fp; // to suppress compiler warning of unused variable
-		(void) GC; // to suppress compiler warning of unused variable
-		return;
-		}
+	FILE *fp = acc_counters->swaptrackfilep;
 	fprintf(fp, "%9ld ", GC[0].update_index);
 	for(int r = 0; r < param->d_N_replica_pt; r++)
 		{

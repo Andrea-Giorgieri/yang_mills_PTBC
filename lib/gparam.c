@@ -187,6 +187,7 @@ void set_defaults(GParam *const param)
 	// trace deformation and theta term
 	for(i = 0; i < NCOLOR; i++) param->d_h[i] = 0.0;
 	param->d_theta = 0.0;
+	param->d_theta_profile_dir = -1;
 
 	// twist and open boundary conditions
 	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) param->d_k_twist[i] = 0;
@@ -249,7 +250,6 @@ void set_defaults(GParam *const param)
 	param->d_meas_effective_charge = 0;
 
 	// filenames
-	strcpy(param->d_ml_file, "");
 	strcpy(param->d_conf_file, "");
 	strcpy(param->d_twist_file, "");
 	strcpy(param->d_data_file, "");
@@ -262,8 +262,10 @@ void set_defaults(GParam *const param)
 	strcpy(param->d_log_file, "");
 	strcpy(param->d_swap_acc_file, "");
 	strcpy(param->d_swap_tracking_file, "");
+	strcpy(param->d_theta_profile_file, "");
 	strcpy(param->d_multicanonic_acc_file, "");
 	strcpy(param->d_topo_potential_file, "");
+	strcpy(param->d_ml_file, "");
 	}
 
 
@@ -323,6 +325,20 @@ void readinput(char const *const in_file, GParam *const param)
 		if(strcmp(str, param_name) == 0)
 			{
 			set_double_param(input, &(param->d_theta), param_name, &param_any_double);
+			continue;
+			}
+
+		strcpy(param_name, "theta_profile_dir");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_int_param(input, &(param->d_theta_profile_dir), param_name, &param_any_int);
+			continue;
+			}
+
+		strcpy(param_name, "theta_profile_file");
+		if(strcmp(str, param_name) == 0)
+			{
+			set_string_param(input, param->d_theta_profile_file, param_name, &param_any_string);
 			continue;
 			}
 
@@ -540,7 +556,7 @@ void readinput(char const *const in_file, GParam *const param)
 			continue;
 			}
 
-		strcpy(param_name, "topcharge_tcorr_meas");
+		strcpy(param_name, "charge_slices_meas");
 		if(strcmp(str, param_name) == 0)
 			{
 			set_int_param(input, &(param->d_charge_slices_meas), param_name, &param_bool_int);
@@ -1007,6 +1023,9 @@ void readinput(char const *const in_file, GParam *const param)
 
 	#ifdef THETA_MODE
 	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
+	REQUIRE(param->d_theta_profile_dir >= -1 && param->d_theta_profile_dir < STDIM,
+	        "direction of theta-term profile must be -1 (constant profile) or in [0, %d)",
+	        STDIM);
 	#endif
 
 	for(i = 0; i < param->d_multipolyakov_order; i++)
@@ -1033,6 +1052,14 @@ void readinput(char const *const in_file, GParam *const param)
 	check_required_string(param->d_swap_tracking_file, "swap_track_file", param->d_N_replica_pt > 1);
 
 	init_derived_constants(param);
+
+	#ifdef THETA_MODE
+	if(param->d_theta_profile_dir != -1)
+		{
+		check_required_string(param->d_theta_profile_file, "theta_profile_file", 1);
+		read_theta_profile(param);
+		}
+	#endif
 
 	#ifdef MULTICANONICAL_MODE
 	check_required_string(param->d_multicanonic_acc_file, "multicanonic_acc_file", 1);
@@ -1074,6 +1101,45 @@ static inline Multilevel_Obs ml_obs_from_string(char const *str)
 	}
 
 
+// read normalized profile of theta term from file
+void read_theta_profile(GParam *const param)
+	{
+	FILE *fp = fopen(param->d_theta_profile_file, "r");
+	REQUIRE(fp != NULL, "failed to open theta-term profile file %s", param->d_theta_profile_file);
+
+	allocate_array_double(&(param->d_theta_profile), param->d_theta_profile_size, __FILE__, __LINE__);
+
+	// read theta profile from file
+	for(int i = 0; i < param->d_theta_profile_size; i++)
+		{
+		int const err = fscanf(fp, "%lf", &(param->d_theta_profile[i]));
+		REQUIRE(err == 1, "can't read theta profile at index %d", i);
+		}
+	double extra;
+	int const err = fscanf(fp, "%lf", &extra);
+	REQUIRE(err == EOF, "theta profile contains more than %d values", param->d_theta_profile_size);
+
+	fclose(fp);
+	}
+
+
+// write normalized profile of theta term to file with name
+void write_theta_profile(GParam const *const param, char const *const filename)
+	{
+	FILE *fp = fopen(filename, "w");
+	REQUIRE(fp != NULL, "failed to open theta-term profile file %s", filename);
+
+	// write theta profile to file
+	for(int i = 0; i < param->d_theta_profile_size; i++)
+		{
+		fprintf(fp, "% 12.6e ", param->d_theta_profile[i]);
+		}
+	fprintf(fp, "\n");
+
+	fclose(fp);
+	}
+
+
 // read topo potential from file
 void read_topo_potential(GParam *const param)
 	{
@@ -1111,7 +1177,7 @@ void read_topo_potential(GParam *const param)
 
 
 // write topo potential to file with name
-void write_topo_potential(GParam const *const param, char *filename)
+void write_topo_potential(GParam const *const param, char const *const filename)
 	{
 	FILE *fp = fopen(filename, "w");
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", filename);
@@ -1167,6 +1233,20 @@ void init_derived_constants(GParam *const param)
 		param->d_volume_defect *= param->d_L_defect[i];
 		}
 
+	// number of planes (twisted boundary conditions only)
+	param->d_n_planes = STDIM * (STDIM - 1);
+
+	// default open boundary position
+	param->d_obc_default_pos = 0;
+	if(param->d_obc_dir != -1)
+		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
+
+	// number of slices for theta-term profile
+	param->d_theta_profile_size = param->d_size[param->d_theta_profile_dir];
+
+	// number of grid points for multicanonical potential
+	param->d_n_grid = (int) ((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
+
 	// multilevel observable
 	param->d_ml_obs = ml_obs_from_string(param->d_ml_obs_str);
 
@@ -1179,18 +1259,6 @@ void init_derived_constants(GParam *const param)
 	// number of multilevel slices
 	for(i = 0; i < NLEVELS; i++)
 		param->d_ml_num_slices[i] = param->d_size[0] / param->d_ml_step[i];
-
-
-	// number of grid points (multicanonic only)
-	param->d_n_grid = (int) ((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);
-
-	// number of planes (twisted boundary conditions only)
-	param->d_n_planes = STDIM * (STDIM - 1);
-
-	// default open boundary position
-	param->d_obc_default_pos = 0;
-	if(param->d_obc_dir != -1)
-		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
 
 	// number of measurements during gradient-flow evolution
 	if(param->d_gf_meas_each > 0)
@@ -1361,7 +1429,7 @@ void print_simul_parameters(FILE *fp, GParam const *const param)
 	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
 	fprintf(fp, "energy_slices_meas:    %d\n", param->d_energy_slices_meas);
-	fprintf(fp, "topcharge_tcorr_meas:  %d\n", param->d_charge_slices_meas);
+	fprintf(fp, "charge_slices_meas:  %d\n", param->d_charge_slices_meas);
 	fprintf(fp, "charge_p_slices_meas:  %d\n", param->d_charge_p_slices_meas);
 	fprintf(fp, "\n");
 
@@ -1761,7 +1829,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "polyakov_density_meas 0  # 1=YES, 0=NO\n");
 	fprintf(fp, "chi_prime_meas        0  # 1=YES, 0=NO\n");
 	fprintf(fp, "energy_slices_meas    0  # 1=YES, 0=NO\n");
-	fprintf(fp, "topcharge_tcorr_meas  0  # 1=YES, 0=NO\n");
+	fprintf(fp, "charge_slices_meas    0  # 1=YES, 0=NO\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "multipolyakov_order   0  # n  mu_1 mu_2 ... mu_n\n");
 	fprintf(fp, "meas_effective_charge 0  # if 1, eventual x-dependence of theta-term moved in definition of Q\n");

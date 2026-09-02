@@ -62,7 +62,8 @@ typedef struct GParam
 	int d_overrelax;
 	int d_measevery;
 
-	// time limit in hours
+	// random seed and time limit in hours
+	unsigned int d_randseed;
 	double d_walltime;
 
 	// initialization & saving
@@ -113,6 +114,28 @@ typedef struct GParam
 	double d_agf_time_bin;
 	int d_agf_num_meas;
 
+	// for slice-dependent theta term
+	char d_theta_profile_file[STD_STRING_LENGTH];
+	int d_theta_profile_dir;
+	int d_theta_profile_size;
+	double *d_theta_profile;
+
+	// for multicanonical potential
+	char d_topo_potential_file[STD_STRING_LENGTH];
+	double d_grid_step;
+	double d_grid_max;
+	double **d_grid;        // d_grid [a][x] = V_a(x) is the topo potential for replica a
+	int d_topo_cooling;     // cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
+	int d_topo_coolsteps;   // cooling steps of the charge before evaluating V_a
+	double d_topo_agf_time; // adaptive gradflow time before evaluating V_a. TODO: unused, debug only, remove?
+	double d_topo_alpha;    // alpha parameter for alpha-rounding of cooled charge
+
+	// for tuning of multicanonical potential
+	int d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
+	int d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)
+	double d_topo_tuning_thr;     // threshold below which tuning of topo potential is completed
+	double d_topo_tuning_stp;     // initial variation of topo potential during tuning
+
 	// for multilevel
 	char d_ml_obs_str[STD_STRING_LENGTH];
 	Multilevel_Obs d_ml_obs;
@@ -142,9 +165,6 @@ typedef struct GParam
 	char d_swap_tracking_file[STD_STRING_LENGTH];    // print swap tracks
 	char d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
 
-	// random seed
-	unsigned int d_randseed;
-
 	// derived constants
 	int d_max_size;                // max lattice size
 	int d_min_size;                // min lattice size
@@ -155,30 +175,15 @@ typedef struct GParam
 	long d_space_vol[STDIM];       // volume without given component
 	double d_inv_space_vol[STDIM]; // 1 / volume without given component
 	long d_volume_defect;          // volume of the defect (only for parallel tempering)
-	int d_n_grid;                  // total grid points (only for multicanonic)
+	int d_n_grid;                  // number of grid points for multicanonical potential
 	int d_n_planes;                // number of planes (only for twisted boundary conditions)
 	long d_n_even;                 // number of even lattice sites in the largest even sublattice
 	long d_n_border;               // number of lattice sites outside the largest even sublattice
 
-	// for multicanonic
-	char d_topo_potential_file[STD_STRING_LENGTH];
-	double d_grid_step;
-	double d_grid_max;
-	double **d_grid;        // d_grid [a][x] = V_a(x) is the topo potential for replica a
-	int d_topo_cooling;     // cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
-	int d_topo_coolsteps;   // cooling steps of the charge before evaluating V_a
-	double d_topo_agf_time; // adaptive gradflow time before evaluating V_a. TODO: unused, debug only, remove?
-	double d_topo_alpha;    // alpha parameter for alpha-rounding of cooled charge
-
-	// for tuning
-	int d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
-	int d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)
-	double d_topo_tuning_thr;     // threshold below which tuning of topo potential is completed
-	double d_topo_tuning_stp;     // initial variation of topo potential during tuning
-
 	// for debugging and testing
 	int d_test_flag;
 	} GParam;
+
 
 // functions to impose conditions on params
 int param_any_ui(unsigned int val, char *msg);
@@ -218,9 +223,13 @@ void readinput(char const *const in_file, GParam *const param);
 
 void remove_white_line_and_comments(FILE *input);
 
+void read_theta_profile(GParam *param);
+
+void write_theta_profile(GParam const *const param, char const *const filename);
+
 void read_topo_potential(GParam *param);
 
-void write_topo_potential(GParam const *const param, char *filename);
+void write_topo_potential(GParam const *const param, char const *const filename);
 
 void init_derived_constants(GParam *const param);
 

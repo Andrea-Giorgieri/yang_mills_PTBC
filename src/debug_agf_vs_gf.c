@@ -27,7 +27,6 @@ void real_main(char const *in_file)
 
 	char name[STD_STRING_LENGTH], aux[STD_STRING_LENGTH], name_gf[STD_STRING_LENGTH], name_agf[STD_STRING_LENGTH];
 	int count;
-	FILE *swaptrackfilep;
 	time_t time1, time2, time3, time4, time5, time6, gf_time, agf_time, dagf_time;
 
 	// to disable nested parallelism
@@ -41,9 +40,6 @@ void real_main(char const *in_file)
 
 	// initialize random generator
 	initrand(param.d_randseed);
-
-	// open swap tracking file
-	init_swap_track_file(&swaptrackfilep, &param);
 
 	// initialize geometry
 	init_geometry(&geo, &param);
@@ -79,7 +75,7 @@ void real_main(char const *in_file)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
-		print_conf_labels(swaptrackfilep, GC, &param);
+		print_conf_labels(GC, &param, &acc_counters);
 
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
@@ -134,9 +130,6 @@ void real_main(char const *in_file)
 	free_meas_utils(meas_aux_agf, &param, 0);
 	free_meas_utils(meas_aux_gf, &param, 0);
 	//fclose(step_filep);
-
-	// close swap tracking file
-	if(param.d_N_replica_pt > 1) fclose(swaptrackfilep);
 
 	// save configurations
 	if(param.d_saveconf_back_every != 0)

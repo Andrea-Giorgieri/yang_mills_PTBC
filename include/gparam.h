@@ -8,6 +8,7 @@
 
 #include "timing.h"
 
+
 // cooling implementations
 typedef enum
 	{
@@ -17,6 +18,7 @@ typedef enum
 	LEXEO_SITE_LEX_DIR,
 	RND_DIR_RNDEO_SITE
 	} Cooling_Type;
+
 
 // multilevel observables
 typedef enum
@@ -29,15 +31,46 @@ typedef enum
 	TUBE_CONN_LONG,
 	} Multilevel_Obs;
 
+
+// parameter types
+typedef enum
+	{
+	PARAM_INT,
+	PARAM_UINT,
+	PARAM_DOUBLE,
+	PARAM_STRING,
+	PARAM_INT_ARRAY,
+	PARAM_DOUBLE_ARRAY,
+	} ParamType;
+
+
+// parameter definition structure
+typedef struct ParamDef
+	{
+	char const *name;
+	ParamType type;
+	void *ptr;
+	int count;
+	union
+		{
+		char const *(*ui)(unsigned int);
+		char const *(*integer)(int);
+		char const *(*dbl)(double);
+		char const *(*string)(char const *);
+		} condition;
+	} ParamDef;
+
+
+// structure to hold all parameters
 typedef struct GParam
 	{
 	// lattice dimensions
 	int d_size[STDIM];
 
 	// simulation parameters
-	double d_beta;
-	double d_h[NCOLOR]; // parameters for the trace deformation
-	double d_theta;
+	double d_beta;              // bare inverse coupling
+	double d_h[NCOLOR / 2 + 1]; // parameters for the trace deformation (+1 to avoid errors for NCOLOR=1, never used)
+	double d_theta;             // theta term
 
 	// parallel tempering parameters
 	int d_defect_dir;              // defect boundary
@@ -144,7 +177,7 @@ typedef struct GParam
 	int d_ml_upd[NLEVELS];
 	int d_ml_level0_repeat;
 	int d_dist_poly;
-	int d_trasv_dist;
+	int d_transv_dist;
 	int d_plaq_dir[2];
 	int d_ml_num_hit;
 	int d_ml_num_slices[NLEVELS];
@@ -160,7 +193,7 @@ typedef struct GParam
 	char d_chargedensity_file[STD_STRING_LENGTH];    // print charge density measures
 	char d_polyakovdensity_file[STD_STRING_LENGTH];  // print polyakov density measures
 	char d_log_file[STD_STRING_LENGTH];              // print program details
-	char d_ml_file[STD_STRING_LENGTH];               //
+	char d_ml_file[STD_STRING_LENGTH];               // save multilevel configuration
 	char d_swap_acc_file[STD_STRING_LENGTH];         // print swap Metropolis acceptance
 	char d_swap_tracking_file[STD_STRING_LENGTH];    // print swap tracks
 	char d_multicanonic_acc_file[STD_STRING_LENGTH]; // print multicanonic Metropolis acceptance
@@ -185,43 +218,13 @@ typedef struct GParam
 	} GParam;
 
 
-// functions to impose conditions on params
-int param_any_ui(unsigned int val, char *msg);
-
-int param_any_int(int val, char *msg);
-
-int param_bool_int(int val, char *msg);
-
-int param_positive_int(int val, char *msg);
-
-int param_nonnegative_int(int val, char *msg);
-
-int param_any_double(double val, char *msg);
-
-int param_positive_double(double val, char *msg);
-
-int param_nonnegative_double(double val, char *msg);
-
-int param_any_string(char *val, char *msg);
-
-// functions to check that a required param was found
-void check_required_string(char *val, char *name, int required);
-
-// functions to set values of params
-void set_ui_param(FILE *fp, unsigned int *ptr, char const *const name, int (*condition)(unsigned int, char *));
-
-void set_int_param(FILE *fp, int *ptr, char const *const name, int (*condition)(int, char *));
-
-void set_double_param(FILE *fp, double *ptr, char const *const name, int (*condition)(double, char *));
-
-void set_string_param(FILE *fp, char *ptr, char const *const name, int (*condition)(char *, char *));
+// read and write parameters
 
 void set_defaults(GParam *const param);
 
-// read and write parameters
-void readinput(char const *const in_file, GParam *const param);
-
 void remove_white_line_and_comments(FILE *input);
+
+void readinput(char const *const in_file, GParam *const param);
 
 void read_theta_profile(GParam *param);
 

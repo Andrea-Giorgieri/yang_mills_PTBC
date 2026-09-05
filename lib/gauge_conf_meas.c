@@ -2110,7 +2110,7 @@ void open_data_files(Meas_Utils *meas_aux, int const replica_index, GParam const
 	if(param->d_energy_slices_meas == 1)
 		meas_aux->e_slices_filep = open_file_with_header_replica(param->d_energy_slices_file, header, replica_index, param, 0);
 
-	// topcharge_tcorr file
+	// charge_slices file
 	if(param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
 		meas_aux->q_slices_filep = open_file_with_header_replica(param->d_charge_slices_file, header, replica_index, param, 0);
 
@@ -2155,7 +2155,7 @@ void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const
 	if(param->d_energy_slices_meas == 1)
 		fclose(meas_aux.e_slices_filep);
 
-	// topcharge_tcorr file
+	// charge_slices file
 	if(param->d_charge_slices_meas == 1)
 		fclose(meas_aux.q_slices_filep);
 

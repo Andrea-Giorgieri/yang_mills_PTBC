@@ -136,6 +136,8 @@ void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int const
 			int const x_profile_original = periodic_condition(x_profile - offset, L_profile);
 			GC->Z[r][si_bulk] = param->d_theta_profile[x_profile_original] + I * 0.0;
 			}
+		#else
+		(void) translation;
 		#endif
 		GC->Z_copy[r][si_bulk] = GC->Z[r][si_bulk];
 		}
@@ -816,6 +818,8 @@ void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, int t
 			REQUIRE(tmp_i < param->d_size[i], "the %d-th translation of the configuration (%d) exceeds the size parameter (%d)", i, tmp_i, param->d_size[i]);
 			translation[i] = tmp_i;
 			}
+		#else
+		translation[i] = 0;
 		#endif
 		}
 

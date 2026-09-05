@@ -340,6 +340,12 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 	plus_equal(M, &topo_M);
 
 	#else
+	(void) GC;
+	(void) geo;
+	(void) param;
+	(void) r;
+	(void) i;
+	(void) M;
 	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
 	}
@@ -683,6 +689,12 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 	plus_equal(M, &topo_M);
 
 	#else
+	(void) GC;
+	(void) geo;
+	(void) param;
+	(void) r;
+	(void) i;
+	(void) M;
 	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
 	#endif
 	}
@@ -770,8 +782,7 @@ double delta_action(Gauge_Conf const *const GC,
 	}
 
 
-// perform an update with metropolis
-// return 1 if the proposed update is accepted
+// perform an update with metropolis, return 1 if the proposed update is accepted
 int metropolis(Gauge_Conf *const GC,
                Geometry const *const geo,
                GParam const *const param,

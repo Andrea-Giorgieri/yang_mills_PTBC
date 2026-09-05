@@ -17,152 +17,211 @@
 
 // functions to impose conditions on params
 
-int param_any_ui(unsigned int val, char *msg)
+static inline char const *param_any_ui(unsigned int const val)
 	{
 	(void) val;
-	(void) msg;
-	return 0;
+	return NULL;
 	}
 
 
-int param_any_int(int val, char *msg)
+static inline char const *param_any_int(int const val)
 	{
 	(void) val;
-	(void) msg;
-	return 0;
+	return NULL;
 	}
 
 
-int param_bool_int(int val, char *msg)
+static inline char const *param_bool_int(int const val)
 	{
-	if((val == 0) || (val == 1)) return 0;
-	sprintf(msg, "must be either 0 or 1");
-	return 1;
+	if((val == 0) || (val == 1)) return NULL;
+	return "must be either 0 or 1";
 	}
 
 
-int param_positive_int(int val, char *msg)
+static inline char const *param_positive_int(int const val)
 	{
-	if(val > 0) return 0;
-	sprintf(msg, "must be positive");
-	return 1;
+	if(val > 0) return NULL;
+	return "must be positive";
 	}
 
 
-int param_nonnegative_int(int val, char *msg)
+static inline char const *param_nonnegative_int(int const val)
 	{
-	if(val >= 0) return 0;
-	sprintf(msg, "must be non-negative");
-	return 1;
+	if(val >= 0) return NULL;
+	return "must be non-negative";
 	}
 
 
-int param_any_double(double val, char *msg)
+static inline char const *param_any_double(double const val)
 	{
 	(void) val;
-	(void) msg;
-	return 0;
+	return NULL;
 	}
 
 
-int param_positive_double(double val, char *msg)
+static inline char const *param_positive_double(double const val)
 	{
-	if(val > 0) return 0;
-	sprintf(msg, "must be positive");
-	return 1;
+	if(val > 0) return NULL;
+	return "must be positive";
 	}
 
 
-int param_nonnegative_double(double val, char *msg)
+static inline char const *param_nonnegative_double(double const val)
 	{
-	if(val >= 0) return 0;
-	sprintf(msg, "must be non-negative");
-	return 1;
+	if(val >= 0) return NULL;
+	return "must be non-negative";
 	}
 
 
-int param_any_string(char *val, char *msg)
+static inline char const *param_any_string(char const *val)
 	{
 	(void) val;
-	(void) msg;
-	return 0;
+	return NULL;
 	}
 
 
-void check_required_string(char *val, char *name, int required)
+static inline void check_required_string(char const *val, char const *name, int const required)
 	{
 	if(required)
 		{
-		REQUIRE(strcmp(val, "") != 0, "parameter '%s' is required", name);
+		REQUIRE(val != NULL && val[0] != '\0', "parameter '%s' is required", name);
 		}
 	}
 
 
 // functions to set values of params
-void set_ui_param(FILE *fp, unsigned int *ptr, char const *const name, int (*condition)(unsigned int, char *))
+
+static inline void set_ui_param(FILE *fp, unsigned int *ptr, char const *const name, char const *(*condition)(unsigned int))
 	{
 	unsigned int temp;
-	char msg[STD_STRING_LENGTH];
-	int err = fscanf(fp, "%u", &temp);
-	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
-	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
+	REQUIRE(fscanf(fp, "%u", &temp) == 1, "error reading parameter '%s' from input file", name);
+	char const *msg = condition(temp);
+	REQUIRE(msg == NULL, "invalid parameter '%s': %s", name, msg);
 	*ptr = temp;
 	}
 
 
-void set_int_param(FILE *fp, int *ptr, char const *const name, int (*condition)(int, char *))
+static inline void set_int_param(FILE *fp, int *ptr, char const *const name, char const *(*condition)(int))
 	{
 	int temp;
-	char msg[STD_STRING_LENGTH];
-	int err = fscanf(fp, "%d", &temp);
-	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
-	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
+	REQUIRE(fscanf(fp, "%d", &temp) == 1, "error reading parameter '%s' from input file", name);
+	char const *msg = condition(temp);
+	REQUIRE(msg == NULL, "invalid parameter '%s': %s", name, msg);
 	*ptr = temp;
 	}
 
 
-void set_double_param(FILE *fp, double *ptr, char const *const name, int (*condition)(double, char *))
+static inline void set_double_param(FILE *fp, double *ptr, char const *const name, char const *(*condition)(double))
 	{
 	double temp;
-	char msg[STD_STRING_LENGTH];
-	int err = fscanf(fp, "%lf", &temp);
-	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
-	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
+	REQUIRE(fscanf(fp, "%lf", &temp) == 1, "error reading parameter '%s' from input file", name);
+	char const *msg = condition(temp);
+	REQUIRE(msg == NULL, "invalid parameter '%s': %s", name, msg);
 	*ptr = temp;
 	}
 
 
-void set_string_param(FILE *fp, char *ptr, char const *const name, int (*condition)(char *, char *))
+static inline void set_string_param(FILE *fp, char *ptr, char const *const name, char const *(*condition)(char const *))
 	{
 	char temp[STD_STRING_LENGTH];
-	char msg[STD_STRING_LENGTH];
-	int err = fscanf(fp, "%s", temp);
-	REQUIRE(err == 1, "error reading parameter '%s' from input file", name);
-	REQUIRE(condition(temp, msg) == 0, "invalid parameter '%s': %s", name, msg);
+	REQUIRE(fscanf(fp, "%s", temp) == 1, "error reading parameter '%s' from input file", name);
+	char const *msg = condition(temp);
+	REQUIRE(msg == NULL, "invalid parameter '%s': %s", name, msg);
 	strcpy(ptr, temp);
 	}
 
 
-// remove white lines and comments starting with # from input file
-void remove_white_line_and_comments(FILE *input)
+static int set_parameter(FILE *input, ParamDef const *param)
 	{
-	int temp_i;
+	switch(param->type)
+		{
+		case PARAM_INT:
+			set_int_param(input, (int *) param->ptr, param->name, param->condition.integer);
+			break;
 
-	// skip empty line
-	{
-		do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');
+		case PARAM_UINT:
+			set_ui_param(input, (unsigned int *) param->ptr, param->name, param->condition.ui);
+			break;
+
+		case PARAM_DOUBLE:
+			set_double_param(input, (double *) param->ptr, param->name, param->condition.dbl);
+			break;
+
+		case PARAM_STRING:
+			set_string_param(input, (char *) param->ptr, param->name, param->condition.string);
+			break;
+
+		case PARAM_INT_ARRAY:
+			for(int i = 0; i < param->count; i++)
+				{
+				set_int_param(input, &((int *) param->ptr)[i], param->name, param->condition.integer);
+				}
+			break;
+
+		case PARAM_DOUBLE_ARRAY:
+			for(int i = 0; i < param->count; i++)
+				{
+				set_double_param(input, &((double *) param->ptr)[i], param->name, param->condition.dbl);
+				}
+			break;
+
+		default:
+			REQUIRE(0, "unknown type for parameter '%s'", param->name);
+		}
+	return 1;
 	}
 
-	// skip comment, from \043 = ascii oct for # to first newline or EOF
-	if(temp_i == '\043') { do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF); }
 
-	// return if EOF reached or nothing else to remove, after pushing back last char
-	if(temp_i == EOF) return;
-	ungetc(temp_i, input);
-	if(temp_i != '\n' && temp_i != ' ' && temp_i != '\043') return;
+static int find_and_set_parameter(FILE *input, char const *name, ParamDef const *param_defs, size_t const num_params)
+	{
+	for(size_t i = 0; i < num_params; i++)
+		{
+		if(strcmp(name, param_defs[i].name) == 0)
+			return set_parameter(input, &param_defs[i]);
+		}
+	return 0;
+	}
 
-	// recursive call if another white line or comment
-	remove_white_line_and_comments(input);
+
+static void read_n_replica_pt(FILE *input, GParam *param)
+	{
+	set_int_param(input, &param->d_N_replica_pt, "N_replica_pt", &param_positive_int);
+	allocate_array_double(&param->d_pt_bound_cond_coeff, param->d_N_replica_pt, __FILE__, __LINE__);
+	for(int i = 0; i < param->d_N_replica_pt; ++i)
+		{
+		set_double_param(input, &param->d_pt_bound_cond_coeff[i], "N_replica_pt", &param_any_double);
+		}
+	}
+
+
+static void read_hierarc_upd(FILE *input, GParam *param)
+	{
+	set_int_param(input, &param->d_N_hierarc_levels, "hierarc_upd", &param_nonnegative_int);
+	if(param->d_N_hierarc_levels == 0)
+		return;
+	allocate_array_int(&param->d_L_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
+	allocate_array_int(&param->d_N_sweep_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
+	for(int i = 0; i < param->d_N_hierarc_levels; ++i)
+		{
+		set_int_param(input, &param->d_L_rect[i], "hierarc_upd", &param_nonnegative_int);
+		}
+	for(int i = 0; i < param->d_N_hierarc_levels; ++i)
+		{
+		set_int_param(input, &param->d_N_sweep_rect[i], "hierarc_upd", &param_nonnegative_int);
+		}
+	}
+
+
+static void read_multipolyakov_order(FILE *input, GParam *param)
+	{
+	set_int_param(input, &param->d_multipolyakov_order, "multipolyakov_order", &param_nonnegative_int);
+	if(param->d_multipolyakov_order == 0)
+		return;
+	allocate_array_int(&param->d_multipolyakov_dirs, param->d_multipolyakov_order, __FILE__, __LINE__);
+	for(int i = 0; i < param->d_multipolyakov_order; ++i)
+		{
+		set_int_param(input, &param->d_multipolyakov_dirs[i], "multipolyakov_order", &param_nonnegative_int);
+		}
 	}
 
 
@@ -180,12 +239,12 @@ void set_defaults(GParam *const param)
 	param->d_multihit = 0;
 	param->d_ml_level0_repeat = 0;
 	param->d_dist_poly = 0;
-	param->d_trasv_dist = 0;
+	param->d_transv_dist = 0;
 	param->d_plaq_dir[0] = 0;
 	param->d_plaq_dir[1] = 1;
 
 	// trace deformation and theta term
-	for(i = 0; i < NCOLOR; i++) param->d_h[i] = 0.0;
+	for(i = 0; i < NCOLOR / 2; i++) param->d_h[i] = 0.0;
 	param->d_theta = 0.0;
 	param->d_theta_profile_dir = -1;
 
@@ -269,11 +328,161 @@ void set_defaults(GParam *const param)
 	}
 
 
+// remove white lines and comments starting with # from input file
+void remove_white_line_and_comments(FILE *input)
+	{
+	int temp_i;
+
+	// skip empty line
+	{
+		do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');
+	}
+
+	// skip comment, from \043 = ascii oct for # to first newline or EOF
+	if(temp_i == '\043') { do temp_i = getc(input); while(temp_i != '\n' && temp_i != EOF); }
+
+	// return if EOF reached or nothing else to remove, after pushing back last char
+	if(temp_i == EOF) return;
+	ungetc(temp_i, input);
+	if(temp_i != '\n' && temp_i != ' ' && temp_i != '\043') return;
+
+	// recursive call if another white line or comment
+	remove_white_line_and_comments(input);
+	}
+
+
 // read params from input file
 void readinput(char const *const in_file, GParam *const param)
 	{
-	char str[STD_STRING_LENGTH], param_name[STD_STRING_LENGTH];
+	char str[STD_STRING_LENGTH];
 	int i, err;
+
+	#define INT_PARAM(name, member, condition) { name, PARAM_INT, &(param->member), 1, {.integer = condition} }
+	#define UINT_PARAM(name, member, condition) { name, PARAM_UINT, &(param->member), 1, {.ui = condition} }
+	#define DOUBLE_PARAM(name, member, condition) { name, PARAM_DOUBLE, &(param->member), 1, {.dbl = condition} }
+	#define STRING_PARAM(name, member, condition) { name, PARAM_STRING, param->member, 1, {.string = condition} }
+	#define INT_ARRAY_PARAM(name, member, count, condition) { name, PARAM_INT_ARRAY, param->member, count, {.integer = condition} }
+	#define DOUBLE_ARRAY_PARAM(name, member, count, condition) { name, PARAM_DOUBLE_ARRAY, param->member, count, {.dbl = condition} }
+
+	ParamDef const params[] =
+			{
+			// lattice
+			INT_ARRAY_PARAM("size", d_size, STDIM, param_positive_int),
+			DOUBLE_PARAM("beta", d_beta, param_positive_double),
+			DOUBLE_ARRAY_PARAM("htracedef", d_h, NCOLOR / 2, param_any_double),
+			DOUBLE_PARAM("theta", d_theta, param_any_double),
+			INT_PARAM("theta_profile_dir", d_theta_profile_dir, param_any_int),
+			STRING_PARAM("theta_profile_file", d_theta_profile_file, param_any_string),
+			INT_ARRAY_PARAM("k_twist", d_k_twist, STDIM * (STDIM - 1) / 2, param_any_int),
+			INT_PARAM("obc_dir", d_obc_dir, param_any_int),
+			INT_PARAM("obc_bulk", d_obc_bulk, param_nonnegative_int),
+
+			// parallel tempering
+			INT_PARAM("defect_dir", d_defect_dir, param_nonnegative_int),
+			INT_ARRAY_PARAM("defect_size", d_L_defect, STDIM - 1, param_any_int),
+
+			// simulation
+			INT_PARAM("sample", d_sample, param_nonnegative_int),
+			INT_PARAM("thermal", d_thermal, param_nonnegative_int),
+			INT_PARAM("overrelax", d_overrelax, param_nonnegative_int),
+			INT_PARAM("measevery", d_measevery, param_nonnegative_int),
+			INT_PARAM("start", d_start, param_nonnegative_int),
+			INT_PARAM("saveconf_back_every", d_saveconf_back_every, param_nonnegative_int),
+			INT_PARAM("saveconf_analysis_every", d_saveconf_analysis_every, param_nonnegative_int),
+			UINT_PARAM("randseed", d_randseed, param_any_ui),
+			DOUBLE_PARAM("walltime", d_walltime, param_any_double),
+
+			// measure flags
+			INT_PARAM("plaquette_meas", d_plaquette_meas, param_bool_int),
+			INT_PARAM("clover_energy_meas", d_clover_energy_meas, param_bool_int),
+			INT_PARAM("energy_density_meas", d_energy_density_meas, param_bool_int),
+			INT_PARAM("charge_meas", d_charge_meas, param_bool_int),
+			INT_PARAM("charge_density_meas", d_charge_density_meas, param_bool_int),
+			INT_PARAM("polyakov_meas", d_polyakov_meas, param_bool_int),
+			INT_PARAM("polyakov_powers_meas", d_polyakov_powers_meas, param_bool_int),
+			INT_PARAM("polyakov_density_meas", d_polyakov_density_meas, param_bool_int),
+			INT_PARAM("chi_prime_meas", d_chi_prime_meas, param_bool_int),
+			INT_PARAM("charge_prime_meas", d_charge_prime_meas, param_bool_int),
+			INT_PARAM("action_meas", d_action_meas, param_bool_int),
+			INT_PARAM("energy_slices_meas", d_energy_slices_meas, param_bool_int),
+			INT_PARAM("charge_slices_meas", d_charge_slices_meas, param_bool_int),
+			INT_PARAM("charge_p_slices_meas", d_charge_p_slices_meas, param_bool_int),
+			INT_PARAM("meas_effective_charge", d_meas_effective_charge, param_bool_int),
+
+			// cooling
+			STRING_PARAM("cooling_type", d_cooling_type_str, param_any_string),
+			INT_PARAM("coolsteps", d_coolsteps, param_nonnegative_int),
+			INT_PARAM("coolrepeat", d_coolrepeat, param_nonnegative_int),
+
+			// gradient flow
+			DOUBLE_PARAM("gfstep", d_gfstep, param_nonnegative_double),
+			INT_PARAM("num_gfsteps", d_ngfsteps, param_nonnegative_int),
+			INT_PARAM("gf_meas_each", d_gf_meas_each, param_positive_int),
+
+			// adaptive gradient flow
+			DOUBLE_PARAM("agf_length", d_agf_length, param_nonnegative_double),
+			DOUBLE_PARAM("agf_meas_each", d_agf_meas_each, param_nonnegative_double),
+			DOUBLE_PARAM("agf_step", d_agf_step, param_positive_double),
+			DOUBLE_PARAM("agf_delta", d_agf_delta, param_positive_double),
+			DOUBLE_PARAM("agf_time_bin", d_agf_time_bin, param_nonnegative_double),
+
+			// multilevel
+			INT_PARAM("multihit", d_multihit, param_any_int),
+			STRING_PARAM("ml_obs", d_ml_obs_str, param_any_string),
+			INT_ARRAY_PARAM("ml_step", d_ml_step, NLEVELS, param_any_int),
+			INT_ARRAY_PARAM("ml_upd", d_ml_upd, NLEVELS, param_any_int),
+			INT_PARAM("ml_level0_repeat", d_ml_level0_repeat, param_any_int),
+			STRING_PARAM("ml_file", d_ml_file, param_any_string),
+			INT_PARAM("dist_poly", d_dist_poly, param_any_int),
+			INT_PARAM("transv_dist", d_transv_dist, param_any_int),
+			INT_ARRAY_PARAM("plaq_dir", d_plaq_dir, 2, param_any_int),
+
+			// configuration filenames
+			STRING_PARAM("conf_file", d_conf_file, param_any_string),
+			STRING_PARAM("twist_file", d_twist_file, param_any_string),
+
+			// data filenames
+			STRING_PARAM("data_file", d_data_file, param_any_string),
+			STRING_PARAM("energy_density_file", d_energydensity_file, param_any_string),
+			STRING_PARAM("charge_density_file", d_chargedensity_file, param_any_string),
+			STRING_PARAM("polyakov_density_file", d_polyakovdensity_file, param_any_string),
+			STRING_PARAM("chiprime_data_file", d_chiprime_file, param_any_string),
+			STRING_PARAM("energy_slices_file", d_energy_slices_file, param_any_string),
+			STRING_PARAM("charge_slices_file", d_charge_slices_file, param_any_string),
+
+			// log, acceptance and tracking
+			STRING_PARAM("log_file", d_log_file, param_any_string),
+			STRING_PARAM("swap_acc_file", d_swap_acc_file, param_any_string),
+			STRING_PARAM("swap_track_file", d_swap_tracking_file, param_any_string),
+			STRING_PARAM("multicanonic_acc_file", d_multicanonic_acc_file, param_any_string),
+
+			// multicanonical
+			STRING_PARAM("topo_potential_file", d_topo_potential_file, param_any_string),
+			DOUBLE_PARAM("grid_step", d_grid_step, param_positive_double),
+			DOUBLE_PARAM("grid_max", d_grid_max, param_positive_double),
+			INT_PARAM("topo_cooling", d_topo_cooling, param_any_int),
+			INT_PARAM("topo_coolsteps", d_topo_coolsteps, param_nonnegative_int),
+			DOUBLE_PARAM("topo_alpha", d_topo_alpha, param_nonnegative_double),
+
+			// multicanonical tuning
+			DOUBLE_PARAM("topo_tuning_thr", d_topo_tuning_thr, param_nonnegative_double),
+			DOUBLE_PARAM("topo_tuning_stp", d_topo_tuning_stp, param_positive_double),
+			INT_PARAM("topo_tuning_save_every", d_topo_tuning_save_every, param_nonnegative_int),
+			INT_PARAM("topo_tuning_even", d_topo_tuning_even, param_bool_int),
+
+			// other
+			DOUBLE_PARAM("epsilon_metro", d_epsilon_metro, param_nonnegative_double),
+			INT_PARAM("test_flag", d_test_flag, param_any_int)
+			};
+
+	size_t const num_params = sizeof(params) / sizeof(params[0]);
+
+	#undef INT_PARAM
+	#undef UINT_PARAM
+	#undef DOUBLE_PARAM
+	#undef STRING_PARAM
+	#undef INT_ARRAY_PARAM
+	#undef DOUBLE_ARRAY_PARAM
 
 	// set default values
 	set_defaults(param);
@@ -295,631 +504,30 @@ void readinput(char const *const in_file, GParam *const param)
 		err = fscanf(input, "%s", str);
 		REQUIRE(err == 1, "error reading the name of a parameter from input file");
 
-		// look for the parameter and set its value
-
-		// lattice params
-		strcpy(param_name, "size");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < STDIM; i++)
-				set_int_param(input, &(param->d_size[i]), param_name, &param_positive_int);
-			continue;
-			}
-
-		strcpy(param_name, "beta");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_beta), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "htracedef");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < NCOLOR / 2; i++)
-				set_double_param(input, &(param->d_h[i]), param_name, &param_any_double);
-			continue;
-			}
-
-		strcpy(param_name, "theta");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_theta), param_name, &param_any_double);
-			continue;
-			}
-
-		strcpy(param_name, "theta_profile_dir");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_theta_profile_dir), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "theta_profile_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_theta_profile_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "k_twist");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < STDIM * (STDIM - 1) / 2; i++)
-				set_int_param(input, &(param->d_k_twist[i]), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "obc_dir");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_obc_dir), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "obc_bulk");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_obc_bulk), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		// parallel tempering params
-		strcpy(param_name, "N_replica_pt");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_N_replica_pt), param_name, &param_positive_int);
-			free(param->d_pt_bound_cond_coeff);
-			allocate_array_double(&(param->d_pt_bound_cond_coeff), param->d_N_replica_pt, __FILE__, __LINE__);
-			for(i = 0; i < param->d_N_replica_pt; i++)
-				set_double_param(input, &(param->d_pt_bound_cond_coeff[i]), param_name, &param_any_double);
-			continue;
-			}
-
-		strcpy(param_name, "defect_dir");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_defect_dir), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "defect_size");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < STDIM - 1; i++)
-				set_int_param(input, &(param->d_L_defect[i]), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "hierarc_upd");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_N_hierarc_levels), param_name, &param_nonnegative_int);
-			if(param->d_N_hierarc_levels > 0)
-				{
-				allocate_array_int(&(param->d_L_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
-				allocate_array_int(&(param->d_N_sweep_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
-				}
-			for(i = 0; i < param->d_N_hierarc_levels; i++)
-				set_int_param(input, &(param->d_L_rect[i]), param_name, &param_nonnegative_int);
-			for(i = 0; i < param->d_N_hierarc_levels; i++)
-				set_int_param(input, &(param->d_N_sweep_rect[i]), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		// simulation params
-		strcpy(param_name, "sample");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_sample), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "thermal");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_thermal), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "overrelax");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_overrelax), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "measevery");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_measevery), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "start");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_start), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "saveconf_back_every");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_saveconf_back_every), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "saveconf_analysis_every");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_saveconf_analysis_every), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "randseed");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_ui_param(input, &(param->d_randseed), param_name, &param_any_ui);
-			continue;
-			}
-
-		strcpy(param_name, "walltime");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_walltime), param_name, &param_any_double);
-			continue;
-			}
-
-		// measure flags
-		strcpy(param_name, "plaquette_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_plaquette_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "clover_energy_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_clover_energy_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "energy_density_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_energy_density_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "charge_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_charge_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "charge_density_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_charge_density_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "polyakov_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_polyakov_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "polyakov_powers_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_polyakov_powers_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "polyakov_density_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_polyakov_density_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "chi_prime_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_chi_prime_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "charge_prime_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_charge_prime_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "action_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_action_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "energy_slices_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_energy_slices_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "charge_slices_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_charge_slices_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "charge_p_slices_meas");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_charge_p_slices_meas), param_name, &param_bool_int);
-			continue;
-			}
-
-		strcpy(param_name, "multipolyakov_order");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_multipolyakov_order), param_name, &param_nonnegative_int);
-			if(param->d_multipolyakov_order > 0)
-				{
-				allocate_array_int(&(param->d_multipolyakov_dirs), param->d_multipolyakov_order, __FILE__, __LINE__);
-				for(i = 0; i < param->d_multipolyakov_order; i++)
-					set_int_param(input, &(param->d_multipolyakov_dirs[i]), param_name, &param_nonnegative_int);
-				}
-			continue;
-			}
-
-		strcpy(param_name, "meas_effective_charge");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_meas_effective_charge), param_name, &param_bool_int);
-			continue;
-			}
-
-
-		// cooling params
-		strcpy(param_name, "cooling_type");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_cooling_type_str, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "coolsteps");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_coolsteps), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "coolrepeat");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_coolrepeat), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		// gradient flow params
-		strcpy(param_name, "gfstep");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_gfstep), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		strcpy(param_name, "num_gfsteps");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_ngfsteps), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "gf_meas_each");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_gf_meas_each), param_name, &param_positive_int);
-			continue;
-			}
-
-		// adaptive gradient flow params
-		strcpy(param_name, "agf_length");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_agf_length), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		strcpy(param_name, "agf_meas_each");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_agf_meas_each), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		strcpy(param_name, "agf_step");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_agf_step), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "agf_delta");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_agf_delta), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "agf_time_bin");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_agf_time_bin), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		// multilevel params
-		strcpy(param_name, "multihit");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_multihit), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "ml_obs");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_ml_obs_str, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "ml_step");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < NLEVELS; i++)
-				set_int_param(input, &(param->d_ml_step[i]), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "ml_upd");
-		if(strcmp(str, param_name) == 0)
-			{
-			for(i = 0; i < NLEVELS; i++)
-				set_int_param(input, &(param->d_ml_upd[i]), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "ml_level0_repeat");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_ml_level0_repeat), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "dist_poly");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_dist_poly), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "transv_dist");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_trasv_dist), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "ml_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_ml_file, param_name, &param_any_string);
-			continue;
-			}
-
-		// configuration filenames
-		strcpy(param_name, "conf_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_conf_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "twist_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_twist_file, param_name, &param_any_string);
-			continue;
-			}
-
-		// data filenames
-		strcpy(param_name, "data_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_data_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "energy_density_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_energydensity_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "charge_density_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_chargedensity_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "polyakov_density_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_polyakovdensity_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "chiprime_data_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_chiprime_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "energy_slices_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_energy_slices_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "topcharge_tcorr_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_charge_slices_file, param_name, &param_any_string);
-			continue;
-			}
-
-		// log, acceptance and tracking filenames
-		strcpy(param_name, "log_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_log_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "swap_acc_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_swap_acc_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "swap_track_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_swap_tracking_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "multicanonic_acc_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_multicanonic_acc_file, param_name, &param_any_string);
-			continue;
-			}
-
-		// multicanonical params
-		strcpy(param_name, "topo_potential_file");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_string_param(input, param->d_topo_potential_file, param_name, &param_any_string);
-			continue;
-			}
-
-		strcpy(param_name, "grid_step");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_grid_step), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "grid_max");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_grid_max), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "topo_cooling");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_topo_cooling), param_name, &param_any_int);
-			continue;
-			}
-
-		strcpy(param_name, "topo_coolsteps");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_topo_coolsteps), param_name, &param_nonnegative_int);
-			continue;
-			}
-
-		strcpy(param_name, "topo_alpha");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_topo_alpha), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		// multicanonical tuning params
-		strcpy(param_name, "topo_tuning_thr");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_topo_tuning_thr), param_name, &param_nonnegative_double);
-			continue;
-			}
-
-		strcpy(param_name, "topo_tuning_stp");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_double_param(input, &(param->d_topo_tuning_stp), param_name, &param_positive_double);
-			continue;
-			}
-
-		strcpy(param_name, "topo_tuning_save_every");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_topo_tuning_save_every), param_name, &param_nonnegative_int);
+		// ordinary parameters
+		if(find_and_set_parameter(input, str, params, num_params))
 			continue;
-			}
-
-		strcpy(param_name, "topo_tuning_even");
-		if(strcmp(str, param_name) == 0)
-			{
-			set_int_param(input, &(param->d_topo_tuning_even), param_name, &param_bool_int);
-			continue;
-			}
 
-		// others
-		strcpy(param_name, "epsilon_metro");
-		if(strcmp(str, param_name) == 0)
+		// special parameters that require custom reading functions
+		if(strcmp(str, "N_replica_pt") == 0)
 			{
-			set_double_param(input, &(param->d_epsilon_metro), param_name, &param_nonnegative_double);
+			read_n_replica_pt(input, param);
 			continue;
 			}
 
-		strcpy(param_name, "plaq_dir");
-		if(strcmp(str, param_name) == 0)
+		if(strcmp(str, "hierarc_upd") == 0)
 			{
-			set_int_param(input, &(param->d_plaq_dir[0]), param_name, &param_any_int);
-			set_int_param(input, &(param->d_plaq_dir[1]), param_name, &param_any_int);
+			read_hierarc_upd(input, param);
 			continue;
 			}
 
-		strcpy(param_name, "test_flag");
-		if(strcmp(str, param_name) == 0)
+		if(strcmp(str, "multipolyakov_order") == 0)
 			{
-			set_int_param(input, &(param->d_test_flag), param_name, &param_any_int);
+			read_multipolyakov_order(input, param);
 			continue;
 			}
 
-		// raise error if parameter is unrecognized
+		// unknown parameter
 		REQUIRE(0, "unrecognized parameter '%s' in input file %s", str, in_file);
 		}
 
@@ -1046,8 +654,8 @@ void readinput(char const *const in_file, GParam *const param)
 	check_required_string(param->d_polyakovdensity_file, "polyakov_density_file", param->d_polyakov_density_meas);
 	check_required_string(param->d_chiprime_file, "chiprime_data_file", param->d_chi_prime_meas);
 	check_required_string(param->d_energy_slices_file, "energy_slices_file", param->d_energy_slices_meas);
-	check_required_string(param->d_charge_slices_file, "topcharge_tcorr_file", param->d_charge_slices_meas);
-	check_required_string(param->d_charge_slices_file, "topcharge_tcorr_file", param->d_charge_p_slices_meas);
+	check_required_string(param->d_charge_slices_file, "charge_slices_file", param->d_charge_slices_meas);
+	check_required_string(param->d_charge_slices_file, "charge_slices_file", param->d_charge_p_slices_meas);
 	check_required_string(param->d_swap_acc_file, "swap_acc_file", param->d_N_replica_pt > 1);
 	check_required_string(param->d_swap_tracking_file, "swap_track_file", param->d_N_replica_pt > 1);
 
@@ -1067,6 +675,7 @@ void readinput(char const *const in_file, GParam *const param)
 	read_topo_potential(param);
 	#endif
 	}
+
 
 static inline Cooling_Type cooling_type_from_string(char const *str)
 	{
@@ -1429,7 +1038,7 @@ void print_simul_parameters(FILE *fp, GParam const *const param)
 	fprintf(fp, "polyakov_density_meas: %d\n", param->d_polyakov_density_meas);
 	fprintf(fp, "chi_prime_meas:        %d\n", param->d_chi_prime_meas);
 	fprintf(fp, "energy_slices_meas:    %d\n", param->d_energy_slices_meas);
-	fprintf(fp, "charge_slices_meas:  %d\n", param->d_charge_slices_meas);
+	fprintf(fp, "charge_slices_meas:    %d\n", param->d_charge_slices_meas);
 	fprintf(fp, "charge_p_slices_meas:  %d\n", param->d_charge_p_slices_meas);
 	fprintf(fp, "\n");
 
@@ -1673,7 +1282,7 @@ void print_parameters_tracedef(GParam const *const param, Time_Utils const *cons
 
 	print_configuration_parameters(fp);
 	fprintf(fp, "htracedef: ");
-	for(int i = 0; i < (int) floor(NCOLOR / 2.0); i++)
+	for(int i = 0; i < NCOLOR / 2; i++)
 		{
 		fprintf(fp, "%lf ", param->d_h[i]);
 		}
@@ -1949,7 +1558,7 @@ void print_template_output_parameters(FILE *fp)
 	fprintf(fp, "polyakov_density_file polyakov_density.dat\n");
 	fprintf(fp, "chiprime_data_file    chi_prime_cool.dat\n");
 	fprintf(fp, "energy_slices_file    energy_slices.dat\n");
-	fprintf(fp, "topcharge_tcorr_file  charge_slices.dat\n");
+	fprintf(fp, "charge_slices_file    charge_slices.dat\n");
 	fprintf(fp, "log_file              log.dat\n");
 	fprintf(fp, "swap_acc_file         swap_acc.dat\n");
 	fprintf(fp, "swap_track_file       swap_track.dat\n");

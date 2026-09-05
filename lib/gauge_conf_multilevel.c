@@ -609,7 +609,7 @@ void compute_local_poly_and_plaq(Gauge_Conf *GC, Geometry const *const geo, GPar
 			// polyakov loop are separated along direction 1 and the transverse direction is 2
 			long r4 = sisp_and_t_to_si(geo, r, 1); // t = 1
 			for(int j = 0; j < param->d_dist_poly / 2; j++) r4 = nnp(geo, r4, 1);
-			for(int j = 0; j < param->d_trasv_dist; j++) r4 = nnp(geo, r4, 2);
+			for(int j = 0; j < param->d_transv_dist; j++) r4 = nnp(geo, r4, 2);
 
 			GC->loc_plaq[r] = plaquettep_complex(GC, geo, param, r4, param->d_plaq_dir[0], param->d_plaq_dir[1]);
 			}
@@ -710,7 +710,7 @@ void compute_local_poly_plaq_and_plaqconn(Gauge_Conf *GC, Geometry const *const 
 				times_equal(&GC->loc_plaqconn[r], &GC->lattice[r4][1]);
 				r4 = nnp(geo, r4, 1);
 				}
-			for(int j = 0; j < param->d_trasv_dist; j++)
+			for(int j = 0; j < param->d_transv_dist; j++)
 				{
 				times_equal(&GC->loc_plaqconn[r], &GC->lattice[r4][2]);
 				r4 = nnp(geo, r4, 2);
@@ -720,7 +720,7 @@ void compute_local_poly_plaq_and_plaqconn(Gauge_Conf *GC, Geometry const *const 
 			GC->loc_plaq[r] = retr(&matrix) + I * imtr(&matrix);
 			times_equal(&GC->loc_plaqconn[r], &matrix);
 
-			for(int j = 0; j < param->d_trasv_dist; j++)
+			for(int j = 0; j < param->d_transv_dist; j++)
 				{
 				r4 = nnm(geo, r4, 2);
 				times_equal_dag(&GC->loc_plaqconn[r], &GC->lattice[r4][2]);

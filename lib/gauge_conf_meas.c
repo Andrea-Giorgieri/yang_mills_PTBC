@@ -144,6 +144,50 @@ void plaquettep_matrix(Gauge_Conf const *const GC,
 	}
 
 
+// compute the mean plaquettes (spatial, temporal)
+void plaquette(Gauge_Conf const *const GC,
+               Geometry const *const geo,
+               GParam const *const param,
+               double *plaqs,
+               double *plaqt)
+	{
+	double ps = 0.0, pt = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : pt) reduction(+ : ps)
+	#endif
+	for(long r = 0; r < (param->d_volume); r++)
+		{
+		for(int j = 1; j < STDIM; j++)
+			{
+			pt += plaquettep(GC, geo, param, r, 0, j);
+			}
+
+		for(int i = 1; i < STDIM; i++)
+			{
+			for(int j = i + 1; j < STDIM; j++)
+				{
+				ps += plaquettep(GC, geo, param, r, i, j);
+				}
+			}
+		}
+
+	#if STDIM > 2
+	double const inv_ns = 2.0 / (((double) STDIM - 1) * (STDIM - 2));
+	*plaqs = ps * param->d_inv_vol * inv_ns;
+	#else
+	*plaqs = 0.0;
+	#endif
+
+	#if STDIM > 1
+	double const inv_nt = 1.0 / ((double) STDIM - 1);
+	*plaqt = pt * param->d_inv_vol * inv_nt;
+	#else
+	*plaqt = 0.0;
+	#endif
+	}
+
+
 // compute C_ij(r), the four-leaf clover in position r with positive directions (i,j), and save it in M
 void clover(Gauge_Conf const *const GC,
             Geometry const *const geo,
@@ -225,50 +269,6 @@ void clover(Gauge_Conf const *const GC,
 	times_equal(&aux, &(GC->lattice[rmi][i]));       // 16
 	times_equal_complex(&aux, GC->Z[rmi][si_ij]);    // Z_j-i
 	plus_equal(M, &aux);
-	}
-
-
-// compute the mean plaquettes (spatial, temporal)
-void plaquette(Gauge_Conf const *const GC,
-               Geometry const *const geo,
-               GParam const *const param,
-               double *plaqs,
-               double *plaqt)
-	{
-	double ps = 0.0, pt = 0.0;
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : pt) reduction(+ : ps)
-	#endif
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		for(int j = 1; j < STDIM; j++)
-			{
-			pt += plaquettep(GC, geo, param, r, 0, j);
-			}
-
-		for(int i = 1; i < STDIM; i++)
-			{
-			for(int j = i + 1; j < STDIM; j++)
-				{
-				ps += plaquettep(GC, geo, param, r, i, j);
-				}
-			}
-		}
-
-	#if STDIM > 2
-	double const inv_ns = 2.0 / (((double) STDIM - 1) * (STDIM - 2));
-	*plaqs = ps * param->d_inv_vol * inv_ns;
-	#else
-	*plaqs = 0.0;
-	#endif
-
-	#if STDIM > 1
-	double const inv_nt = 1.0 / ((double) STDIM - 1);
-	*plaqt = pt * param->d_inv_vol * inv_nt;
-	#else
-	*plaqt = 0.0;
-	#endif
 	}
 
 
@@ -367,61 +367,6 @@ void clover_energy_slices(Gauge_Conf const *const GC,
 	}
 
 
-// compute the total action (debug only)
-void action(Gauge_Conf const *const GC,
-            Geometry const *const geo,
-            GParam const *const param,
-            double *S_wilson, double *S_theta, double *S_total, double *V_mc)
-	{
-	// compute Wilson and theta terms of the action as sum of forces on the links
-	double Sw = 0.0, St = 0.0;
-	#ifdef THETA_MODE
-	for(int dir = 0; dir < STDIM; dir++)
-		{
-		compute_clovers(GC, geo, param, dir);
-		}
-	#endif
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : Sw, St)
-	#endif
-	for(long s = 0; s < STDIM * (param->d_volume); s++)
-		{
-		GAUGE_GROUP staple_wilson, staple_topo;
-		long const r = s % (param->d_volume);
-		int const i = (int) ((s - r) / (param->d_volume));
-
-		calcstaples_wilson_with_defect(GC, geo, param, r, i, &staple_wilson);
-		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &staple_topo);
-		minus_equal(&staple_topo, &staple_wilson);
-
-		times_equal(&staple_wilson, &(GC->lattice[r][i]));
-		times_equal(&staple_topo, &(GC->lattice[r][i]));
-		Sw += retr(&staple_wilson);
-		St += retr(&staple_topo);
-		}
-	double const S0 = (double) (param->d_n_planes * param->d_volume) / 2;
-	*S_wilson = param->d_beta * (S0 - Sw / 4.0); // Wilson term: degree 4 in the links, sum of forces divided by 4
-	*S_theta = -param->d_beta * St / 8.0;        // Theta term: degree 8 in the links, sum of forces divided by 8
-
-	// compute the total action from average plaquette and topological charge
-	double plaqs, plaqt;
-	plaquette(GC, geo, param, &plaqs, &plaqt);
-	double const sum_plaq = (double) param->d_volume * ((STDIM - 1) * (STDIM - 2) * plaqs / 2 + (STDIM - 1) * plaqt);
-	#ifdef THETA_MODE
-	*S_total = param->d_beta * (S0 - sum_plaq) - param->d_theta * topcharge(GC, geo, param);
-	#else
-	*S_total = param->d_beta * (S0 - sum_plaq);
-	#endif
-
-	// compute multicanonical potential
-	#ifdef MULTICANONICAL_MODE
-	*V_mc = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
-	#else
-	*V_mc = 0.0;
-	#endif
-	}
-
-
 // compute the polyakov loop density and write to binary file
 void polyakov_density(Gauge_Conf const *const GC,
                       Geometry const *const geo,
@@ -501,6 +446,7 @@ void polyakov(Gauge_Conf const *const GC,
 	*impoly = imp * (param->d_inv_space_vol[mu]);
 	}
 
+
 // compute the mean trace of the Polyakov loop winding along multiple directions
 void multipolyakov(Gauge_Conf const *const GC,
                    Geometry const *const geo,
@@ -533,6 +479,50 @@ void multipolyakov(Gauge_Conf const *const GC,
 
 	*repoly = rep * (param->d_inv_vol);
 	*impoly = imp * (param->d_inv_vol);
+	}
+
+// compute the mean trace of all the powers of the Polyakov loop winding along direction mu
+void polyakov_powers(Gauge_Conf const *const GC,
+                     Geometry const *const geo,
+                     GParam const *const param,
+                     int mu,
+                     double *repoly_pwrs,
+                     double *impoly_pwrs)
+	{
+	double rep[MAX_POLY_PWR], imp[MAX_POLY_PWR];
+
+	for(int i = 0; i < MAX_POLY_PWR; i++)
+		{
+		rep[i] = 0.0;
+		imp[i] = 0.0;
+		}
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep[:MAX_POLY_PWR]) reduction(+ : imp[:MAX_POLY_PWR])
+	#endif
+	for(long rsp = 0; rsp < param->d_space_vol[mu]; rsp++)
+		{
+		long r = sisp_and_mu_to_si(geo, rsp, 0, mu);
+		GAUGE_GROUP matrix, matrix2;
+		one(&matrix);
+		for(int i = 0; i < param->d_size[mu]; i++)
+			{
+			times_equal(&matrix, &(GC->lattice[r][mu]));
+			r = nnp(geo, r, mu);
+			}
+		equal(&matrix2, &matrix);
+		for(int i = 0; i < MAX_POLY_PWR; i++)
+			{
+			rep[i] += retr(&matrix);
+			imp[i] += imtr(&matrix);
+			times_equal(&matrix, &matrix2);
+			}
+		}
+	for(int i = 0; i < MAX_POLY_PWR; i++)
+		{
+		repoly_pwrs[i] = rep[i] * param->d_inv_space_vol[mu];
+		impoly_pwrs[i] = imp[i] * param->d_inv_space_vol[mu];
+		}
 	}
 
 
@@ -581,51 +571,6 @@ void polyakov_adj(Gauge_Conf const *const GC,
 	*repoly = 0.0;
 
 	#endif
-	}
-
-
-// compute the mean trace of all the powers of the Polyakov loop winding along direction mu
-void polyakov_powers(Gauge_Conf const *const GC,
-                     Geometry const *const geo,
-                     GParam const *const param,
-                     int mu,
-                     double *repoly_pwrs,
-                     double *impoly_pwrs)
-	{
-	double rep[MAX_POLY_PWR], imp[MAX_POLY_PWR];
-
-	for(int i = 0; i < MAX_POLY_PWR; i++)
-		{
-		rep[i] = 0.0;
-		imp[i] = 0.0;
-		}
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep[:MAX_POLY_PWR]) reduction(+ : imp[:MAX_POLY_PWR])
-	#endif
-	for(long rsp = 0; rsp < param->d_space_vol[mu]; rsp++)
-		{
-		long r = sisp_and_mu_to_si(geo, rsp, 0, mu);
-		GAUGE_GROUP matrix, matrix2;
-		one(&matrix);
-		for(int i = 0; i < param->d_size[mu]; i++)
-			{
-			times_equal(&matrix, &(GC->lattice[r][mu]));
-			r = nnp(geo, r, mu);
-			}
-		equal(&matrix2, &matrix);
-		for(int i = 0; i < MAX_POLY_PWR; i++)
-			{
-			rep[i] += retr(&matrix);
-			imp[i] += imtr(&matrix);
-			times_equal(&matrix, &matrix2);
-			}
-		}
-	for(int i = 0; i < MAX_POLY_PWR; i++)
-		{
-		repoly_pwrs[i] = rep[i] * param->d_inv_space_vol[mu];
-		impoly_pwrs[i] = imp[i] * param->d_inv_space_vol[mu];
-		}
 	}
 
 
@@ -730,74 +675,6 @@ double topcharge(Gauge_Conf const *const GC,
 	}
 
 
-// sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
-double topcharge_prime(Gauge_Conf const *const GC,
-                       Geometry const *const geo,
-                       GParam const *const param,
-                       int const dir)
-	{
-	double res = 0.0;
-
-	double *tmp;
-	allocate_array_double(&tmp, param->d_size[dir], __FILE__, __LINE__);
-	for(int i = 0; i < param->d_size[dir]; i++) tmp[i] = 0.0;
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel num_threads(NTHREADS)
-	#endif
-	{
-		double *tmp_private;
-		allocate_array_double(&tmp_private, param->d_size[dir], __FILE__, __LINE__);
-		for(int j = 0; j < param->d_size[dir]; j++) tmp_private[j] = 0;
-
-		#ifdef OPENMP_MODE
-		#pragma omp for
-		#endif
-		for(long r = 0; r < (param->d_volume); r++)
-			{
-			int cartcoord[STDIM];
-			si_to_cart(cartcoord, r, param);
-			tmp_private[cartcoord[dir]] += loc_topcharge(GC, geo, param, r);
-			}
-		#ifdef OPENMP_MODE
-		#pragma omp critical
-		#endif
-		{
-			for(int j = 0; j < param->d_size[dir]; j++) tmp[j] += tmp_private[j];
-		}
-
-		free(tmp_private);
-	}
-
-	for(int i = 0; i < param->d_size[dir]; i++) res += fabs(tmp[i]);
-	free(tmp);
-
-	return res;
-	}
-
-
-// chi^\prime = (1/8) int d^4x |x|^2 <q(x)q(0)> = < (1/8) int d^4x |x|^2 q(x) q(0) > = < G2 >
-// This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensemble is a^2 chi^\prime
-// d(x,y) = lattice distance between sites x and y keeping periodic boundary conditions into account (i.e., the shortest distance between x and y)
-double topo_chi_prime(Gauge_Conf const *const GC,
-                      Geometry const *const geo,
-                      GParam const *const param)
-	{
-	double res = 0.0;
-
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+: res)
-	#endif
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		res += square_distance(r, 0, param) * loc_topcharge(GC, geo, param, r);
-		}
-	res *= loc_topcharge(GC, geo, param, 0) / (2 * STDIM); // res *= q(0) / 8
-
-	return res;
-	}
-
-
 void topcharge_slices(Gauge_Conf const *const GC,
                       Geometry const *const geo,
                       GParam const *const param,
@@ -876,6 +753,74 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
 	}
 
 
+// sum loc_topcharge over STDIM-1 dirs and then the abs value of the result over the remaining dir
+double topcharge_prime(Gauge_Conf const *const GC,
+                       Geometry const *const geo,
+                       GParam const *const param,
+                       int const dir)
+	{
+	double res = 0.0;
+
+	double *tmp;
+	allocate_array_double(&tmp, param->d_size[dir], __FILE__, __LINE__);
+	for(int i = 0; i < param->d_size[dir]; i++) tmp[i] = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel num_threads(NTHREADS)
+	#endif
+	{
+		double *tmp_private;
+		allocate_array_double(&tmp_private, param->d_size[dir], __FILE__, __LINE__);
+		for(int j = 0; j < param->d_size[dir]; j++) tmp_private[j] = 0;
+
+		#ifdef OPENMP_MODE
+		#pragma omp for
+		#endif
+		for(long r = 0; r < (param->d_volume); r++)
+			{
+			int cartcoord[STDIM];
+			si_to_cart(cartcoord, r, param);
+			tmp_private[cartcoord[dir]] += loc_topcharge(GC, geo, param, r);
+			}
+		#ifdef OPENMP_MODE
+		#pragma omp critical
+		#endif
+		{
+			for(int j = 0; j < param->d_size[dir]; j++) tmp[j] += tmp_private[j];
+		}
+
+		free(tmp_private);
+	}
+
+	for(int i = 0; i < param->d_size[dir]; i++) res += fabs(tmp[i]);
+	free(tmp);
+
+	return res;
+	}
+
+
+// chi^\prime = (1/8) int d^4x |x|^2 <q(x)q(0)> = < (1/8) int d^4x |x|^2 q(x) q(0) > = < G2 >
+// This function computes the quantity (q(0)/8) sum_{x} d(x,0)^2 q(x) = a^2 G2, whose mean over the ensemble is a^2 chi^\prime
+// d(x,y) = lattice distance between sites x and y keeping periodic boundary conditions into account (i.e., the shortest distance between x and y)
+double topo_chi_prime(Gauge_Conf const *const GC,
+                      Geometry const *const geo,
+                      GParam const *const param)
+	{
+	double res = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+: res)
+	#endif
+	for(long r = 0; r < (param->d_volume); r++)
+		{
+		res += square_distance(r, 0, param) * loc_topcharge(GC, geo, param, r);
+		}
+	res *= loc_topcharge(GC, geo, param, 0) / (2 * STDIM); // res *= q(0) / 8
+
+	return res;
+	}
+
+
 // compute the correlator of the local topological charge
 // after "ncool" cooling steps up to spatial distance "dist"
 void loc_topcharge_corr(Gauge_Conf *const GC,
@@ -930,28 +875,478 @@ void loc_topcharge_corr(Gauge_Conf *const GC,
 	}
 
 
-void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
-                          int const meas_count, Meas_Utils *meas_aux)
+// compute the total action (debug only)
+void action(Gauge_Conf const *const GC,
+            Geometry const *const geo,
+            GParam const *const param,
+            double *S_wilson, double *S_theta, double *S_total, double *V_mc)
 	{
-	if(param->d_plaquette_meas == 1)
+	// compute Wilson and theta terms of the action as sum of forces on the links
+	double Sw = 0.0, St = 0.0;
+	#ifdef THETA_MODE
+	for(int dir = 0; dir < STDIM; dir++)
 		{
-		double plaqs, plaqt;
-		plaquette(GC, geo, param, &plaqs, &plaqt);
-		meas_aux->meanplaq[meas_count] = ((STDIM - 2.0) * plaqs + 2.0 * plaqt) / STDIM;
+		compute_clovers(GC, geo, param, dir);
 		}
-	if(param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
-	if(param->d_energy_density_meas == 1) energy_density(GC, geo, param, meas_aux, meas_count + 1);
-	if(param->d_charge_meas == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
-	if(param->d_charge_density_meas == 1) charge_density(GC, geo, param, meas_aux, meas_count + 1);
-	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
-	if(param->d_multipolyakov_order >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
-	if(param->d_polyakov_density_meas == 1) for(int i = 0; i < STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count + 1);
-	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->e_slices_filep);
-	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->q_slices_filep);
-	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, param->d_test_flag, meas_aux, meas_count + 1);
-	if(param->d_chi_prime_meas == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
-	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
-	if(param->d_action_meas == 1) action(GC, geo, param, &(meas_aux->action1[meas_count]), &(meas_aux->action2[meas_count]), &(meas_aux->action3[meas_count]), &(meas_aux->potential[meas_count]));
+	#endif
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : Sw, St)
+	#endif
+	for(long s = 0; s < STDIM * (param->d_volume); s++)
+		{
+		GAUGE_GROUP staple_wilson, staple_topo;
+		long const r = s % (param->d_volume);
+		int const i = (int) ((s - r) / (param->d_volume));
+
+		calcstaples_wilson_with_defect(GC, geo, param, r, i, &staple_wilson);
+		calcstaples_with_topo_with_defect(GC, geo, param, r, i, &staple_topo);
+		minus_equal(&staple_topo, &staple_wilson);
+
+		times_equal(&staple_wilson, &(GC->lattice[r][i]));
+		times_equal(&staple_topo, &(GC->lattice[r][i]));
+		Sw += retr(&staple_wilson);
+		St += retr(&staple_topo);
+		}
+	double const S0 = (double) (param->d_n_planes * param->d_volume) / 2;
+	*S_wilson = param->d_beta * (S0 - Sw / 4.0); // Wilson term: degree 4 in the links, sum of forces divided by 4
+	*S_theta = -param->d_beta * St / 8.0;        // Theta term: degree 8 in the links, sum of forces divided by 8
+
+	// compute the total action from average plaquette and topological charge
+	double plaqs, plaqt;
+	plaquette(GC, geo, param, &plaqs, &plaqt);
+	double const sum_plaq = (double) param->d_volume * ((STDIM - 1) * (STDIM - 2) * plaqs / 2 + (STDIM - 1) * plaqt);
+	#ifdef THETA_MODE
+	*S_total = param->d_beta * (S0 - sum_plaq) - param->d_theta * topcharge(GC, geo, param);
+	#else
+	*S_total = param->d_beta * (S0 - sum_plaq);
+	#endif
+
+	// compute multicanonical potential
+	#ifdef MULTICANONICAL_MODE
+	*V_mc = compute_topo_potential(GC->replica_index, topcharge(GC, geo, param), param);
+	#else
+	*V_mc = 0.0;
+	#endif
+	}
+
+
+static inline int sprintf_datafile_header_aux(char *const header, char *const smoothing_method, GParam const *const param)
+	{
+	int j = sprintf(header, "( ");
+	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaq ");
+	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
+	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
+	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
+	if(param->d_action_meas == 1)
+		{
+		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
+		j += sprintf(header + j, "potential ");
+		}
+	j += sprintf(header + j, ") x %s ", smoothing_method);
+	return j;
+	}
+
+
+static inline void get_datafile_header(char *const header, GParam const *const param)
+	{
+	char smoothing_method[STD_STRING_LENGTH];
+
+	int j = sprintf(header, "# %d ", STDIM);
+	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
+	j += sprintf(header + j, "\n# upd_index ");
+	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaqs plaqt ");
+	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
+	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
+	if(param->d_polyakov_powers_meas == 1) for(int i = 0; i < MAX_POLY_PWR; i++) j += sprintf(header + j, "polyre_%d^%d polyim_%d^%d ", 0, i + 1, 0, i + 1);
+	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
+	if(param->d_action_meas == 1)
+		{
+		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
+		j += sprintf(header + j, "potential ");
+		}
+
+	if(param->d_agf_num_meas > 0)
+		{
+		sprintf(smoothing_method, "%d agfrepeat each dt = %.10lf", param->d_agf_num_meas, param->d_agf_meas_each);
+		j += sprintf_datafile_header_aux(header + j, smoothing_method, param);
+		}
+	if(param->d_gf_num_meas > 0)
+		{
+		sprintf(smoothing_method, "%d gfrepeat each dt = %.10lf", param->d_gf_num_meas, param->d_gf_meas_each * param->d_gfstep);
+		j += sprintf_datafile_header_aux(header + j, smoothing_method, param);
+		}
+	if(param->d_coolrepeat > 0)
+		{
+		sprintf(smoothing_method, "%d coolrepeat each ncool = %d", param->d_coolrepeat, (int) param->d_coolsteps);
+		j += sprintf_datafile_header_aux(header + j, smoothing_method, param);
+		}
+
+	#ifdef MULTICANONICAL_MODE
+	j += sprintf(header + j, "mc_topcharge mc_weight");
+	#endif
+	j += sprintf(header + j, "\n");
+	}
+
+
+// open data file
+FILE *open_file_with_header_replica(char const *const name, char const *const header,
+                                    int const replica_index, GParam const *const param,
+                                    int const binary_flag)
+	{
+	FILE *fp;
+	char name_aux[STD_STRING_LENGTH];
+
+	strcpy(name_aux, name);
+
+	#ifdef REPLICA_MEAS_MODE
+	if(param->d_N_replica_pt > 1)
+		{
+		char aux[STD_STRING_LENGTH];
+		sprintf(aux, "_replica_%d", replica_index);
+		REQUIRE(strlen(name) + strlen(aux) < STD_STRING_LENGTH, "filename too long");
+		strcat(name_aux, aux);
+		}
+	#else
+	(void) replica_index;
+	#endif
+
+	if(param->d_start == 2)
+		{
+		// open file in append mode
+		fp = fopen(name_aux, "r");
+		if(fp != NULL)
+			{
+			fclose(fp);
+			fp = fopen(name_aux, "a");
+			REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
+			}
+		else
+			{
+			fp = fopen(name_aux, "w");
+			REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
+			fputs(header, fp);
+			}
+		}
+	else
+		{
+		// open file in write mode
+		fp = fopen(name_aux, "w");
+		REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
+		fputs(header, fp);
+		}
+
+	fflush(fp);
+	if(binary_flag == 1)
+		{
+		fclose(fp);
+		fp = fopen(name_aux, "ab");
+		REQUIRE(fp != NULL, "failed to open %s for writing in binary mode", name_aux);
+		}
+	return fp;
+	}
+
+
+// open data files
+void open_data_files(Meas_Utils *meas_aux, int const replica_index, GParam const *const param)
+	{
+	char header[10 * STD_STRING_LENGTH];
+
+	// data file
+	get_datafile_header(header, param);
+	meas_aux->datafilep = open_file_with_header_replica(param->d_data_file, header, replica_index, param, 0);
+
+	// header for other files
+	int j = sprintf(header, "# %d ", STDIM);
+	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
+	sprintf(header + j, "\n");
+
+	// chiprime file
+	if(param->d_chi_prime_meas == 1)
+		meas_aux->chiprimefilep = open_file_with_header_replica(param->d_chiprime_file, header, replica_index, param, 0);
+
+	// energy_slices file
+	if(param->d_energy_slices_meas == 1)
+		meas_aux->e_slices_filep = open_file_with_header_replica(param->d_energy_slices_file, header, replica_index, param, 0);
+
+	// charge_slices file
+	if(param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+		meas_aux->q_slices_filep = open_file_with_header_replica(param->d_charge_slices_file, header, replica_index, param, 0);
+
+	// energy_density file
+	if(param->d_energy_density_meas == 1)
+		meas_aux->energydensityfilep = open_file_with_header_replica(param->d_energydensity_file, header, replica_index, param, 1);
+
+	// charge_density file
+	if(param->d_charge_density_meas == 1)
+		meas_aux->chargedensityfilep = open_file_with_header_replica(param->d_chargedensity_file, header, replica_index, param, 1);
+
+	// polyakov_density files
+	if(param->d_polyakov_density_meas == 1)
+		{
+		char filename[2 * STD_STRING_LENGTH];
+		for(int i = 0; i < STDIM; i++)
+			{
+			sprintf(filename, "%s_dir%d", param->d_polyakovdensity_file, i);
+			sprintf(header + j, "%d \n", i);
+			meas_aux->polyakovdensityfilep[i] = open_file_with_header_replica(filename, header, replica_index, param, 1);
+			}
+		}
+	}
+
+
+// close data files
+void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const *const param)
+	{
+	#ifndef REPLICA_MEAS_MODE
+	if(replica_index != 0) return;
+	#else
+	(void) replica_index;
+	#endif
+
+	// data file
+	fclose(meas_aux.datafilep);
+
+	// chiprime file
+	if(param->d_chi_prime_meas == 1)
+		fclose(meas_aux.chiprimefilep);
+
+	// energy_slices file
+	if(param->d_energy_slices_meas == 1)
+		fclose(meas_aux.e_slices_filep);
+
+	// charge_slices file
+	if(param->d_charge_slices_meas == 1)
+		fclose(meas_aux.q_slices_filep);
+
+	// clover_energy_density file
+	if(param->d_energy_density_meas == 1)
+		fclose(meas_aux.energydensityfilep);
+
+	// charge_density file
+	if(param->d_charge_density_meas == 1)
+		fclose(meas_aux.chargedensityfilep);
+
+	// polyakov_density files
+	if(param->d_polyakov_density_meas == 1)
+		for(int i = 0; i < STDIM; i++)
+			fclose(meas_aux.polyakovdensityfilep[i]);
+	}
+
+
+void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const replica_index)
+	{
+	// max number of measures needed using any smoothing method
+	int num_meas = param->d_agf_num_meas;
+	if(num_meas < param->d_gf_num_meas)
+		num_meas = param->d_gf_num_meas;
+	if(num_meas < param->d_coolrepeat)
+		num_meas = param->d_coolrepeat;
+
+	if(num_meas > 0)
+		{
+		// allocate meas arrays
+		if(param->d_plaquette_meas == 1)
+			allocate_array_double(&(meas_aux->meanplaq), num_meas, __FILE__, __LINE__);
+
+		if(param->d_clover_energy_meas == 1)
+			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);
+
+		if(param->d_charge_meas == 1)
+			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
+
+		if(param->d_polyakov_meas == 1)
+			{
+			allocate_array_double_pointer(&(meas_aux->polyre), num_meas, __FILE__, __LINE__);
+			allocate_array_double_pointer(&(meas_aux->polyim), num_meas, __FILE__, __LINE__);
+			for(int i = 0; i < num_meas; i++)
+				{
+				allocate_array_double(&(meas_aux->polyre[i]), STDIM, __FILE__, __LINE__);
+				allocate_array_double(&(meas_aux->polyim[i]), STDIM, __FILE__, __LINE__);
+				}
+			}
+
+		if(param->d_multipolyakov_order >= 1)
+			{
+			allocate_array_double(&(meas_aux->multipolyre), num_meas, __FILE__, __LINE__);
+			allocate_array_double(&(meas_aux->multipolyim), num_meas, __FILE__, __LINE__);
+			}
+
+		if(param->d_chi_prime_meas == 1)
+			allocate_array_double(&(meas_aux->chi_prime), num_meas, __FILE__, __LINE__);
+
+		if(param->d_charge_prime_meas == 1)
+			{
+			allocate_array_double_pointer(&(meas_aux->charge_prime), num_meas, __FILE__, __LINE__);
+			for(int i = 0; i < num_meas; i++)
+				allocate_array_double(&(meas_aux->charge_prime[i]), STDIM, __FILE__, __LINE__);
+			}
+
+		if(param->d_action_meas == 1)
+			{
+			allocate_array_double(&(meas_aux->action1), num_meas, __FILE__, __LINE__);
+			allocate_array_double(&(meas_aux->action2), num_meas, __FILE__, __LINE__);
+			allocate_array_double(&(meas_aux->action3), num_meas, __FILE__, __LINE__);
+			allocate_array_double(&(meas_aux->potential), num_meas, __FILE__, __LINE__);
+			}
+
+		// allocate auxiliary lattices
+		for(int i = 0; i < 4; i++)
+			{
+			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r = 0; r < (param->d_volume); r++)
+				{
+				allocate_array_GAUGE_GROUP(&(meas_aux->lattice_aux[i][r]), STDIM, __FILE__, __LINE__);
+				}
+			}
+		}
+
+	// allocate arrays for density profiles
+	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+		allocate_array_double(&(meas_aux->real_slices), param->d_max_size, __FILE__, __LINE__);
+
+	if(param->d_charge_p_slices_meas == 1)
+		allocate_array_double(&(meas_aux->imag_slices), param->d_max_size, __FILE__, __LINE__);
+
+	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
+		allocate_array_double(&(meas_aux->scalar_density), param->d_volume, __FILE__, __LINE__);
+
+	if(param->d_polyakov_density_meas == 1)
+		{
+		long max_space_vol = 0;
+		for(int i = 0; i < STDIM; i++) if(param->d_space_vol[i] > max_space_vol) max_space_vol = param->d_space_vol[i];
+		allocate_array_double(&(meas_aux->polyre_density), max_space_vol, __FILE__, __LINE__);
+		allocate_array_double(&(meas_aux->polyim_density), max_space_vol, __FILE__, __LINE__);
+		}
+
+	// open data files
+	open_data_files(meas_aux, replica_index, param);
+	}
+
+
+void free_meas_utils(Meas_Utils meas_aux, GParam const *const param, int const replica_index)
+	{
+	int num_meas = param->d_agf_num_meas;
+	if(num_meas < param->d_gf_num_meas)
+		num_meas = param->d_gf_num_meas;
+	if(num_meas < param->d_coolrepeat)
+		num_meas = param->d_coolrepeat;
+
+	if(num_meas > 0)
+		{
+		// free meas arrays
+		if(param->d_plaquette_meas == 1)
+			free(meas_aux.meanplaq);
+
+		if(param->d_clover_energy_meas == 1)
+			free(meas_aux.clover_energy);
+
+		if(param->d_charge_meas == 1)
+			free(meas_aux.charge);
+
+		if(param->d_polyakov_meas == 1)
+			{
+			for(int i = 0; i < num_meas; i++)
+				{
+				free(meas_aux.polyre[i]);
+				free(meas_aux.polyim[i]);
+				}
+			free(meas_aux.polyre);
+			free(meas_aux.polyim);
+			}
+
+		if(param->d_multipolyakov_order >= 1)
+			{
+			free(meas_aux.multipolyre);
+			free(meas_aux.multipolyim);
+			}
+
+		if(param->d_chi_prime_meas == 1)
+			free(meas_aux.chi_prime);
+
+		if(param->d_charge_prime_meas == 1)
+			{
+			for(int i = 0; i < num_meas; i++)
+				free(meas_aux.charge_prime[i]);
+			free(meas_aux.charge_prime);
+			}
+
+		if(param->d_action_meas == 1)
+			{
+			free(meas_aux.action1);
+			free(meas_aux.action2);
+			free(meas_aux.action3);
+			free(meas_aux.potential);
+			}
+
+		// free auxiliary lattices
+		for(int i = 0; i < 4; i++)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long r = 0; r < (param->d_volume); r++)
+				{
+				free(meas_aux.lattice_aux[i][r]);
+				}
+			free(meas_aux.lattice_aux[i]);
+			}
+		}
+
+	// free arrays for density profiles
+	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
+		free(meas_aux.real_slices);
+
+	if(param->d_charge_p_slices_meas == 1)
+		free(meas_aux.imag_slices);
+
+	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
+		free(meas_aux.scalar_density);
+
+	if(param->d_polyakov_density_meas == 1)
+		{
+		free(meas_aux.polyre_density);
+		free(meas_aux.polyim_density);
+		}
+
+	// close data files
+	close_data_files(meas_aux, replica_index, param);
+	}
+
+
+void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const *const param)
+	{
+	allocate_array_Meas_Utils(meas_aux, param->d_N_replica_pt, __FILE__, __LINE__);
+
+	// init meas utils and data files for physical replica
+	init_meas_utils(&((*meas_aux)[0]), param, 0);
+
+	// init meas utils for other replicas if using replica meas mode
+	#ifdef REPLICA_MEAS_MODE
+	for(int i = 1; i < param->d_N_replica_pt; i++)
+		init_meas_utils(&((*meas_aux)[i]), param, i);
+	#endif
+	}
+
+
+void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const *const param)
+	{
+	// free meas utils for physical replica
+	free_meas_utils(meas_aux[0], param, 0);
+
+	// free meas utils for other replicas if using replica meas mode
+	#ifdef REPLICA_MEAS_MODE
+	for(int i = 1; i < param->d_N_replica_pt; i++)
+		free_meas_utils(meas_aux[i], param, i);
+	#endif
+
+	free(meas_aux);
 	}
 
 
@@ -1003,36 +1398,54 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 	}
 
 
-void perform_measures_localobs(Gauge_Conf *const GC,
-                               Geometry const *const geo,
-                               GParam const *const param,
-                               Meas_Utils *meas_aux)
+void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                          int const meas_count, Meas_Utils *meas_aux)
 	{
-	// measures without smoothing
-	perform_measures_localobs_hot(GC, geo, param, meas_aux);
+	if(param->d_plaquette_meas == 1)
+		{
+		double plaqs, plaqt;
+		plaquette(GC, geo, param, &plaqs, &plaqt);
+		meas_aux->meanplaq[meas_count] = ((STDIM - 2.0) * plaqs + 2.0 * plaqt) / STDIM;
+		}
+	if(param->d_clover_energy_meas == 1) clover_disc_energy(GC, geo, param, &(meas_aux->clover_energy[meas_count]));
+	if(param->d_energy_density_meas == 1) energy_density(GC, geo, param, meas_aux, meas_count + 1);
+	if(param->d_charge_meas == 1) meas_aux->charge[meas_count] = topcharge(GC, geo, param);
+	if(param->d_charge_density_meas == 1) charge_density(GC, geo, param, meas_aux, meas_count + 1);
+	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) polyakov(GC, geo, param, i, 1, &(meas_aux->polyre[meas_count][i]), &(meas_aux->polyim[meas_count][i]));
+	if(param->d_multipolyakov_order >= 1) multipolyakov(GC, geo, param, &(meas_aux->multipolyre[meas_count]), &(meas_aux->multipolyim[meas_count]));
+	if(param->d_polyakov_density_meas == 1) for(int i = 0; i < STDIM; i++) polyakov_density(GC, geo, param, i, meas_aux, meas_count + 1);
+	if(param->d_energy_slices_meas == 1) clover_energy_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) topcharge_slices(GC, geo, param, 0, meas_aux->real_slices, meas_count + 1, meas_aux->q_slices_filep);
+	if(param->d_charge_p_slices_meas == 1) topcharge_p_slices(GC, geo, param, 0, param->d_test_flag, meas_aux, meas_count + 1);
+	if(param->d_chi_prime_meas == 1) meas_aux->chi_prime[meas_count] = topo_chi_prime(GC, geo, param);
+	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) meas_aux->charge_prime[meas_count][i] = topcharge_prime(GC, geo, param, i);
+	if(param->d_action_meas == 1) action(GC, geo, param, &(meas_aux->action1[meas_count]), &(meas_aux->action2[meas_count]), &(meas_aux->action3[meas_count]), &(meas_aux->potential[meas_count]));
+	}
 
-	// measures with adaptive gradient flow
-	if(param->d_agf_num_meas > 0) perform_measures_localobs_adaptive_gradflow(GC, geo, param, meas_aux);
 
-	// measures with fixed-step gradient flow
-	if(param->d_gf_num_meas > 0) perform_measures_localobs_gradflow(GC, geo, param, meas_aux);
+void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux)
+	{
+	double time_step;
+	if(param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
+	else time_step = param->d_ngfsteps;
 
-	// measures with cooling
-	if(param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux, param->d_cooling_type);
-
-	// multicanonical topcharge and weight
-	#ifdef MULTICANONICAL_MODE
-	double x = GC->stored_topcharge;
-	double V = compute_topo_potential(GC->replica_index, x, param);
-	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
-	#endif
-
-	// newline and flush data files
-	fprintf(meas_aux->datafilep, "\n");
-	fflush(meas_aux->datafilep);
-	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
-	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
-	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
+	for(int i = 0; i < num_meas; i++)
+		{
+		if(param->d_plaquette_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
+		if(param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
+		if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
+		if(param->d_polyakov_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
+		if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
+		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i + 1) * time_step, meas_aux->chi_prime[i]);
+		if(param->d_charge_prime_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
+		if(param->d_action_meas == 1)
+			{
+			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action1[i]);
+			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action2[i]);
+			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action3[i]);
+			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->potential[i]);
+			}
+		}
 	}
 
 
@@ -1121,6 +1534,39 @@ void perform_measures_localobs_adaptive_gradflow(Gauge_Conf *const GC,
 
 	// print meas gradflow
 	print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+	}
+
+
+void perform_measures_localobs(Gauge_Conf *const GC,
+                               Geometry const *const geo,
+                               GParam const *const param,
+                               Meas_Utils *meas_aux)
+	{
+	// measures without smoothing
+	perform_measures_localobs_hot(GC, geo, param, meas_aux);
+
+	// measures with adaptive gradient flow
+	if(param->d_agf_num_meas > 0) perform_measures_localobs_adaptive_gradflow(GC, geo, param, meas_aux);
+
+	// measures with fixed-step gradient flow
+	if(param->d_gf_num_meas > 0) perform_measures_localobs_gradflow(GC, geo, param, meas_aux);
+
+	// measures with cooling
+	if(param->d_coolrepeat > 0) perform_measures_localobs_cooling(GC, geo, param, meas_aux, param->d_cooling_type);
+
+	// multicanonical topcharge and weight
+	#ifdef MULTICANONICAL_MODE
+	double x = GC->stored_topcharge;
+	double V = compute_topo_potential(GC->replica_index, x, param);
+	fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", x, exp(V));
+	#endif
+
+	// newline and flush data files
+	fprintf(meas_aux->datafilep, "\n");
+	fflush(meas_aux->datafilep);
+	if(param->d_energy_slices_meas == 1) fflush(meas_aux->e_slices_filep);
+	if(param->d_charge_slices_meas == 1) fflush(meas_aux->q_slices_filep);
+	if(param->d_chi_prime_meas == 1) fflush(meas_aux->chiprimefilep);
 	}
 
 
@@ -1940,9 +2386,9 @@ void perform_measures_tube_conn_long(Gauge_Conf *const GC,
 
 void perform_multilevel_update_and_measures(Gauge_Conf *const GC,
                                             Geometry const *const geo,
-	                                        GParam const *const param,
-	                                        Meas_Utils *meas_aux,
-	                                        Multilevel_Obs const ml_obs)
+                                            GParam const *const param,
+                                            Meas_Utils *meas_aux,
+                                            Multilevel_Obs const ml_obs)
 	{
 	switch(ml_obs)
 		{
@@ -1968,444 +2414,5 @@ void perform_multilevel_update_and_measures(Gauge_Conf *const GC,
 		}
 	}
 
-
-int sprintf_header_datafile_aux(char *const header, char *const smoothing_method, GParam const *const param)
-	{
-	int j = sprintf(header, "( ");
-	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaq ");
-	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
-	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
-	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
-	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
-	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
-	if(param->d_action_meas == 1)
-		{
-		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
-		j += sprintf(header + j, "potential ");
-		}
-	j += sprintf(header + j, ") x %s ", smoothing_method);
-	return j;
-	}
-
-
-void header_datafile(char *const header, GParam const *const param)
-	{
-	char smoothing_method[STD_STRING_LENGTH];
-
-	int j = sprintf(header, "# %d ", STDIM);
-	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
-	j += sprintf(header + j, "\n# upd_index ");
-	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaqs plaqt ");
-	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");
-	if(param->d_charge_meas == 1) j += sprintf(header + j, "charge ");
-	if(param->d_polyakov_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "polyre_%d polyim_%d ", i, i);
-	if(param->d_polyakov_powers_meas == 1) for(int i = 0; i < MAX_POLY_PWR; i++) j += sprintf(header + j, "polyre_%d^%d polyim_%d^%d ", 0, i + 1, 0, i + 1);
-	if(param->d_multipolyakov_order >= 1) j += sprintf(header + j, "multipolyre multipolyim ");
-	if(param->d_charge_prime_meas == 1) for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "charge_prime_%d ", i);
-	if(param->d_action_meas == 1)
-		{
-		for(int i = 1; i < 4; i++) j += sprintf(header + j, "action_%d ", i);
-		j += sprintf(header + j, "potential ");
-		}
-
-	if(param->d_agf_num_meas > 0)
-		{
-		sprintf(smoothing_method, "%d agfrepeat each dt = %.10lf", param->d_agf_num_meas, param->d_agf_meas_each);
-		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
-		}
-	if(param->d_gf_num_meas > 0)
-		{
-		sprintf(smoothing_method, "%d gfrepeat each dt = %.10lf", param->d_gf_num_meas, param->d_gf_meas_each * param->d_gfstep);
-		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
-		}
-	if(param->d_coolrepeat > 0)
-		{
-		sprintf(smoothing_method, "%d coolrepeat each ncool = %d", param->d_coolrepeat, (int) param->d_coolsteps);
-		j += sprintf_header_datafile_aux(header + j, smoothing_method, param);
-		}
-
-	#ifdef MULTICANONICAL_MODE
-	j += sprintf(header + j, "mc_topcharge mc_weight");
-	#endif
-	j += sprintf(header + j, "\n");
-	}
-
-
-// open data file
-FILE *open_file_with_header_replica(char const *const name, char const *const header,
-                                    int const replica_index, GParam const *const param,
-                                    int const binary_flag)
-	{
-	FILE *fp;
-	char name_aux[STD_STRING_LENGTH];
-
-	strcpy(name_aux, name);
-
-	#ifdef REPLICA_MEAS_MODE
-	if(param->d_N_replica_pt > 1)
-		{
-		char aux[STD_STRING_LENGTH];
-		sprintf(aux, "_replica_%d", replica_index);
-		REQUIRE(strlen(name) + strlen(aux) < STD_STRING_LENGTH, "filename too long");
-		strcat(name_aux, aux);
-		}
-	#else
-	(void) replica_index;
-	#endif
-
-	if(param->d_start == 2)
-		{
-		// open file in append mode
-		fp = fopen(name_aux, "r");
-		if(fp != NULL)
-			{
-			fclose(fp);
-			fp = fopen(name_aux, "a");
-			REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
-			}
-		else
-			{
-			fp = fopen(name_aux, "w");
-			REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
-			fputs(header, fp);
-			}
-		}
-	else
-		{
-		// open file in write mode
-		fp = fopen(name_aux, "w");
-		REQUIRE(fp != NULL, "failed to open %s for writing", name_aux);
-		fputs(header, fp);
-		}
-
-	fflush(fp);
-	if(binary_flag == 1)
-		{
-		fclose(fp);
-		fp = fopen(name_aux, "ab");
-		REQUIRE(fp != NULL, "failed to open %s for writing in binary mode", name_aux);
-		}
-	return fp;
-	}
-
-// open data files
-void open_data_files(Meas_Utils *meas_aux, int const replica_index, GParam const *const param)
-	{
-	char header[10 * STD_STRING_LENGTH];
-
-	// data file
-	header_datafile(header, param);
-	meas_aux->datafilep = open_file_with_header_replica(param->d_data_file, header, replica_index, param, 0);
-
-	// header for other files
-	int j = sprintf(header, "# %d ", STDIM);
-	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
-	sprintf(header + j, "\n");
-
-	// chiprime file
-	if(param->d_chi_prime_meas == 1)
-		meas_aux->chiprimefilep = open_file_with_header_replica(param->d_chiprime_file, header, replica_index, param, 0);
-
-	// energy_slices file
-	if(param->d_energy_slices_meas == 1)
-		meas_aux->e_slices_filep = open_file_with_header_replica(param->d_energy_slices_file, header, replica_index, param, 0);
-
-	// charge_slices file
-	if(param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
-		meas_aux->q_slices_filep = open_file_with_header_replica(param->d_charge_slices_file, header, replica_index, param, 0);
-
-	// energy_density file
-	if(param->d_energy_density_meas == 1)
-		meas_aux->energydensityfilep = open_file_with_header_replica(param->d_energydensity_file, header, replica_index, param, 1);
-
-	// charge_density file
-	if(param->d_charge_density_meas == 1)
-		meas_aux->chargedensityfilep = open_file_with_header_replica(param->d_chargedensity_file, header, replica_index, param, 1);
-
-	// polyakov_density files
-	if(param->d_polyakov_density_meas == 1)
-		{
-		char filename[2 * STD_STRING_LENGTH];
-		for(int i = 0; i < STDIM; i++)
-			{
-			sprintf(filename, "%s_dir%d", param->d_polyakovdensity_file, i);
-			sprintf(header + j, "%d \n", i);
-			meas_aux->polyakovdensityfilep[i] = open_file_with_header_replica(filename, header, replica_index, param, 1);
-			}
-		}
-	}
-
-// close data files
-void close_data_files(Meas_Utils meas_aux, int const replica_index, GParam const *const param)
-	{
-	#ifndef REPLICA_MEAS_MODE
-	if(replica_index != 0) return;
-	#else
-	(void) replica_index;
-	#endif
-
-	// data file
-	fclose(meas_aux.datafilep);
-
-	// chiprime file
-	if(param->d_chi_prime_meas == 1)
-		fclose(meas_aux.chiprimefilep);
-
-	// energy_slices file
-	if(param->d_energy_slices_meas == 1)
-		fclose(meas_aux.e_slices_filep);
-
-	// charge_slices file
-	if(param->d_charge_slices_meas == 1)
-		fclose(meas_aux.q_slices_filep);
-
-	// clover_energy_density file
-	if(param->d_energy_density_meas == 1)
-		fclose(meas_aux.energydensityfilep);
-
-	// charge_density file
-	if(param->d_charge_density_meas == 1)
-		fclose(meas_aux.chargedensityfilep);
-
-	// polyakov_density files
-	if(param->d_polyakov_density_meas == 1)
-		for(int i = 0; i < STDIM; i++)
-			fclose(meas_aux.polyakovdensityfilep[i]);
-	}
-
-
-void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const replica_index)
-	{
-	// max number of measures needed using any smoothing method
-	int num_meas = param->d_agf_num_meas;
-	if(num_meas < param->d_gf_num_meas)
-		num_meas = param->d_gf_num_meas;
-	if(num_meas < param->d_coolrepeat)
-		num_meas = param->d_coolrepeat;
-
-	if(num_meas > 0)
-		{
-		// allocate meas arrays
-		if(param->d_plaquette_meas == 1)
-			allocate_array_double(&(meas_aux->meanplaq), num_meas, __FILE__, __LINE__);
-
-		if(param->d_clover_energy_meas == 1)
-			allocate_array_double(&(meas_aux->clover_energy), num_meas, __FILE__, __LINE__);
-
-		if(param->d_charge_meas == 1)
-			allocate_array_double(&(meas_aux->charge), num_meas, __FILE__, __LINE__);
-
-		if(param->d_polyakov_meas == 1)
-			{
-			allocate_array_double_pointer(&(meas_aux->polyre), num_meas, __FILE__, __LINE__);
-			allocate_array_double_pointer(&(meas_aux->polyim), num_meas, __FILE__, __LINE__);
-			for(int i = 0; i < num_meas; i++)
-				{
-				allocate_array_double(&(meas_aux->polyre[i]), STDIM, __FILE__, __LINE__);
-				allocate_array_double(&(meas_aux->polyim[i]), STDIM, __FILE__, __LINE__);
-				}
-			}
-
-		if(param->d_multipolyakov_order >= 1)
-			{
-			allocate_array_double(&(meas_aux->multipolyre), num_meas, __FILE__, __LINE__);
-			allocate_array_double(&(meas_aux->multipolyim), num_meas, __FILE__, __LINE__);
-			}
-
-		if(param->d_chi_prime_meas == 1)
-			allocate_array_double(&(meas_aux->chi_prime), num_meas, __FILE__, __LINE__);
-
-		if(param->d_charge_prime_meas == 1)
-			{
-			allocate_array_double_pointer(&(meas_aux->charge_prime), num_meas, __FILE__, __LINE__);
-			for(int i = 0; i < num_meas; i++)
-				allocate_array_double(&(meas_aux->charge_prime[i]), STDIM, __FILE__, __LINE__);
-			}
-
-		if(param->d_action_meas == 1)
-			{
-			allocate_array_double(&(meas_aux->action1), num_meas, __FILE__, __LINE__);
-			allocate_array_double(&(meas_aux->action2), num_meas, __FILE__, __LINE__);
-			allocate_array_double(&(meas_aux->action3), num_meas, __FILE__, __LINE__);
-			allocate_array_double(&(meas_aux->potential), num_meas, __FILE__, __LINE__);
-			}
-
-		// allocate auxiliary lattices
-		for(int i = 0; i < 4; i++)
-			{
-			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				allocate_array_GAUGE_GROUP(&(meas_aux->lattice_aux[i][r]), STDIM, __FILE__, __LINE__);
-				}
-			}
-		}
-
-	// allocate arrays for density profiles
-	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
-		allocate_array_double(&(meas_aux->real_slices), param->d_max_size, __FILE__, __LINE__);
-
-	if(param->d_charge_p_slices_meas == 1)
-		allocate_array_double(&(meas_aux->imag_slices), param->d_max_size, __FILE__, __LINE__);
-
-	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
-		allocate_array_double(&(meas_aux->scalar_density), param->d_volume, __FILE__, __LINE__);
-
-	if(param->d_polyakov_density_meas == 1)
-		{
-		long max_space_vol = 0;
-		for(int i = 0; i < STDIM; i++) if(param->d_space_vol[i] > max_space_vol) max_space_vol = param->d_space_vol[i];
-		allocate_array_double(&(meas_aux->polyre_density), max_space_vol, __FILE__, __LINE__);
-		allocate_array_double(&(meas_aux->polyim_density), max_space_vol, __FILE__, __LINE__);
-		}
-
-	// open data files
-	open_data_files(meas_aux, replica_index, param);
-	}
-
-void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const *const param)
-	{
-	allocate_array_Meas_Utils(meas_aux, param->d_N_replica_pt, __FILE__, __LINE__);
-
-	// init meas utils and data files for physical replica
-	init_meas_utils(&((*meas_aux)[0]), param, 0);
-
-	// init meas utils for other replicas if using replica meas mode
-	#ifdef REPLICA_MEAS_MODE
-	for(int i = 1; i < param->d_N_replica_pt; i++)
-		init_meas_utils(&((*meas_aux)[i]), param, i);
-	#endif
-	}
-
-void free_meas_utils(Meas_Utils meas_aux, GParam const *const param, int const replica_index)
-	{
-	int num_meas = param->d_agf_num_meas;
-	if(num_meas < param->d_gf_num_meas)
-		num_meas = param->d_gf_num_meas;
-	if(num_meas < param->d_coolrepeat)
-		num_meas = param->d_coolrepeat;
-
-	if(num_meas > 0)
-		{
-		// free meas arrays
-		if(param->d_plaquette_meas == 1)
-			free(meas_aux.meanplaq);
-
-		if(param->d_clover_energy_meas == 1)
-			free(meas_aux.clover_energy);
-
-		if(param->d_charge_meas == 1)
-			free(meas_aux.charge);
-
-		if(param->d_polyakov_meas == 1)
-			{
-			for(int i = 0; i < num_meas; i++)
-				{
-				free(meas_aux.polyre[i]);
-				free(meas_aux.polyim[i]);
-				}
-			free(meas_aux.polyre);
-			free(meas_aux.polyim);
-			}
-
-		if(param->d_multipolyakov_order >= 1)
-			{
-			free(meas_aux.multipolyre);
-			free(meas_aux.multipolyim);
-			}
-
-		if(param->d_chi_prime_meas == 1)
-			free(meas_aux.chi_prime);
-
-		if(param->d_charge_prime_meas == 1)
-			{
-			for(int i = 0; i < num_meas; i++)
-				free(meas_aux.charge_prime[i]);
-			free(meas_aux.charge_prime);
-			}
-
-		if(param->d_action_meas == 1)
-			{
-			free(meas_aux.action1);
-			free(meas_aux.action2);
-			free(meas_aux.action3);
-			free(meas_aux.potential);
-			}
-
-		// free auxiliary lattices
-		for(int i = 0; i < 4; i++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				free(meas_aux.lattice_aux[i][r]);
-				}
-			free(meas_aux.lattice_aux[i]);
-			}
-		}
-
-	// free arrays for density profiles
-	if(param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 || param->d_charge_p_slices_meas == 1)
-		free(meas_aux.real_slices);
-
-	if(param->d_charge_p_slices_meas == 1)
-		free(meas_aux.imag_slices);
-
-	if(param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_charge_p_slices_meas == 1)
-		free(meas_aux.scalar_density);
-
-	if(param->d_polyakov_density_meas == 1)
-		{
-		free(meas_aux.polyre_density);
-		free(meas_aux.polyim_density);
-		}
-
-	// close data files
-	close_data_files(meas_aux, replica_index, param);
-	}
-
-void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const *const param)
-	{
-	// free meas utils for physical replica
-	free_meas_utils(meas_aux[0], param, 0);
-
-	// free meas utils for other replicas if using replica meas mode
-	#ifdef REPLICA_MEAS_MODE
-	for(int i = 1; i < param->d_N_replica_pt; i++)
-		free_meas_utils(meas_aux[i], param, i);
-	#endif
-
-	free(meas_aux);
-	}
-
-void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux)
-	{
-	double time_step;
-	if(param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
-	else time_step = param->d_ngfsteps;
-
-	for(int i = 0; i < num_meas; i++)
-		{
-		if(param->d_plaquette_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
-		if(param->d_clover_energy_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->clover_energy[i]);
-		if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
-		if(param->d_polyakov_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
-		if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
-		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i + 1) * time_step, meas_aux->chi_prime[i]);
-		if(param->d_charge_prime_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
-		if(param->d_action_meas == 1)
-			{
-			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action1[i]);
-			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action2[i]);
-			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->action3[i]);
-			fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->potential[i]);
-			}
-		}
-	}
 
 #endif

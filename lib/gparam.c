@@ -172,18 +172,7 @@ static int set_parameter(FILE *input, ParamDef const *param)
 	}
 
 
-static int find_and_set_parameter(FILE *input, char const *name, ParamDef const *param_defs, size_t const num_params)
-	{
-	for(size_t i = 0; i < num_params; i++)
-		{
-		if(strcmp(name, param_defs[i].name) == 0)
-			return set_parameter(input, &param_defs[i]);
-		}
-	return 0;
-	}
-
-
-static void read_n_replica_pt(FILE *input, GParam *param)
+static int set_n_replica_pt(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_N_replica_pt, "N_replica_pt", &param_positive_int);
 	allocate_array_double(&param->d_pt_bound_cond_coeff, param->d_N_replica_pt, __FILE__, __LINE__);
@@ -191,14 +180,15 @@ static void read_n_replica_pt(FILE *input, GParam *param)
 		{
 		set_double_param(input, &param->d_pt_bound_cond_coeff[i], "N_replica_pt", &param_any_double);
 		}
+	return 1;
 	}
 
 
-static void read_hierarc_upd(FILE *input, GParam *param)
+static int set_hierarc_upd(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_N_hierarc_levels, "hierarc_upd", &param_nonnegative_int);
 	if(param->d_N_hierarc_levels == 0)
-		return;
+		return 1;
 	allocate_array_int(&param->d_L_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 	allocate_array_int(&param->d_N_sweep_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 	for(int i = 0; i < param->d_N_hierarc_levels; ++i)
@@ -209,19 +199,45 @@ static void read_hierarc_upd(FILE *input, GParam *param)
 		{
 		set_int_param(input, &param->d_N_sweep_rect[i], "hierarc_upd", &param_nonnegative_int);
 		}
+	return 1;
 	}
 
 
-static void read_multipolyakov_order(FILE *input, GParam *param)
+static int set_multipolyakov_order(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_multipolyakov_order, "multipolyakov_order", &param_nonnegative_int);
 	if(param->d_multipolyakov_order == 0)
-		return;
+		return 1;
 	allocate_array_int(&param->d_multipolyakov_dirs, param->d_multipolyakov_order, __FILE__, __LINE__);
 	for(int i = 0; i < param->d_multipolyakov_order; ++i)
 		{
 		set_int_param(input, &param->d_multipolyakov_dirs[i], "multipolyakov_order", &param_nonnegative_int);
 		}
+	return 1;
+	}
+
+
+static int find_and_set_parameter(FILE *input, char const *name, ParamDef const *param_defs, size_t const num_params, GParam *param)
+	{
+	// ordinary parameters
+	for(size_t i = 0; i < num_params; i++)
+		{
+		if(strcmp(name, param_defs[i].name) == 0)
+			return set_parameter(input, &param_defs[i]);
+		}
+
+	// special parameters that require custom functions
+
+	if(strcmp(name, "N_replica_pt") == 0)
+		return set_n_replica_pt(input, param);
+
+	if(strcmp(name, "hierarc_upd") == 0)
+		return set_hierarc_upd(input, param);
+
+	if(strcmp(name, "multipolyakov_order") == 0)
+		return set_multipolyakov_order(input, param);
+
+	return 0;
 	}
 
 
@@ -364,7 +380,7 @@ void readinput(char const *const in_file, GParam *const param)
 	#define INT_ARRAY_PARAM(name, member, count, condition) { name, PARAM_INT_ARRAY, param->member, count, {.integer = condition} }
 	#define DOUBLE_ARRAY_PARAM(name, member, count, condition) { name, PARAM_DOUBLE_ARRAY, param->member, count, {.dbl = condition} }
 
-	ParamDef const params[] =
+	ParamDef const param_defs[] =
 			{
 			// lattice
 			INT_ARRAY_PARAM("size", d_size, STDIM, param_positive_int),
@@ -475,7 +491,7 @@ void readinput(char const *const in_file, GParam *const param)
 			INT_PARAM("test_flag", d_test_flag, param_any_int)
 			};
 
-	size_t const num_params = sizeof(params) / sizeof(params[0]);
+	size_t const num_params = sizeof(param_defs) / sizeof(param_defs[0]);
 
 	#undef INT_PARAM
 	#undef UINT_PARAM
@@ -504,30 +520,11 @@ void readinput(char const *const in_file, GParam *const param)
 		err = fscanf(input, "%s", str);
 		REQUIRE(err == 1, "error reading the name of a parameter from input file");
 
-		// ordinary parameters
-		if(find_and_set_parameter(input, str, params, num_params))
+		// set the value of the parameter if it is recognized
+		if(find_and_set_parameter(input, str, param_defs, num_params, param))
 			continue;
 
-		// special parameters that require custom reading functions
-		if(strcmp(str, "N_replica_pt") == 0)
-			{
-			read_n_replica_pt(input, param);
-			continue;
-			}
-
-		if(strcmp(str, "hierarc_upd") == 0)
-			{
-			read_hierarc_upd(input, param);
-			continue;
-			}
-
-		if(strcmp(str, "multipolyakov_order") == 0)
-			{
-			read_multipolyakov_order(input, param);
-			continue;
-			}
-
-		// unknown parameter
+		// unrecognized parameter
 		REQUIRE(0, "unrecognized parameter '%s' in input file %s", str, in_file);
 		}
 

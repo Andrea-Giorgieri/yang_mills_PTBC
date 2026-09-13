@@ -37,7 +37,7 @@ void stop_timer(Timer *const timer);
 
 void print_timer(FILE *fp, Timer const *const timer);
 
-void init_time_utils(Time_Utils *const timers, double walltime);
+void init_time_utils(Time_Utils *const timers, double const walltime);
 
 void print_time_utils(FILE *fp, Time_Utils const *const timers);
 

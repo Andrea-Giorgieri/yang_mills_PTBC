@@ -26,7 +26,7 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
-	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
+	omp_set_max_active_levels(1);
 	#endif
 
 	// read input file

@@ -15,7 +15,7 @@
 #include "../include/memalign.h"
 
 // get the spacetime dimension
-void getspacetimedim(char *infile, int *dim)
+void get_spacetime_dim(char *infile, int *dim)
 	{
 	FILE *fp = fopen(infile, "r");
 	REQUIRE(fp != NULL, "failed to open input file %s", infile);
@@ -28,7 +28,7 @@ void getspacetimedim(char *infile, int *dim)
 
 
 // read the size and the hash of the configuration
-void getsizeandhash(char *infile, int *sides, char *hash)
+void get_size_and_hash(char *infile, int *sides, char *hash)
 	{
 	long update_index;
 	int dim;
@@ -52,7 +52,7 @@ void getsizeandhash(char *infile, int *sides, char *hash)
 
 
 // compute the hash
-void computehash(char *infile, int dim, long volume, char *hash)
+void compute_hash(char *infile, int dim, long volume, char *hash)
 	{
 	#ifdef HASH_MODE
 
@@ -140,12 +140,12 @@ int main(int argc, char **argv)
 	strcpy(infile, argv[1]);
 
 	// get spacetime dim
-	getspacetimedim(infile, &dim);
+	get_spacetime_dim(infile, &dim);
 
 	allocate_array_int(&sides, dim, __FILE__, __LINE__);
 
 	// get lattice size and initial hash
-	getsizeandhash(infile, sides, md5sum_old);
+	get_size_and_hash(infile, sides, md5sum_old);
 
 	#ifdef HASH_MODE
 	// total volume
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 		}
 
 	// compute the hash
-	computehash(infile, dim, volume, md5sum_new);
+	compute_hash(infile, dim, volume, md5sum_new);
 
 	// check md5sum computed and stored
 	int err = strncmp(md5sum_old, md5sum_new, 2 * MD5_DIGEST_LENGTH + 1);

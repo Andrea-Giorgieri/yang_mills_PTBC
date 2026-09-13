@@ -119,7 +119,7 @@ void real_main(char const *in_file)
 				}
 		}
 	if(err == 0) printf("Vacuum Plaquette OK\n");
-	free_replica(GC, &param);
+	free_gauge_conf_replica(GC, &param);
 	printf("\n\n");
 	printf("VERIFY THAT plaquettep GETS CONJUGATED SWAPPING THE DIRS OF A PLAQUETTE AT ORIGIN...\n\n");
 
@@ -292,7 +292,7 @@ void real_main(char const *in_file)
 					}
 	if(err == 0) printf("delta_action_swap OK\n");
 
-	free_replica(GC, &param);
+	free_gauge_conf_replica(GC, &param);
 	free_geometry(&geo, &param);
 	free_rect_hierarc(most_update, clover_rectangle, &param);
 	free_rect(&swap_rectangle);

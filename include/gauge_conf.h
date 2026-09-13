@@ -122,13 +122,17 @@ typedef struct Tune_Utils
 
 
 // in gauge_conf_def.c
-void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const *const param);
+void allocate_lattice_with_copy(Gauge_Conf *GC,
+                                GParam const *const param);
 
-void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const *const param);
+void allocate_lattice_cold_with_copy(Gauge_Conf *GC,
+                                     GParam const *const param);
 
-void allocate_Z_with_copy(Gauge_Conf *GC, GParam const *const param);
+void allocate_Z_with_copy(Gauge_Conf *GC,
+                          GParam const *const param);
 
-void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param, int x_mu, int x_nu, int x_obc, int const translation[STDIM]);
+void allocate_clover_array(Gauge_Conf *GC,
+                           GParam const *const param);
 
 void equal_lattice(GAUGE_GROUP *const *const lattice1,
                    GAUGE_GROUP const *const *const lattice2,
@@ -147,6 +151,57 @@ double lattice_max_dist(GAUGE_GROUP const *const *const lattice1,
                         GAUGE_GROUP const *const *const lattice2,
                         GParam const *const param);
 
+void read_gauge_conf_from_file_with_name(Gauge_Conf *GC,
+                                         GParam const *const param,
+                                         char const *const filename);
+
+void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
+                                         GParam const *const param,
+                                         char const *const filename);
+
+void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, int translation[STDIM],
+                                         GParam const *const param,
+                                         char const *const filename);
+
+void initialize_Z_with_copy(Gauge_Conf *GC, GParam const *const param,
+                            int x_mu, int x_nu, int x_obc, int const translation[STDIM]);
+
+void init_twist_cond_from_file_with_name(Gauge_Conf *GC,
+                                         GParam const *const param,
+                                         char const *const filename);
+
+void init_gauge_conf(Gauge_Conf *GC,
+                     Geometry const *const geo,
+                     GParam const *const param);
+
+void free_gauge_conf(Gauge_Conf *GC,
+                     GParam const *const param);
+
+int init_gauge_conf_step(Gauge_Conf *GC,
+                         GParam const *const param,
+                         long step);
+
+int read_gauge_conf_step(Gauge_Conf *GC,
+                         GParam const *const param,
+                         long step);
+
+void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC,
+                                     Gauge_Conf const *const GC2,
+                                     GParam const *const param);
+
+void init_ptbc_defect(Gauge_Conf *GC,
+                      GParam const *const param);
+
+void free_ptbc_defect(Gauge_Conf *GC,
+                      GParam const *const param);
+
+void init_gauge_conf_replica(Gauge_Conf **GC,
+                             Geometry const *const geo,
+                             GParam const *const param);
+
+void free_gauge_conf_replica(Gauge_Conf *GC,
+                             GParam const *const param);
+
 void equal_gauge_conf(Gauge_Conf *GC1,
                       Gauge_Conf *GC2,
                       GParam const *const param);
@@ -164,50 +219,6 @@ void accept_gauge_conf_rectangle(Gauge_Conf *const GC,
 void restore_gauge_conf_rectangle(Gauge_Conf *const GC,
                                   int const hierarc_level,
                                   Rect_Utils const *const rect_aux);
-
-void init_gauge_conf_from_file_with_name(Gauge_Conf *GC,
-                                         GParam const *const param,
-                                         char const *const filename);
-
-void init_gauge_conf(Gauge_Conf *GC,
-                     Geometry const *const geo,
-                     GParam const *const param);
-
-int init_gauge_conf_step(Gauge_Conf *GC,
-                         GParam const *const param,
-                         long step);
-
-int read_gauge_conf_step(Gauge_Conf *GC,
-                         GParam const *const param,
-                         long step);
-
-void init_gauge_conf_replica(Gauge_Conf **GC,
-                             Geometry const *const geo,
-                             GParam const *const param);
-
-void init_ptbc_defect(Gauge_Conf *GC,
-                      GParam const *const param);
-
-void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const param,
-                                         char const *const filename);
-
-void free_replica(Gauge_Conf *GC,
-                  GParam const *const param);
-
-void free_ptbc_defect(Gauge_Conf *GC,
-                     GParam const *const param);
-
-void free_twist_cond(Gauge_Conf *GC,
-                     GParam const *const param);
-
-void read_gauge_conf_from_file_with_name(Gauge_Conf *GC,
-                                         GParam const *const param, char const *const filename);
-
-void read_twist_cond_from_file_with_name(int *x_mu, int *x_nu, int *x_obc, int translation[STDIM],
-                                         GParam const *const param, char const *const filename);
-
-void free_gauge_conf(Gauge_Conf *GC,
-                     GParam const *const param);
 
 void write_conf_on_file_with_name(Gauge_Conf const *const GC,
                                   GParam const *const param,
@@ -228,14 +239,6 @@ void write_replica_on_file(Gauge_Conf const *const GC,
 
 void write_replica_on_file_back(Gauge_Conf const *const GC,
                                 GParam const *const param);
-
-void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC,
-                                     Gauge_Conf const *const GC2,
-                                     GParam const *const param);
-
-void compute_md5sum_conf(char *res, // the length is 2*MD5_DIGEST_LENGTH
-                         Gauge_Conf const *const GC,
-                         GParam const *const param);
 
 void allocate_polycorr_stuff(Gauge_Conf *GC,
                              GParam const *const param);
@@ -271,10 +274,6 @@ void read_polycorr_stuff_from_file(Gauge_Conf const *const GC,
                                    GParam const *const param,
                                    int *iteration);
 
-void compute_md5sum_polycorr(char *res, // the length is 2*MD5_DIGEST_LENGTH
-                             Gauge_Conf const *const GC,
-                             GParam const *const param);
-
 void write_tube_conn_stuff_on_file(Gauge_Conf const *const GC,
                                    GParam const *const param,
                                    int const iteration);
@@ -282,8 +281,6 @@ void write_tube_conn_stuff_on_file(Gauge_Conf const *const GC,
 void read_tube_conn_stuff_from_file(Gauge_Conf const *const GC,
                                     GParam const *const param,
                                     int *iteration);
-
-void compute_md5sum_tube_conn_stuff(char *res, Gauge_Conf const *const GC, GParam const *const param);
 
 void write_multilevel_status_on_file(Gauge_Conf const *const GC,
                                      GParam const *const param,
@@ -295,11 +292,17 @@ void read_multilevel_status_from_file(Gauge_Conf const *const GC,
                                       int *iteration,
                                       Multilevel_Obs const ml_obs);
 
-void allocate_clover_array(Gauge_Conf *GC,
-                           GParam const *const param);
+void compute_md5sum_conf(char *res,
+                         Gauge_Conf const *const GC,
+                         GParam const *const param);
 
-void free_clover_array(Gauge_Conf *GC,
-                       GParam const *const param);
+void compute_md5sum_polycorr(char *res,
+                             Gauge_Conf const *const GC,
+                             GParam const *const param);
+
+void compute_md5sum_tube_conn_stuff(char *res,
+                                    Gauge_Conf const *const GC,
+                                    GParam const *const param);
 
 
 // in gauge_conf_meas.c
@@ -325,6 +328,12 @@ void plaquettep_matrix(Gauge_Conf const *const GC,
                        int j,
                        GAUGE_GROUP *matrix);
 
+void plaquette(Gauge_Conf const *const GC,
+               Geometry const *const geo,
+               GParam const *const param,
+               double *plaqs,
+               double *plaqt);
+
 void clover(Gauge_Conf const *const GC,
             Geometry const *const geo,
             GParam const *const param,
@@ -333,11 +342,10 @@ void clover(Gauge_Conf const *const GC,
             int j,
             GAUGE_GROUP *M);
 
-void plaquette(Gauge_Conf const *const GC,
-               Geometry const *const geo,
-               GParam const *const param,
-               double *plaqs,
-               double *plaqt);
+double loc_clover_energy(Gauge_Conf const *const GC,
+                         Geometry const *const geo,
+                         GParam const *const param,
+                         long const r);
 
 void energy_density(Gauge_Conf const *const GC,
                     Geometry const *const geo,
@@ -357,11 +365,6 @@ void clover_energy_slices(Gauge_Conf const *const GC,
                           double *slices,
                           int meas_count,
                           FILE *filep);
-
-void action(Gauge_Conf const *const GC,
-            Geometry const *const geo,
-            GParam const *const param,
-            double *S_wilson, double *S_theta, double *S_total, double *V_mc);
 
 void polyakov_density(Gauge_Conf const *const GC,
                       Geometry const *const geo,
@@ -383,6 +386,13 @@ void multipolyakov(Gauge_Conf const *const GC,
                    GParam const *const param,
                    double *repoly,
                    double *impoly);
+
+void polyakov_powers(Gauge_Conf const *const GC,
+                     Geometry const *const geo,
+                     GParam const *const param,
+                     int mu,
+                     double *repoly_pwrs,
+                     double *impoly_pwrs);
 
 void polyakov_adj(Gauge_Conf const *const GC,
                   Geometry const *const geo,
@@ -406,15 +416,6 @@ double topcharge(Gauge_Conf const *const GC,
                  Geometry const *const geo,
                  GParam const *const param);
 
-double topcharge_rectangle(Gauge_Conf const *const GC,
-                           Geometry const *const geo,
-                           GParam const *const param,
-                           Rectangle const *const topcharge_rect);
-
-double topcharge_prime(Gauge_Conf const *const GC,
-                       Geometry const *const geo,
-                       GParam const *const param, int const dir);
-
 void topcharge_slices(Gauge_Conf const *const GC,
                       Geometry const *const geo,
                       GParam const *const param,
@@ -431,6 +432,10 @@ void topcharge_p_slices(Gauge_Conf const *const GC,
                         Meas_Utils *const meas_aux,
                         int const meas_count);
 
+double topcharge_prime(Gauge_Conf const *const GC,
+                       Geometry const *const geo,
+                       GParam const *const param, int const dir);
+
 double topo_chi_prime(Gauge_Conf const *const GC,
                       Geometry const *const geo,
                       GParam const *const param);
@@ -442,21 +447,54 @@ void loc_topcharge_corr(Gauge_Conf *const GC,
                         int const dist,
                         double *res);
 
+void action(Gauge_Conf const *const GC,
+            Geometry const *const geo,
+            GParam const *const param,
+            double *S_wilson, double *S_theta, double *S_total, double *V_mc);
+
+FILE *open_file_with_header_replica(char const *const name,
+                                    char const *const header,
+                                    int const replica_index,
+                                    GParam const *const param,
+                                    int const binary_flag);
+
+void open_data_files(Meas_Utils *meas_aux,
+                     int const replica_index,
+                     GParam const *const param);
+
+void close_data_files(Meas_Utils meas_aux,
+                      int const replica_index,
+                      GParam const *const param);
+
+void init_meas_utils(Meas_Utils *meas_aux,
+                     GParam const *const param,
+                     int const replica_index);
+
+void free_meas_utils(Meas_Utils meas_aux,
+                     GParam const *const param,
+                     int const replica_index);
+
+void init_meas_utils_replica(Meas_Utils **meas_aux,
+                             GParam const *const param);
+
+void free_meas_utils_replica(Meas_Utils *meas_aux,
+                             GParam const *const param);
+
+void perform_measures_localobs_hot(Gauge_Conf *const GC,
+                                   Geometry const *const geo,
+                                   GParam const *const param,
+                                   Meas_Utils *meas_aux);
+
 void perform_measures_aux(Gauge_Conf *const GC,
                           Geometry const *const geo,
                           GParam const *const param,
                           int const meas_count,
                           Meas_Utils *meas_aux);
 
-void perform_measures_localobs(Gauge_Conf *const GC,
-                               Geometry const *const geo,
-                               GParam const *const param,
-                               Meas_Utils *meas_aux);
-
-void perform_measures_localobs_hot(Gauge_Conf *const GC,
-                                   Geometry const *const geo,
-                                   GParam const *const param,
-                                   Meas_Utils *meas_aux);
+void print_measures_aux(int const num_meas,
+                        long const update_index,
+                        GParam const *const param,
+                        Meas_Utils const *const meas_aux);
 
 void perform_measures_localobs_cooling(Gauge_Conf *const GC,
                                        Geometry const *const geo,
@@ -472,6 +510,11 @@ void perform_measures_localobs_adaptive_gradflow(Gauge_Conf *const GC,
                                                  Geometry const *const geo,
                                                  GParam const *const param,
                                                  Meas_Utils *meas_aux);
+
+void perform_measures_localobs(Gauge_Conf *const GC,
+                               Geometry const *const geo,
+                               GParam const *const param,
+                               Meas_Utils *meas_aux);
 
 void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf *const GC,
                                                              Geometry const *const geo,
@@ -492,7 +535,6 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const G
                                                              Geometry const *const geo,
                                                              GParam const *const param,
                                                              Meas_Utils *meas_aux);
-
 
 void optimize_multihit_polycorr(Gauge_Conf *const GC,
                                 Geometry const *const geo,
@@ -536,44 +578,6 @@ void perform_multilevel_update_and_measures(Gauge_Conf *const GC,
                                             GParam const *const param,
                                             Meas_Utils *meas_aux,
                                             Multilevel_Obs const ml_obs);
-
-int sprintf_header_datafile_aux(char *const header,
-                                char *const smoothing_method,
-                                GParam const *const param);
-
-void header_datafile(char *const,
-                     GParam const *const param);
-
-FILE *open_file_with_header_replica(char const *const name,
-                                    char const *const header,
-                                    int const replica_index,
-                                    GParam const *const param,
-                                    int const binary_flag);
-
-void open_data_files(Meas_Utils *meas_aux,
-                     int const replica_index,
-                     GParam const *const param);
-
-void close_data_files(Meas_Utils meas_aux,
-                      int const replica_index,
-                      GParam const *const param);
-
-void init_meas_utils(Meas_Utils *meas_aux,
-                     GParam const *const param,
-                     int const replica_index);
-
-void init_meas_utils_replica(Meas_Utils **meas_aux,
-                             GParam const *const param);
-
-void free_meas_utils(Meas_Utils meas_aux,
-                     GParam const *const param,
-                     int const replica_index);
-
-void free_meas_utils_replica(Meas_Utils *meas_aux,
-                             GParam const *const param);
-
-void print_measures_aux(int const num_meas, long const update_index, GParam const *const param,
-                        Meas_Utils const *const meas_aux);
 
 
 // in gauge_conf_multilevel.c
@@ -628,10 +632,10 @@ void multilevel_tube_conn_long_zero(Gauge_Conf *const GC,
                                     int iteration);
 
 void perform_multilevel_long_update_zero(Gauge_Conf *GC,
-	                                     Geometry const *const geo,
-	                                     GParam const *const param,
-	                                     int const iteration,
-	                                     Multilevel_Obs const ml_obs);
+                                         Geometry const *const geo,
+                                         GParam const *const param,
+                                         int const iteration,
+                                         Multilevel_Obs const ml_obs);
 
 // in gauge_conf_upd.c
 void calcstaples_wilson(Gauge_Conf const *const GC,
@@ -658,12 +662,12 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 void compute_clovers(Gauge_Conf const *const GC,
                      Geometry const *const geo,
                      GParam const *const param,
-                     int direction);
+                     int const dir);
 
 void compute_clovers_replica(Gauge_Conf const *const GC,
                              Geometry const *const geo,
                              GParam const *const param,
-                             int dir);
+                             int const dir);
 
 void compute_clovers_replica_rect(Gauge_Conf const *const GC,
                                   Geometry const *const geo,
@@ -732,6 +736,11 @@ void update(Gauge_Conf *const GC,
             GParam const *const param,
             Acc_Utils *acc_counters);
 
+void update_with_trace_def(Gauge_Conf *const GC,
+                           Geometry const *const geo,
+                           GParam const *const param,
+                           double *acc_dt);
+
 void update_with_defect(Gauge_Conf *const GC,
                         Geometry const *const geo,
                         GParam const *const param,
@@ -744,12 +753,6 @@ void update_rectangle_with_defect(Gauge_Conf *const GC,
                                   Rect_Utils const *const rect_aux,
                                   Acc_Utils *acc_counters);
 
-void update_with_trace_def(Gauge_Conf *const GC,
-                           Geometry const *const geo,
-                           GParam const *const param,
-                           double *acc_dt);
-
-
 void hierarchical_update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                                int const hierarc_level,
                                                Rect_Utils const *const rect_aux,
@@ -758,7 +761,6 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf *const GC, Geometry co
 void parallel_tempering_with_hierarchical_update(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                                  Rect_Utils const *const rect_aux,
                                                  Acc_Utils *acc_counters);
-
 
 void cooling_lex_dir_lexeo_site(Gauge_Conf *const GC,
                                 Geometry const *const geo,
@@ -799,13 +801,13 @@ void hierarchical_cooling(Gauge_Conf *const GC,
 void gradflow_RKstep(Gauge_Conf *const GC,
                      Geometry const *const geo,
                      GParam const *const param,
-                     double dt,
+                     double const dt,
                      Meas_Utils *meas_aux);
 
 double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
                                     Geometry const *const geo,
                                     GParam const *const param,
-                                    double dt,
+                                    double const dt,
                                     Meas_Utils *meas_aux);
 
 void gradflow_RKstep_adaptive(Gauge_Conf *const GC,
@@ -856,8 +858,8 @@ void gradflow_RKstep_adaptive_debug2(Gauge_Conf *const GC,
 void ape_smearing(Gauge_Conf *const GC,
                   Geometry const *const geo,
                   GParam const *const param,
-                  double alpha,
-                  int n);
+                  double const alpha,
+                  int const n);
 
 
 // in gauge_conf_paral_temp.c
@@ -887,7 +889,7 @@ void conf_translation(Gauge_Conf *const GC,
                       GParam const *const param);
 
 void init_swap_track_file(FILE **swaptrackfilep,
-						  GParam const *const param);
+                          GParam const *const param);
 
 void init_acc_utils(Acc_Utils *acc_counters,
                     GParam const *const param);

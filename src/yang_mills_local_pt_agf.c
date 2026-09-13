@@ -30,8 +30,7 @@ void real_main(char const *in_file)
 
 	// to disable nested parallelism
 	#ifdef OPENMP_MODE
-	// omp_set_nested(0); // deprecated
-	omp_set_max_active_levels(1); // should do the same as the old omp_set_nested(0)
+	omp_set_max_active_levels(1);
 	#endif
 
 	// read input file
@@ -146,7 +145,7 @@ void real_main(char const *in_file)
 	print_acceptances(&acc_counters, &param);
 
 	// free gauge configurations
-	free_replica(GC, &param);
+	free_gauge_conf_replica(GC, &param);
 
 	// free geometry
 	free_geometry(&geo, &param);

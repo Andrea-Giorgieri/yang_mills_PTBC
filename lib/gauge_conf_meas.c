@@ -1425,10 +1425,6 @@ void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GPara
 
 void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux)
 	{
-	double time_step;
-	if(param->d_agf_meas_each > 0.0) time_step = (param->d_agf_meas_each);
-	else time_step = param->d_ngfsteps;
-
 	for(int i = 0; i < num_meas; i++)
 		{
 		if(param->d_plaquette_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->meanplaq[i]);
@@ -1436,7 +1432,7 @@ void print_measures_aux(int const num_meas, long const update_index, GParam cons
 		if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
 		if(param->d_polyakov_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
 		if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
-		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld % 18.12e % 18.12e\n", update_index, (i + 1) * time_step, meas_aux->chi_prime[i]);
+		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld %3d % 18.12e\n", update_index, i + 1, meas_aux->chi_prime[i]);
 		if(param->d_charge_prime_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
 		if(param->d_action_meas == 1)
 			{

@@ -1383,7 +1383,7 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 	if(param->d_polyakov_meas == 1) for(i = 0; i < STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre[i], polyim[i]);
 	if(param->d_polyakov_powers_meas == 1) for(i = 0; i < MAX_POLY_PWR; i++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", polyre_pwrs[i], polyim_pwrs[i]);
 	if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", multipolyre, multipolyim);
-	if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld 0 % 18.12e\n", GC->update_index, chi_prime);
+	if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld %2d %3d % 18.12e\n", GC->update_index, (Smoothing_Type)HOT, 0, chi_prime);
 	if(param->d_charge_prime_meas == 1) for(i = 0; i < STDIM; i++) fprintf(meas_aux->datafilep, "% 18.12e ", charge_prime[i]);
 	if(param->d_action_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e % 18.12e % 18.12e ", action1, action2, action3, potential);
 
@@ -1423,7 +1423,7 @@ void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GPara
 	}
 
 
-void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux)
+void print_measures_aux(int const num_meas, long const update_index, GParam const *const param, Meas_Utils const *const meas_aux, Smoothing_Type const smoothing)
 	{
 	for(int i = 0; i < num_meas; i++)
 		{
@@ -1432,7 +1432,7 @@ void print_measures_aux(int const num_meas, long const update_index, GParam cons
 		if(param->d_charge_meas == 1) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge[i]);
 		if(param->d_polyakov_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->polyre[i][j], meas_aux->polyim[i][j]);
 		if(param->d_multipolyakov_order >= 1) fprintf(meas_aux->datafilep, "% 18.12e % 18.12e ", meas_aux->multipolyre[i], meas_aux->multipolyim[i]);
-		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld %3d % 18.12e\n", update_index, i + 1, meas_aux->chi_prime[i]);
+		if(param->d_chi_prime_meas == 1) fprintf(meas_aux->chiprimefilep, "%ld %2d %3d % 18.12e\n", update_index, smoothing, i + 1, meas_aux->chi_prime[i]);
 		if(param->d_charge_prime_meas == 1) for(int j = 0; j < STDIM; j++) fprintf(meas_aux->datafilep, "% 18.12e ", meas_aux->charge_prime[i][j]);
 		if(param->d_action_meas == 1)
 			{
@@ -1460,7 +1460,7 @@ void perform_measures_localobs_cooling(Gauge_Conf *const GC,
 	restore_gauge_conf(GC, param);
 
 	// print meas cooling
-	print_measures_aux(param->d_coolrepeat, GC->update_index, param, meas_aux);
+	print_measures_aux(param->d_coolrepeat, GC->update_index, param, meas_aux, COOLING);
 
 	//TODO: remove, debug only
 	//for(int meas_count=0; meas_count < param->d_coolrepeat; meas_count++)
@@ -1493,7 +1493,7 @@ void perform_measures_localobs_gradflow(Gauge_Conf *const GC,
 	restore_gauge_conf(GC, param);
 
 	// print meas gradflow
-	print_measures_aux(param->d_gf_num_meas, GC->update_index, param, meas_aux);
+	print_measures_aux(param->d_gf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 	}
 
 
@@ -1529,7 +1529,7 @@ void perform_measures_localobs_adaptive_gradflow(Gauge_Conf *const GC,
 	restore_gauge_conf(GC, param);
 
 	// print meas gradflow
-	print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+	print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 	}
 
 
@@ -1610,7 +1610,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug1(Gauge_Conf *const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 
 		// free memory
 		free_gauge_conf(&helper1, param);
@@ -1684,7 +1684,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug2(Gauge_Conf *const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 
 		// free memory
 		free_gauge_conf(&helper1, param);
@@ -1775,7 +1775,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug3(Gauge_Conf *const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 
 		// free memory
 		free_gauge_conf(&helper1, param);
@@ -1852,7 +1852,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 
 		// fixed step integration
 		gftime_step = 0.01;
@@ -1886,7 +1886,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const G
 		restore_gauge_conf(GC, param);
 
 		// print meas gradflow
-		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux);
+		print_measures_aux(param->d_agf_num_meas, GC->update_index, param, meas_aux, GRADIENT_FLOW);
 
 		// free memory
 		for(int i = 0; i < param->d_agf_num_meas; i++)

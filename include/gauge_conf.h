@@ -494,7 +494,8 @@ void perform_measures_aux(Gauge_Conf *const GC,
 void print_measures_aux(int const num_meas,
                         long const update_index,
                         GParam const *const param,
-                        Meas_Utils const *const meas_aux);
+                        Meas_Utils const *const meas_aux,
+                        Smoothing_Type const smoothing);
 
 void perform_measures_localobs_cooling(Gauge_Conf *const GC,
                                        Geometry const *const geo,

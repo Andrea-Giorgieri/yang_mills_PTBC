@@ -9,6 +9,14 @@
 #include "timing.h"
 
 
+// smoothing methods
+typedef enum
+	{
+	HOT,
+	GRADIENT_FLOW,
+	COOLING,
+	} Smoothing_Type;
+
 // cooling implementations
 typedef enum
 	{

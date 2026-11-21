@@ -542,7 +542,8 @@ static inline void lin_comb_dag12_SuN(SuN *restrict A, double const b, SuN const
 // random generation
 
 // SU(N) random matrix generated a la Cabibbo Marinari with N(N-1)/2 SU(2) random matrices
-static inline void rand_matrix_SuN(SuN *A)
+ACC_ROUTINE_SEQ
+static inline void rand_matrix_SuN(SuN *A, rng_t *rng)
 	{
 	double p0, p1, p2, p3, r2;
 
@@ -555,10 +556,10 @@ static inline void rand_matrix_SuN(SuN *A)
 			// SU(2) random components
 			do
 				{
-				p0 = 1.0 - 2.0 * casuale();
-				p1 = 1.0 - 2.0 * casuale();
-				p2 = 1.0 - 2.0 * casuale();
-				p3 = 1.0 - 2.0 * casuale();
+				p0 = 1.0 - 2.0 * casuale(rng);
+				p1 = 1.0 - 2.0 * casuale(rng);
+				p2 = 1.0 - 2.0 * casuale(rng);
+				p3 = 1.0 - 2.0 * casuale(rng);
 
 				r2 = p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3;
 				} while(r2 > 1.0);
@@ -591,10 +592,12 @@ static inline void rand_matrix_SuN(SuN *A)
 
 // generate a matrix in the algebra of SU(N) with gaussian
 // random components in the base T_i such that Tr(T_iT_j)=delta_{ij}
-static inline void rand_algebra_gauss_matrix_SuN(SuN *A)
+ACC_ROUTINE_SEQ
+static inline void rand_algebra_gauss_matrix_SuN(SuN *A, rng_t *rng)
 	{
 	#if NCOLOR == 1
 	(void) A; // just to avoid warnings
+	(void) rng;
 	#else
 	double d1, d2, dd[NCOLOR - 1];
 
@@ -605,7 +608,7 @@ static inline void rand_algebra_gauss_matrix_SuN(SuN *A)
 		{
 		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			gauss2(&d1, &d2);
+			gauss2(&d1, &d2, rng);
 			A->comp[m(i, j)] = d1 - d2 * I;
 			A->comp[m(j, i)] = d1 + d2 * I;
 			}
@@ -614,7 +617,7 @@ static inline void rand_algebra_gauss_matrix_SuN(SuN *A)
 	// random numbers to be used in the diagonal
 	for(int i = 0; i < NCOLOR - 1; i++)
 		{
-		dd[i] = gauss1();
+		dd[i] = gauss1(rng);
 		}
 
 	// diagonal
@@ -707,7 +710,7 @@ static inline double argtr_SuN(SuN const *const restrict A)
 		{
 		tr += A->comp[m(i, i)];
 		}
-	return carg(tr);
+	return atan2(cimag(tr), creal(tr)); // = carg(tr), but carg is not available on GPU
 	}
 
 

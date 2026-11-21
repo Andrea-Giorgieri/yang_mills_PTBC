@@ -84,6 +84,13 @@ AC_ARG_ENABLE([use-multicanonical],
               [use_multicanonical=yes],
               [use_multicanonical=no])
 
+AC_ARG_ENABLE([rng-philox],
+              [AS_HELP_STRING([--enable-rng-philox],
+                              [to use the counter-based Philox4x32-10 random number generator with one stream per lattice site
+                               instead of dSFMT with one stream per thread (always enabled with --enable-use-openacc)])],
+              [rng_philox=${enableval}],
+              [rng_philox=no])
+
 AC_ARG_ENABLE([meas-replica],
               [AS_HELP_STRING([--enable-meas-replica],
                               [to enable the measurement of observables on parallel tempering replicas])],
@@ -187,6 +194,12 @@ fi
 
 if test x${use_openacc} = xyes; then
   AC_DEFINE(OPENACC_MODE,, [Enable GPU offloading with OpenACC])
+  # random numbers on GPU need one small generator state per lattice site
+  rng_philox=yes
+fi
+
+if test x${rng_philox} = xyes; then
+  AC_DEFINE(RNG_PHILOX_MODE,, [Use the Philox4x32-10 random number generator with one stream per lattice site])
 fi
 
 if test x${use_theta} = xyes; then

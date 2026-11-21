@@ -33,7 +33,7 @@ int main(void)
 	printf("VERIFY THAT THE RANDOM MATRIX IS IN SU(2)\n\n");
 
 	printf("    Random matrix: ");
-	rand_matrix_Su2(&M);
+	rand_matrix_Su2(&M, rng_host());
 	equal_Su2(&N, &M);
 	one_Su2(&id_SU2);
 	times_dag2_Su2(&T, &M, &N);
@@ -47,11 +47,11 @@ int main(void)
 
 	// heatbath
 	printf("    Heatbath: ");
-	rand_matrix_Su2(&M);
-	rand_matrix_Su2(&N);
-	rand_matrix_Su2(&L);
+	rand_matrix_Su2(&M, rng_host());
+	rand_matrix_Su2(&N, rng_host());
+	rand_matrix_Su2(&L, rng_host());
 	plus_equal_Su2(&N, &L); // N+=L,  M in SU(2), N no   (M=link, N=staple)
-	single_heatbath_Su2(&M, &N, &param);
+	single_heatbath_Su2(&M, &N, &param, rng_host());
 	equal_Su2(&N, &M);
 	times_dag2_Su2(&T, &M, &N);
 	minus_equal_Su2(&T, &id_SU2);
@@ -60,11 +60,11 @@ int main(void)
 
 	// overrelaxation
 	printf("    Overrelaxation: ");
-	rand_matrix_Su2(&M);
-	rand_matrix_Su2(&N);
-	rand_matrix_Su2(&L);
+	rand_matrix_Su2(&M, rng_host());
+	rand_matrix_Su2(&N, rng_host());
+	rand_matrix_Su2(&L, rng_host());
 	plus_equal_Su2(&N, &L); // N+=L,  M in SU(2), N no   (M=link, N=staple)
-	single_overrelaxation_Su2(&M, &N);
+	single_overrelaxation_Su2(&M, &N, rng_host());
 	equal_Su2(&N, &M);
 	times_dag2_Su2(&T, &M, &N);
 	minus_equal_Su2(&T, &id_SU2);
@@ -74,14 +74,14 @@ int main(void)
 
 	printf("\n\n");
 	printf("VERIFY THAT OVERRELAXATION DOES NOT CHANGE THE ENERGY ...");
-	rand_matrix_Su2(&M);
-	rand_matrix_Su2(&N);
-	rand_matrix_Su2(&L);
+	rand_matrix_Su2(&M, rng_host());
+	rand_matrix_Su2(&N, rng_host());
+	rand_matrix_Su2(&L, rng_host());
 	plus_equal_Su2(&N, &L); // N+=L,  M in SU(2), N no   (M=link, N=staple)
 
 	times_Su2(&T, &M, &N);        // T=M*N
 	double energy = retr_Su2(&T); // initial energy
-	single_overrelaxation_Su2(&M, &N);
+	single_overrelaxation_Su2(&M, &N, rng_host());
 	times_Su2(&T, &M, &N);  // T=M*N
 	energy -= retr_Su2(&T); // -=final energy
 	REQUIRE(fabs(energy) < MIN_VALUE, "    TEST FAILED: Delta E = %f", energy);
@@ -90,9 +90,9 @@ int main(void)
 
 	printf("\n\n");
 	printf("VERIFY THAT COOLING DECREASES THE ENERGY ...");
-	rand_matrix_Su2(&M);
-	rand_matrix_Su2(&N);
-	rand_matrix_Su2(&L);
+	rand_matrix_Su2(&M, rng_host());
+	rand_matrix_Su2(&N, rng_host());
+	rand_matrix_Su2(&L, rng_host());
 	plus_equal_Su2(&N, &L); // N+=L,  M in SU(2), N no   (M=link, N=staple)
 
 	times_Su2(&T, &M, &N); // T=M*N

@@ -766,7 +766,7 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf *const GC, Geometry const 
 	double const p = metropolis_prob_multicanonic(GC->replica_index, Q_new, Q_old, param);
 	if(p < 1)
 		{
-		if(casuale() > p) acc = 0;
+		if(casuale(rng_host()) > p) acc = 0;
 		}
 
 	// if Metropolis is accepted, store the new topological charge
@@ -804,7 +804,7 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const 
 	int acc = 1;
 	if(p < 1)
 		{
-		if(casuale() > p) acc = 0;
+		if(casuale(rng_host()) > p) acc = 0;
 		}
 
 	// if Metropolis is accepted, store the new topological charge
@@ -1343,6 +1343,7 @@ void multicanonic_agf_update_with_defect(Gauge_Conf *const GC, Geometry const *c
 	}
 
 // Metropolis test with p_metro=exp(- delta topo_potential)
+ACC_ROUTINE_SEQ
 int multicanonic_metropolis_step_single_link(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                              long r, int i, GAUGE_GROUP const *const old_link)
 	{
@@ -1355,7 +1356,7 @@ int multicanonic_metropolis_step_single_link(Gauge_Conf *const GC, Geometry cons
 	int acc = 1;
 	if(p < 1)
 		{
-		double random_number = casuale();
+		double random_number = casuale(RNG_SITE(GC, r));
 		if(random_number > p) acc = 0;
 		}
 
@@ -1689,6 +1690,7 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf *cons
 	}
 
 // perform an update with overrelaxation and multicanonic Metropolis step
+ACC_ROUTINE_SEQ
 int multicanonic_overrelaxation_with_defect(Gauge_Conf *const GC,
                                             Geometry const *const geo,
                                             GParam const *const param,
@@ -1696,8 +1698,8 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf *const GC,
                                             int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -1713,7 +1715,7 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf *const GC,
 	equal(&old_link, &(GC->lattice[r][i]));
 
 	// perform usual single-link over-relaxation update
-	single_overrelaxation(&(GC->lattice[r][i]), &stap);
+	single_overrelaxation(&(GC->lattice[r][i]), &stap, RNG_SITE(GC, r));
 
 	// accept/reject new link with multicanonic Metropolis step
 	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, &old_link);
@@ -1721,12 +1723,13 @@ int multicanonic_overrelaxation_with_defect(Gauge_Conf *const GC,
 	}
 
 // perform an update with heatbath in the presence of a defect with multicanonic Metropolis step
+ACC_ROUTINE_SEQ
 int multicanonic_heatbath_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                       long r, int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -1742,7 +1745,7 @@ int multicanonic_heatbath_with_defect(Gauge_Conf *const GC, Geometry const *cons
 	equal(&old_link, &(GC->lattice[r][i]));
 
 	// perform usual single-link over-heat-bath update
-	single_heatbath(&(GC->lattice[r][i]), &stap, param);
+	single_heatbath(&(GC->lattice[r][i]), &stap, param, RNG_SITE(GC, r));
 
 	// accept/reject new link with multicanonic Metropolis step
 	int acc = multicanonic_metropolis_step_single_link(GC, geo, param, r, i, &old_link);

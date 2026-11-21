@@ -12,7 +12,9 @@ bin_PROGRAMS = conf_check \
             yang_mills_conf_analysis \
             yang_mills_tuning_pt_mc
 
-if !OPENACC_COMPILATION
+if OPENACC_COMPILATION
+bin_PROGRAMS += debug_acc_routines
+else
 bin_PROGRAMS += yang_mills_multilevel \
                 yang_mills_multilevel_long \
                 yang_mills_tracedef
@@ -106,6 +108,22 @@ debug_rng_SOURCES=./src/debug_rng.c \
                   $(align) \
                   $(dSFMT) \
                   $(random)
+
+debug_acc_routines_SOURCES=./src/debug_acc_routines.c \
+                          $(timing) \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(gauge_group) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 debug_su2_SOURCES=./src/debug_su2.c \
                   $(timing) \

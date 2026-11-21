@@ -276,6 +276,11 @@ void set_defaults(GParam *const param)
 	allocate_array_double(&(param->d_pt_bound_cond_coeff), 1, __FILE__, __LINE__);
 	param->d_pt_bound_cond_coeff[0] = 1.0;
 
+	// hierarchical update
+	param->d_N_hierarc_levels = 0;
+	param->d_L_rect = NULL;
+	param->d_N_sweep_rect = NULL;
+
 	// gradient flow
 	param->d_ngfsteps = 0;
 	param->d_gf_meas_each = 1;
@@ -294,6 +299,8 @@ void set_defaults(GParam *const param)
 	param->d_coolsteps = 1;
 
 	// multicanonical with cold topcharge
+	param->d_grid_step = 0.25;
+	param->d_grid_max = 2.0;
 	param->d_topo_cooling = 0;
 	param->d_topo_coolsteps = 0;
 	param->d_topo_alpha = 0;
@@ -305,6 +312,10 @@ void set_defaults(GParam *const param)
 
 	// walltime
 	param->d_walltime = 24.0;
+
+	// other
+	param->d_epsilon_metro = 0.25;
+	param->d_test_flag = 0;
 
 	// measurements
 	param->d_plaquette_meas = 1;
@@ -875,7 +886,10 @@ void init_derived_constants(GParam *const param)
 		param->d_obc_default_pos = param->d_size[param->d_obc_dir] - 1;
 
 	// number of slices for theta-term profile
-	param->d_theta_profile_size = param->d_size[param->d_theta_profile_dir];
+	if (param->d_theta_profile_dir == -1)
+		param->d_theta_profile_size = 0;
+	else
+		param->d_theta_profile_size = param->d_size[param->d_theta_profile_dir];
 
 	// number of grid points for multicanonical potential
 	param->d_n_grid = (int) ((2.0 * param->d_grid_max / param->d_grid_step) + 1.0);

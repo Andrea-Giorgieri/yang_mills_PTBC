@@ -9,7 +9,7 @@ set -euo pipefail
 NCOLORS=3     # Number of colors
 STDIM=4       # Spacetime dimension
 
-NTHREADS=12  # Number of OpenMP threads (if OpenMP is enabled)
+NTHREADS=112  # Number of OpenMP threads (if OpenMP is enabled)
 NLEVELS=1     # Number of levels in multilevel algorithm
 
 # 1=yes, 0=no
@@ -21,10 +21,10 @@ ENABLE_OPENACC=1       # GPU offloading with OpenACC (incompatible with OpenMP)
 ENABLE_DEBUG=0         # Perform extra sanity checks and debugging tests
 
 # Available configurations: gcc, nvhpc, leonardo, leonardo_gpu, galileo100, marconi
-COMPILE_CONFIG=nvhpc
+COMPILE_CONFIG=leonardo_gpu
 COMPILE_TARGETS=(all)
 
-BUILD_JOBS=12  # Number of parallel compilation jobs
+BUILD_JOBS=112  # Number of parallel compilation jobs
 BUILD_CLEAN=1   # Completely clean build (1=yes, 0=no)
 
 # ========================================================================
@@ -54,6 +54,8 @@ case "${COMPILE_CONFIG}" in
 
     leonardo_gpu)
         module load nvhpc/25.11
+        module load cuda/12.2
+        export NVHPC_CUDA_HOME="${CUDA_HOME}"
         CC=nvc
         CFLAGS='-O3'
         ACC_CFLAGS='-acc=gpu -gpu=cc80 -Minfo=accel'

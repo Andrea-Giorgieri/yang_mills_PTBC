@@ -57,7 +57,22 @@ typedef struct Gauge_Conf
 	// for symmetrical cooling update: store a random permutation of spacetime directions and parity of sites updated first
 	int stdim_shuffle[STDIM];
 	long parity_shuffle[2][2];
+
+	#ifdef RNG_PHILOX_MODE
+	// random number generators of the link updates, one stream per lattice site [volume]
+	// (NULL for auxiliary configurations that are never updated with heatbath/overrelaxation/metropolis)
+	rng_t *rng_site;
+	#endif
 	} Gauge_Conf;
+
+
+// generator to be used for the update of the links of site r of configuration GCp:
+// Philox: the stream of the site; dSFMT: the generator of the calling thread (as in the original code)
+#ifdef RNG_PHILOX_MODE
+#define RNG_SITE(GCp, r) (&((GCp)->rng_site[(r)]))
+#else
+#define RNG_SITE(GCp, r) rng_thread()
+#endif
 
 
 // to compute swap and multicanonic acceptances during parallel tempering evolution
@@ -181,6 +196,12 @@ void init_gauge_conf(Gauge_Conf *GC,
 
 void free_gauge_conf(Gauge_Conf *GC,
                      GParam const *const param);
+
+void init_rng_gauge_conf(Gauge_Conf *GC,
+                         GParam const *const param,
+                         unsigned int stream);
+
+void free_rng_gauge_conf(Gauge_Conf *GC);
 
 int init_gauge_conf_step(Gauge_Conf *GC,
                          GParam const *const param,
@@ -705,6 +726,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
                                        GAUGE_GROUP *M);
 
 
+ACC_ROUTINE_SEQ
 void heatbath(Gauge_Conf *const GC,
               Geometry const *const geo,
               GParam const *const param,
@@ -734,6 +756,7 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
                              long r,
                              int i);
 
+ACC_ROUTINE_SEQ
 void heatbath_with_defect(Gauge_Conf *const GC,
                           Geometry const *const geo,
                           GParam const *const param,
@@ -995,6 +1018,7 @@ double delta_topo_potential_swap(Gauge_Conf const *const,
                                  GParam const *const);
 
 
+ACC_ROUTINE_SEQ
 int multicanonic_metropolis_step_single_link(Gauge_Conf *const,
                                              Geometry const *const,
                                              GParam const *const,
@@ -1092,11 +1116,13 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf *,
                                                                 Rectangle const *const,
                                                                 Acc_Utils *);
 
+ACC_ROUTINE_SEQ
 int multicanonic_overrelaxation_with_defect(Gauge_Conf *,
                                             Geometry const *const,
                                             GParam const *const,
                                             long, int);
 
+ACC_ROUTINE_SEQ
 int multicanonic_heatbath_with_defect(Gauge_Conf *,
                                       Geometry const *const,
                                       GParam const *const,

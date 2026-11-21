@@ -42,7 +42,7 @@ void multihit(Gauge_Conf const *const GC, Geometry const *const geo, GParam cons
 
 		for(int i = 0; i < num_hit; i++)
 			{
-			single_heatbath(&partial, &staple, param);
+			single_heatbath(&partial, &staple, param, RNG_SITE(GC, r));
 			plus_equal(G, &partial);
 
 			unitarize(&partial);

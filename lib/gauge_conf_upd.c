@@ -696,6 +696,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 
 
 // perform an update with heatbath
+ACC_ROUTINE_SEQ
 void heatbath(Gauge_Conf *const GC,
               Geometry const *const geo,
               GParam const *const param,
@@ -703,8 +704,8 @@ void heatbath(Gauge_Conf *const GC,
               int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -715,7 +716,7 @@ void heatbath(Gauge_Conf *const GC,
 	calcstaples_with_topo(GC, geo, param, r, i, &stap);
 	#endif
 
-	single_heatbath(&(GC->lattice[r][i]), &stap, param);
+	single_heatbath(&(GC->lattice[r][i]), &stap, param, RNG_SITE(GC, r));
 	}
 
 
@@ -740,7 +741,7 @@ void overrelaxation(Gauge_Conf *const GC,
 	calcstaples_with_topo(GC, geo, param, r, i, &stap);
 	#endif
 
-	single_overrelaxation(&(GC->lattice[r][i]), &stap);
+	single_overrelaxation(&(GC->lattice[r][i]), &stap, RNG_SITE(GC, r));
 	}
 
 
@@ -799,17 +800,19 @@ int metropolis(Gauge_Conf *const GC,
 	calcstaples_with_topo(GC, geo, param, r, i, &stap);
 	#endif
 
+	rng_t *const rng = RNG_SITE(GC, r);
+
 	// compute old action
 	times(&tmp_matrix, &(GC->lattice[r][i]), &stap);
 	action_old = param->d_beta * (1.0 - retr(&tmp_matrix));
 
 	// compute the new link
 	one(&tmp_matrix);
-	rand_matrix(&rnd_matrix);
+	rand_matrix(&rnd_matrix, rng);
 	times_equal_real(&rnd_matrix, param->d_epsilon_metro);
 	plus_equal(&rnd_matrix, &tmp_matrix);
 	unitarize(&rnd_matrix); // rnd_matrix = Proj_on_the_group[ 1 + epsilon_metro*random_matrix ]
-	if(casuale() < 0.5)
+	if(casuale(rng) < 0.5)
 		{
 		times(&new_link, &rnd_matrix, &(GC->lattice[r][i]));
 		}
@@ -823,7 +826,7 @@ int metropolis(Gauge_Conf *const GC,
 	action_new = param->d_beta * (1.0 - retr(&tmp_matrix));
 
 	int acc = 0;
-	if(casuale() < exp(action_old - action_new))
+	if(casuale(rng) < exp(action_old - action_new))
 		{
 		equal(&(GC->lattice[r][i]), &new_link);
 		acc = 1;
@@ -876,12 +879,13 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
 		}
 
 	// compute the update to be proposed
+	rng_t *const rng = RNG_SITE(GC, r);
 	one(&tmp_matrix);
-	rand_matrix(&rnd_matrix);
+	rand_matrix(&rnd_matrix, rng);
 	times_equal_real(&rnd_matrix, param->d_epsilon_metro);
 	plus_equal(&rnd_matrix, &tmp_matrix);
 	unitarize(&rnd_matrix); // rnd_matrix = Proj_on_the_group[ 1 + epsilon_metro*random_matrix ]
-	if(casuale() < 0.5)
+	if(casuale(rng) < 0.5)
 		{
 		times(&new_link, &rnd_matrix, &(GC->lattice[r][i]));
 		}
@@ -908,7 +912,7 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
 		}
 
 	int acc = 0;
-	if(casuale() < exp(action_old - action_new))
+	if(casuale(rng) < exp(action_old - action_new))
 		{
 		equal(&(GC->lattice[r][i]), &new_link);
 		acc = 1;
@@ -919,6 +923,7 @@ int metropolis_with_tracedef(Gauge_Conf *const GC,
 
 
 // perform an update with heatbath in the presence of a defect
+ACC_ROUTINE_SEQ
 void heatbath_with_defect(Gauge_Conf *const GC,
                           Geometry const *const geo,
                           GParam const *const param,
@@ -926,8 +931,8 @@ void heatbath_with_defect(Gauge_Conf *const GC,
                           int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -938,7 +943,7 @@ void heatbath_with_defect(Gauge_Conf *const GC,
 	calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap);
 	#endif
 
-	single_heatbath(&(GC->lattice[r][i]), &stap, param);
+	single_heatbath(&(GC->lattice[r][i]), &stap, param, RNG_SITE(GC, r));
 	}
 
 
@@ -963,7 +968,7 @@ void overrelaxation_with_defect(Gauge_Conf *const GC,
 	calcstaples_with_topo_with_defect(GC, geo, param, r, i, &stap);
 	#endif
 
-	single_overrelaxation(&(GC->lattice[r][i]), &stap);
+	single_overrelaxation(&(GC->lattice[r][i]), &stap, RNG_SITE(GC, r));
 	}
 
 
@@ -1616,7 +1621,7 @@ static inline void shuffle_spacetime_dirs(int *dirs)
 	{
 	for(int i = STDIM - 1; i > 0; i--)
 		{
-		int const j = (int) (casuale() * (i + 1));
+		int const j = (int) (casuale(rng_host()) * (i + 1));
 		int const tmp = dirs[i];
 		dirs[i] = dirs[j];
 		dirs[j] = tmp;
@@ -1627,7 +1632,7 @@ static inline void shuffle_spacetime_dirs(int *dirs)
 // randomize the even/odd site ranges
 static inline void shuffle_site_parity(long bounds[2][2])
 	{
-	if(casuale() < 0.5)
+	if(casuale(rng_host()) < 0.5)
 		{
 		for(int i = 0; i < 2; i++)
 			{

@@ -246,6 +246,10 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 	{
 	GC->update_index = 0;
 
+	#ifdef RNG_PHILOX_MODE
+	GC->rng_site = NULL; // allocated by init_rng_gauge_conf only for the configurations that are updated
+	#endif
+
 	for(int i = 0; i < STDIM; i++)
 		{
 		GC->translation[i] = 0;
@@ -275,7 +279,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 			{
 			for(int j = 0; j < STDIM; j++)
 				{
-				rand_matrix(&aux2);
+				rand_matrix(&aux2, rng_host());
 				times_equal_real(&aux2, 0.001);
 				plus_equal(&aux2, &aux1);
 				unitarize(&aux2);
@@ -290,7 +294,7 @@ void init_gauge_conf_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 			{
 			for(int j = 0; j < STDIM; j++)
 				{
-				rand_matrix(&aux1);
+				rand_matrix(&aux1, rng_host());
 				equal(&(GC->lattice[r][j]), &aux1);
 				}
 			}
@@ -563,6 +567,7 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *co
 	GC->replica_index = 0;
 
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
+	init_rng_gauge_conf(GC, param, 0);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
 	init_ptbc_defect(GC, param);
 	#ifdef MULTICANONICAL_MODE
@@ -575,6 +580,8 @@ void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *co
 
 void free_gauge_conf(Gauge_Conf *GC, GParam const *const param)
 	{
+	free_rng_gauge_conf(GC);
+
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
@@ -606,6 +613,35 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const *const param)
 	free(GC->Z_copy);
 	#ifdef THETA_MODE
 	free(GC->clover_array);
+	#endif
+	}
+
+
+// initialize the random number generators of the link updates: with Philox one stream per site,
+// identified by (stream, site); nothing to do with dSFMT (one generator per thread, initialized by initrand)
+void init_rng_gauge_conf(Gauge_Conf *GC, GParam const *const param, unsigned int stream)
+	{
+	#ifdef RNG_PHILOX_MODE
+	allocate_array_rng(&(GC->rng_site), param->d_volume, __FILE__, __LINE__);
+	for(long r = 0; r < param->d_volume; r++)
+		{
+		rng_init_stream(&(GC->rng_site[r]), g_rng_seed, (uint32_t) stream, (uint32_t) r);
+		}
+	#else
+	(void) GC;
+	(void) param;
+	(void) stream;
+	#endif
+	}
+
+
+void free_rng_gauge_conf(Gauge_Conf *GC)
+	{
+	#ifdef RNG_PHILOX_MODE
+	free(GC->rng_site);
+	GC->rng_site = NULL;
+	#else
+	(void) GC;
 	#endif
 	}
 
@@ -693,6 +729,10 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 	GC->update_index = GC2->update_index;
 	GC->replica_index = GC2->replica_index;
 
+	#ifdef RNG_PHILOX_MODE
+	GC->rng_site = NULL; // auxiliary configuration: never updated with heatbath/overrelaxation/metropolis
+	#endif
+
 	for(int i = 0; i < STDIM; i++)
 		{
 		GC->translation[i] = GC2->translation[i];
@@ -778,7 +818,8 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 	// allocate the vector to store replicas
 	allocate_array_Gauge_Conf(GC, param->d_N_replica_pt, __FILE__, __LINE__);
 
-	#ifdef OPENMP_MODE
+	// serial with Philox: random starts and cooling use the single host generator
+	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	for(int i = 0; i < param->d_N_replica_pt; i++)
@@ -789,6 +830,7 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 		sprintf(replica_index_str, "%d", i);
 		strcat(filename, replica_index_str); // filename = param->d_conf_file + "_replica_${i}"
 		init_gauge_conf_from_file_with_name(&((*GC)[i]), param, filename);
+		init_rng_gauge_conf(&((*GC)[i]), param, (unsigned int) i);
 
 		strcpy(filename, param->d_twist_file); // filename = param->d_twist_file
 		strcat(filename, "_replica_");

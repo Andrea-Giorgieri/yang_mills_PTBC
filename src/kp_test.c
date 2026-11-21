@@ -50,7 +50,7 @@ void real_main(char const *in_file)
 
 		// perform a heatbath update
 		start_timer(&(timers.update_timer));
-		single_heatbath(&link, &staple, &param);
+		single_heatbath(&link, &staple, &param, rng_host());
 		stop_timer(&(timers.update_timer));
 
 		// perform measures

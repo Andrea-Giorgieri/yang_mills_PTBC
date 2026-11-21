@@ -417,9 +417,10 @@ static inline void lin_comb_dag12_U1(U1 *restrict A,
 // random generation
 
 // A=random
-static inline void rand_matrix_U1(U1 *restrict A)
+ACC_ROUTINE_SEQ
+static inline void rand_matrix_U1(U1 *restrict A, rng_t *rng)
 	{
-	double const theta = 2.0 * PI * casuale();
+	double const theta = 2.0 * PI * casuale(rng);
 	A->comp = cexp(I * theta);
 	}
 

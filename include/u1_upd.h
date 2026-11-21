@@ -12,7 +12,8 @@
 
 
 // heatbath (see Moriarty Phys. Rev. D 25, p2185 (1982) )
-static inline void single_heatbath_U1(U1 *link, U1 const *const staple, GParam const *const param)
+ACC_ROUTINE_SEQ
+static inline void single_heatbath_U1(U1 *link, U1 const *const staple, GParam const *const param, rng_t *rng)
 	{
 	double const alpha = param->d_beta * norm_U1(staple);
 
@@ -24,13 +25,13 @@ static inline void single_heatbath_U1(U1 *link, U1 const *const staple, GParam c
 		double x, q;
 		do
 			{
-			x = -1.0 + log1p(exp2am1 * casuale()) / alpha;
+			x = -1.0 + log1p(exp2am1 * casuale(rng)) / alpha;
 			q = exp(alpha * (cos(HALF_PI * (1.0 - x)) - x));
-			} while(q <= q_max * casuale());
+			} while(q <= q_max * casuale(rng));
 
 		double theta = (1.0 - x) * HALF_PI;
 
-		if(casuale() > 0.5)
+		if(casuale(rng) > 0.5)
 			{
 			theta = -theta;
 			}
@@ -40,14 +41,14 @@ static inline void single_heatbath_U1(U1 *link, U1 const *const staple, GParam c
 		}
 	else
 		{
-		rand_matrix_U1(link);
+		rand_matrix_U1(link, rng);
 		}
 	}
 
 
 // overrelaxation
 ACC_ROUTINE_SEQ
-static inline void single_overrelaxation_U1(U1 *link, U1 const *const staple)
+static inline void single_overrelaxation_U1(U1 *link, U1 const *const staple, rng_t *rng)
 	{
 	U1 newlink, helper;
 
@@ -65,7 +66,7 @@ static inline void single_overrelaxation_U1(U1 *link, U1 const *const staple)
 		}
 	else
 		{
-		rand_matrix_U1(link);
+		rand_matrix_U1(link, rng);
 		}
 	}
 

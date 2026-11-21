@@ -33,7 +33,7 @@ int main(void)
 	printf("VERIFY THAT THE RANDOM MATRIX IS IN U(1)\n\n");
 
 	printf("    Random matrix: ");
-	rand_matrix_U1(&M);
+	rand_matrix_U1(&M, rng_host());
 	equal_U1(&N, &M);
 	times_dag2_U1(&T, &M, &N);
 	one_U1(&id_U1);
@@ -48,11 +48,11 @@ int main(void)
 
 	// heatbath
 	printf("    Heatbath: ");
-	rand_matrix_U1(&M);
-	rand_matrix_U1(&N);
-	rand_matrix_U1(&L);
+	rand_matrix_U1(&M, rng_host());
+	rand_matrix_U1(&N, rng_host());
+	rand_matrix_U1(&L, rng_host());
 	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
-	single_heatbath_U1(&M, &N, &param);
+	single_heatbath_U1(&M, &N, &param, rng_host());
 	equal_U1(&N, &M);
 	times_dag2_U1(&T, &M, &N);
 	minus_equal_U1(&T, &id_U1);
@@ -61,11 +61,11 @@ int main(void)
 
 	// overrelaxation
 	printf("    Overrelaxation: ");
-	rand_matrix_U1(&M);
-	rand_matrix_U1(&N);
-	rand_matrix_U1(&L);
+	rand_matrix_U1(&M, rng_host());
+	rand_matrix_U1(&N, rng_host());
+	rand_matrix_U1(&L, rng_host());
 	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
-	single_overrelaxation_U1(&M, &N);
+	single_overrelaxation_U1(&M, &N, rng_host());
 	equal_U1(&N, &M);
 	times_dag2_U1(&T, &M, &N);
 	minus_equal_U1(&T, &id_U1);
@@ -75,13 +75,13 @@ int main(void)
 
 	printf("\n\n");
 	printf("VERIFY THAT OVERRELAXATION DOES NOT CHANGE THE ENERGY ...");
-	rand_matrix_U1(&M);
-	rand_matrix_U1(&N);
-	rand_matrix_U1(&L);
+	rand_matrix_U1(&M, rng_host());
+	rand_matrix_U1(&N, rng_host());
+	rand_matrix_U1(&L, rng_host());
 	plus_equal_U1(&N, &L);       // N+=L,  M in U(1), N no   (M=link, N=staple)
 	times_U1(&T, &M, &N);        // T=M*N
 	double energy = retr_U1(&T); // initial energy
-	single_overrelaxation_U1(&M, &N);
+	single_overrelaxation_U1(&M, &N, rng_host());
 	times_U1(&T, &M, &N);  // T=M*N
 	energy -= retr_U1(&T); // -=final energy
 	REQUIRE(fabs(energy) < MIN_VALUE, "    TEST FAILED: Delta E = %f", energy);
@@ -90,9 +90,9 @@ int main(void)
 
 	printf("\n\n");
 	printf("VERIFY THAT COOLING DECREASES THE ENERGY ...");
-	rand_matrix_U1(&M);
-	rand_matrix_U1(&N);
-	rand_matrix_U1(&L);
+	rand_matrix_U1(&M, rng_host());
+	rand_matrix_U1(&N, rng_host());
+	rand_matrix_U1(&L, rng_host());
 	plus_equal_U1(&N, &L); // N+=L,  M in U(1), N no   (M=link, N=staple)
 
 	times_U1(&T, &M, &N); // T=M*N

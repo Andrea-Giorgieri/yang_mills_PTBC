@@ -482,16 +482,17 @@ static inline void lin_comb_dag12_Su2(Su2 *restrict A, double const b, Su2 const
 // random generation
 
 // A=random
-static inline void rand_matrix_Su2(Su2 *restrict A)
+ACC_ROUTINE_SEQ
+static inline void rand_matrix_Su2(Su2 *restrict A, rng_t *rng)
 	{
 	register double p0, p1, p2, p3, r2;
 
 	do
 		{
-		p0 = 1.0 - 2.0 * casuale();
-		p1 = 1.0 - 2.0 * casuale();
-		p2 = 1.0 - 2.0 * casuale();
-		p3 = 1.0 - 2.0 * casuale();
+		p0 = 1.0 - 2.0 * casuale(rng);
+		p1 = 1.0 - 2.0 * casuale(rng);
+		p2 = 1.0 - 2.0 * casuale(rng);
+		p3 = 1.0 - 2.0 * casuale(rng);
 
 		r2 = p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3;
 		} while(r2 > 1.0);
@@ -506,15 +507,16 @@ static inline void rand_matrix_Su2(Su2 *restrict A)
 
 
 // A=random with given p0 (used in the update)
-static inline void rand_matrix_p0_Su2(double const p0, Su2 *restrict A)
+ACC_ROUTINE_SEQ
+static inline void rand_matrix_p0_Su2(double const p0, Su2 *restrict A, rng_t *rng)
 	{
 	register double p1, p2, p3, r2;
 
 	do
 		{
-		p1 = 1.0 - 2.0 * casuale();
-		p2 = 1.0 - 2.0 * casuale();
-		p3 = 1.0 - 2.0 * casuale();
+		p1 = 1.0 - 2.0 * casuale(rng);
+		p2 = 1.0 - 2.0 * casuale(rng);
+		p3 = 1.0 - 2.0 * casuale(rng);
 
 		r2 = p1 * p1 + p2 * p2 + p3 * p3;
 		} while(r2 > 1.0);

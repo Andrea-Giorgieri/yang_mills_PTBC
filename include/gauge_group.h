@@ -173,9 +173,10 @@ static inline void lin_comb_dag12(GAUGE_GROUP *A, double const b, GAUGE_GROUP co
 
 // random generation
 
-static inline void rand_matrix(GAUGE_GROUP *A)
+ACC_ROUTINE_SEQ
+static inline void rand_matrix(GAUGE_GROUP *A, rng_t *rng)
 	{
-	GAUGE_IMPL(rand_matrix)(A);
+	GAUGE_IMPL(rand_matrix)(A, rng);
 	}
 
 
@@ -257,15 +258,16 @@ static inline void read_from_binary_file_bigen(FILE *fp, GAUGE_GROUP *A)
 
 // Monte Carlo updates and cooling
 
-static inline void single_heatbath(GAUGE_GROUP *link, GAUGE_GROUP const *const staple, GParam const *const param)
+ACC_ROUTINE_SEQ
+static inline void single_heatbath(GAUGE_GROUP *link, GAUGE_GROUP const *const staple, GParam const *const param, rng_t *rng)
 	{
-	GAUGE_IMPL(single_heatbath)(link, staple, param);
+	GAUGE_IMPL(single_heatbath)(link, staple, param, rng);
 	}
 
 ACC_ROUTINE_SEQ
-static inline void single_overrelaxation(GAUGE_GROUP *link, GAUGE_GROUP const *const staple)
+static inline void single_overrelaxation(GAUGE_GROUP *link, GAUGE_GROUP const *const staple, rng_t *rng)
 	{
-	GAUGE_IMPL(single_overrelaxation)(link, staple);
+	GAUGE_IMPL(single_overrelaxation)(link, staple, rng);
 	}
 
 ACC_ROUTINE_SEQ

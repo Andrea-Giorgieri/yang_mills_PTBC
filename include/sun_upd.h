@@ -14,7 +14,8 @@
 
 // Pseudo-heatbath by Cabibbo-Marinari (Phys. Lett. B 119, p.387 (1982)) in the implementation by
 // Kennedy, Pendleton (Phys. Lett. B 156, p.393 (1985))
-static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const param)
+ACC_ROUTINE_SEQ
+static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const param, rng_t *rng)
 	{
 	SuN aux;
 	Su2 u, v, w;
@@ -34,10 +35,10 @@ static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GPara
 
 			if(xi > MIN_VALUE)
 				{
-				randheat_Su2(xi, &p0);
+				randheat_Su2(xi, &p0, rng);
 
 				equal_dag_Su2(&w, &u); // w=u^{dag}
-				rand_matrix_p0_Su2(p0, &v);
+				rand_matrix_p0_Su2(p0, &v, rng);
 				times_equal_Su2(&w, &v); // w*=v
 
 				fii = w.comp[0] + w.comp[3] * I;
@@ -56,7 +57,7 @@ static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GPara
 				}
 			else
 				{
-				rand_matrix_Su2(&w);
+				rand_matrix_Su2(&w, rng);
 
 				fii = w.comp[0] + w.comp[3] * I;
 				fij = w.comp[2] + w.comp[1] * I;
@@ -79,7 +80,8 @@ static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GPara
 
 // Pseudo-heatbath by Cabibbo-Marinari (Phys. Lett. B 119, p.387 (1982)) in the implementation by
 // Kennedy, Pendleton (Phys. Lett. B 156, p.393 (1985))
-static inline void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, double const beta)
+ACC_ROUTINE_SEQ
+static inline void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, double const beta, rng_t *rng)
 	{
 	SuN aux;
 	Su2 u, v, w;
@@ -97,10 +99,10 @@ static inline void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, d
 
 			if(xi > MIN_VALUE)
 				{
-				randheat_Su2(xi, &p0);
+				randheat_Su2(xi, &p0, rng);
 
 				equal_dag_Su2(&w, &u); // w=u^{dag}
-				rand_matrix_p0_Su2(p0, &v);
+				rand_matrix_p0_Su2(p0, &v, rng);
 				times_equal_Su2(&w, &v); // w*=v
 
 				double complex const fii = w.comp[0] + w.comp[3] * I;
@@ -125,8 +127,10 @@ static inline void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, d
 // Pseudo-overrelaxation by Cabibbo-Marinari (Phys. Lett. B 119, p.387 (1982)) in the implementation by
 // Kennedy, Pendleton (Phys. Lett. B 156, p.393 (1985))
 ACC_ROUTINE_SEQ
-static inline void single_overrelaxation_SuN(SuN *link, SuN const *const staple)
+static inline void single_overrelaxation_SuN(SuN *link, SuN const *const staple, rng_t *rng)
 	{
+	(void) rng; // random numbers are not needed in SU(N), N>2 (kept for a uniform interface)
+
 	SuN prod;
 	Su2 u, v;
 	double xi;
@@ -190,7 +194,7 @@ static inline double bad_unitarize_SuN(SuN *restrict A, double const beta, FILE 
 			equal_SuN(&G_old, &G);
 
 			// get new guess by heatbath
-			single_heatbath_aux_SuN(&G, &F, beta); // maximize Tr(G*F) in large-beta limit
+			single_heatbath_aux_SuN(&G, &F, beta, rng_host()); // maximize Tr(G*F) in large-beta limit
 
 			// calculate the distance between old guess G_old and new guess G:
 			// check = sqrt(|ReTr[(G-G_old)^2]|/N^2)

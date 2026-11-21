@@ -39,7 +39,7 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 
 	// to be sure detailed balance is satisfied, choose randomly whether to swap first odd or even copies
 	int is_even_first, num_swaps_1, num_swaps_2;
-	if(casuale() < 0.5) // first swap all even copies, then all odd copies
+	if(casuale(rng_host()) < 0.5) // first swap all even copies, then all odd copies
 		{
 		is_even_first = 0;
 		num_swaps_1 = num_even;
@@ -77,8 +77,8 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 			}
 		}
 
-	// do the swaps
-	#ifdef OPENMP_MODE
+	// do the swaps (serial with Philox: the Metropolis tests use the single host generator)
+	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	for(int k = 0; k < num_swaps_1; k++)
@@ -117,8 +117,8 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 			}
 		}
 
-	// do the swaps
-	#ifdef OPENMP_MODE
+	// do the swaps (serial with Philox: the Metropolis tests use the single host generator)
+	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	for(int k = 0; k < num_swaps_2; k++)
@@ -202,7 +202,7 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 	{
 	// Metropolis test: p<1 => acc=1 with probability p, p>=1 => acc=1 (already assigned)
 	int acc = 1;
-	if(p < 1 && casuale() > p) acc = 0;
+	if(p < 1 && casuale(rng_host()) > p) acc = 0;
 
 	// if Metropolis is accepted, swap replicas, including the twist factors and the stored charges for multicanonic
 	if(acc == 1)
@@ -270,7 +270,7 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
 	// extract random direction
-	int const dir = (int) (STDIM * casuale());
+	int const dir = (int) (STDIM * casuale(rng_host()));
 	GC->translation[dir] += 1;
 
 	// translation in direction +dir, including the Z factors and cold lattice

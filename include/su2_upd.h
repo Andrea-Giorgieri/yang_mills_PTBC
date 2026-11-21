@@ -12,7 +12,8 @@
 
 // random number generator for heatbath (see Kennedy, Pendleton Phys. Lett. B 156, 393 (1985))
 // given "k" return "a" in [-1,1] with P(a) = sqrt(1-a*a)*exp(k*a)
-static inline void randheat_Su2(double const k, double *out)
+ACC_ROUTINE_SEQ
+static inline void randheat_Su2(double const k, double *out, rng_t *rng)
 	{
 	double r, r1, r2;
 
@@ -21,22 +22,22 @@ static inline void randheat_Su2(double const k, double *out)
 		// kennedy pendleton
 		while(1)
 			{
-			r = casuale();
-			r1 = casuale();
+			r = casuale(rng);
+			r1 = casuale(rng);
 
 			r = -log(r);
 			r /= k;
 			r1 = -log(r1);
 			r1 /= k;
 
-			r2 = casuale();
+			r2 = casuale(rng);
 			double c = cos(r2 * PI2);
 			c *= c;
 
 			r *= c;
 			r1 += r;
 
-			double const r3 = casuale();
+			double const r3 = casuale(rng);
 			r = 1 - r1 * 0.5 - r3 * r3;
 			if(r > 0)
 				{
@@ -52,11 +53,11 @@ static inline void randheat_Su2(double const k, double *out)
 		while(1)
 			{
 			do
-				r = casuale();
+				r = casuale(rng);
 			while(r < r1);
 			r = 1.0 + log(r) / k;
 
-			r2 = casuale();
+			r2 = casuale(rng);
 			if(r * r < r2 * (2.0 - r2))
 				{
 				*out = r;
@@ -68,7 +69,8 @@ static inline void randheat_Su2(double const k, double *out)
 
 
 // heatbath
-static inline void single_heatbath_Su2(Su2 *link, Su2 const *const staple, GParam const *const param)
+ACC_ROUTINE_SEQ
+static inline void single_heatbath_Su2(Su2 *link, Su2 const *const staple, GParam const *const param, rng_t *rng)
 	{
 	Su2 matrix1, matrix2;
 
@@ -82,21 +84,21 @@ static inline void single_heatbath_Su2(Su2 *link, Su2 const *const staple, GPara
 		equal_dag_Su2(&matrix2, &matrix1);       // matrix2 = matrix1^{dag}
 
 		double p0;
-		randheat_Su2(p, &p0);
+		randheat_Su2(p, &p0, rng);
 
-		rand_matrix_p0_Su2(p0, link);
+		rand_matrix_p0_Su2(p0, link, rng);
 		times_equal_Su2(link, &matrix2); // link *= matrix2
 		}
 	else
 		{
-		rand_matrix_Su2(link);
+		rand_matrix_Su2(link, rng);
 		}
 	}
 
 
 // overrelaxation
 ACC_ROUTINE_SEQ
-static inline void single_overrelaxation_Su2(Su2 *link, Su2 const *const staple)
+static inline void single_overrelaxation_Su2(Su2 *link, Su2 const *const staple, rng_t *rng)
 	{
 	Su2 matrix1, matrix2;
 
@@ -113,7 +115,7 @@ static inline void single_overrelaxation_Su2(Su2 *link, Su2 const *const staple)
 		}
 	else
 		{
-		rand_matrix_Su2(link);
+		rand_matrix_Su2(link, rng);
 		}
 	}
 

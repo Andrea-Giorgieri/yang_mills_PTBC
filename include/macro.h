@@ -2,6 +2,7 @@
 #define MACRO_H
 
 #include "../config.h"
+#include "accel.h"
 
 // to activate posix_memalign in stdlib.h (needs to be defined before stdlib is included)
 #define _POSIX_C_SOURCE 200809L
@@ -15,8 +16,10 @@
 static const double PI = 3.141592653589793238462643383279502884197169399375105820974944;
 static const double PI2 = 6.283185307179586476925286766559005768394338798750211641949889;
 static const double HALF_PI = 1.570796326794896619231321691639751442098584699687552910487472;
-static const double PI2_N = PI2 / (double)NCOLOR;
-static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
+static const double PI2_N = 6.283185307179586476925286766559005768394338798750211641949889 / (double)NCOLOR;
+
+// maximum power of Polyakov loops
+#define MAX_POLY_PWR (NCOLOR / 2 + 1)
 
 
 // function to access matrix elements
@@ -50,6 +53,20 @@ static const int MAX_POLY_PWR = (int)(NCOLOR / 2 + 1);
     } while (0)
 #else
 #define ASSERT(cond, fmt, ...) ((void)0)
+#endif
+
+// function for debugging checks inside functions marked with ACC_ROUTINE_SEQ (callable on GPU):
+// on GPU fprintf and abort are not available, so a failed check is only printed and execution continues
+#if defined(DEBUG) && defined(OPENACC_MODE)
+#define ASSERT_DEV(cond, ...)                                 \
+    do {                                                      \
+        if (!(cond)) {                                        \
+            printf("ASSERTION FAILED (%s:%d): %s\n",          \
+                   __FILE__, __LINE__, #cond);                \
+        }                                                     \
+    } while (0)
+#else
+#define ASSERT_DEV(cond, ...) ASSERT(cond, __VA_ARGS__)
 #endif
 
 // function for probing numeric variables (cast as double)

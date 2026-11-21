@@ -22,6 +22,7 @@
 
 
 // return 1/Nc*ReTr[P_ji(r)] with P_ji(r) the plaquette in position r with positive directions (j,i)
+ACC_ROUTINE_SEQ
 double plaquettep(Gauge_Conf const *const GC,
                   Geometry const *const geo,
                   GParam const *const param,
@@ -30,9 +31,9 @@ double plaquettep(Gauge_Conf const *const GC,
                   int j)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
 	(void) param;
 	#endif
@@ -106,6 +107,7 @@ double complex plaquettep_complex(Gauge_Conf const *const GC,
 
 
 // compute P_ij(r), the plaquette in position r with positive directions (i,j), and save it in matrix
+ACC_ROUTINE_SEQ
 void plaquettep_matrix(Gauge_Conf const *const GC,
                        Geometry const *const geo,
                        GParam const *const param,
@@ -115,9 +117,9 @@ void plaquettep_matrix(Gauge_Conf const *const GC,
                        GAUGE_GROUP *matrix)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
 	(void) param;
 	#endif
@@ -189,6 +191,7 @@ void plaquette(Gauge_Conf const *const GC,
 
 
 // compute C_ij(r), the four-leaf clover in position r with positive directions (i,j), and save it in M
+ACC_ROUTINE_SEQ
 void clover(Gauge_Conf const *const GC,
             Geometry const *const geo,
             GParam const *const param,
@@ -198,9 +201,9 @@ void clover(Gauge_Conf const *const GC,
             GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-	ASSERT(j < STDIM, "j too large: %d >= %d", j, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(j < STDIM, "j too large: %d >= %d", j, STDIM);
 	#else
 	(void) param;
 	#endif
@@ -274,6 +277,7 @@ void clover(Gauge_Conf const *const GC,
 
 // compute the clover discretization of
 // sum_{\mu\nu} Tr(F_{\mu\nu}F_{\mu\nu})/2
+ACC_ROUTINE_SEQ
 double loc_clover_energy(Gauge_Conf const *const GC,
                          Geometry const *const geo,
                          GParam const *const param,
@@ -576,6 +580,7 @@ void polyakov_adj(Gauge_Conf const *const GC,
 
 // compute the local topological charge at point r
 // see readme for more details
+ACC_ROUTINE_SEQ
 double loc_topcharge(Gauge_Conf const *const GC,
                      Geometry const *const geo,
                      GParam const *const param,

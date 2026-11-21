@@ -55,7 +55,8 @@ gauge_conf = ./include/gauge_conf.h \
 geometry = ./include/geometry.h \
            ./lib/geometry.c
 
-gparam = ./include/gparam.h \
+gparam = ./include/accel.h \
+         ./include/gparam.h \
          ./lib/gparam.c
 
 random = ./include/myrngparam.h \
@@ -298,6 +299,7 @@ yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
                           $(u1)
 
 if NVC_COMPILATION
+# nvc (NVIDIA HPC SDK) does not accept all the gcc warning flags (-Mvect=nofuse is appended to CFLAGS by configure)
 AM_CFLAGS = -c99 -Minform=warn @OPENMP_CFLAGS@ @OPENACC_CFLAGS@
 else
 AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@ @OPENACC_CFLAGS@

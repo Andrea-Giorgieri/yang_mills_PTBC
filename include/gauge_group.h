@@ -35,21 +35,25 @@
 
 // basic operations
 
+ACC_ROUTINE_SEQ
 static inline void one(GAUGE_GROUP *A)
 	{
 	GAUGE_IMPL(one)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void zero(GAUGE_GROUP *A)
 	{
 	GAUGE_IMPL(zero)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void equal(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(equal)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(equal_dag)(A, B);
@@ -58,26 +62,31 @@ static inline void equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 
 // additions and subtractions
 
+ACC_ROUTINE_SEQ
 static inline void plus_equal(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(plus_equal)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void plus_equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(plus_equal_dag)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void minus_equal(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(minus_equal)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void minus_equal_times_real(GAUGE_GROUP *A, GAUGE_GROUP const *const B, double const r)
 	{
 	GAUGE_IMPL(minus_equal_times_real)(A, B, r);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void minus_equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(minus_equal_dag)(A, B);
@@ -86,41 +95,49 @@ static inline void minus_equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 
 // multiplications
 
+ACC_ROUTINE_SEQ
 static inline void times_equal_real(GAUGE_GROUP *A,	double const r)
 	{
 	GAUGE_IMPL(times_equal_real)(A, r);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_equal_complex(GAUGE_GROUP *A, double complex const r)
 	{
 	GAUGE_IMPL(times_equal_complex)(A, r);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_equal(GAUGE_GROUP *A, GAUGE_GROUP const *const B)
 	{
 	GAUGE_IMPL(times_equal)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_equal_dag(GAUGE_GROUP *A, GAUGE_GROUP const *B)
 	{
 	GAUGE_IMPL(times_equal_dag)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(times)(A, B, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_dag1(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(times_dag1)(A, B, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_dag2(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(times_dag2)(A, B, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void times_dag12(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(times_dag12)(A, B, C);
@@ -129,21 +146,25 @@ static inline void times_dag12(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE
 
 // linear combinations
 
+ACC_ROUTINE_SEQ
 static inline void lin_comb(GAUGE_GROUP *A, double const b,	GAUGE_GROUP const *const B,	double const c,	GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(lin_comb)(A, b, B, c, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag1(GAUGE_GROUP *A, double const b, GAUGE_GROUP const *const B, double const c, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(lin_comb_dag1)(A, b, B, c, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag2(GAUGE_GROUP *A, double const b, GAUGE_GROUP const *const B, double const c, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(lin_comb_dag2)(A, b, B, c, C);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag12(GAUGE_GROUP *A, double const b, GAUGE_GROUP const *const B, double const c, GAUGE_GROUP const *const C)
 	{
 	GAUGE_IMPL(lin_comb_dag12)(A, b, B, c, C);
@@ -160,21 +181,25 @@ static inline void rand_matrix(GAUGE_GROUP *A)
 
 // norms and traces
 
+ACC_ROUTINE_SEQ
 static inline double norm(GAUGE_GROUP const *const A)
 	{
 	return GAUGE_IMPL(norm)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline double relative_dist(GAUGE_GROUP const *const A, GAUGE_GROUP const *const B)
 	{
 	return GAUGE_IMPL(relative_dist)(A, B);
 	}
 
+ACC_ROUTINE_SEQ
 static inline double retr(GAUGE_GROUP const *const A)
 	{
 	return GAUGE_IMPL(retr)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline double imtr(GAUGE_GROUP const *const A)
 	{
 	return GAUGE_IMPL(imtr)(A);
@@ -183,16 +208,19 @@ static inline double imtr(GAUGE_GROUP const *const A)
 
 // unitarization and exponentiation
 
+ACC_ROUTINE_SEQ
 static inline void unitarize(GAUGE_GROUP *A)
 	{
 	GAUGE_IMPL(unitarize)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void ta(GAUGE_GROUP *A)
 	{
 	GAUGE_IMPL(ta)(A);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void taexp(GAUGE_GROUP *A)
 	{
 	GAUGE_IMPL(taexp)(A);
@@ -234,11 +262,13 @@ static inline void single_heatbath(GAUGE_GROUP *link, GAUGE_GROUP const *const s
 	GAUGE_IMPL(single_heatbath)(link, staple, param);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void single_overrelaxation(GAUGE_GROUP *link, GAUGE_GROUP const *const staple)
 	{
 	GAUGE_IMPL(single_overrelaxation)(link, staple);
 	}
 
+ACC_ROUTINE_SEQ
 static inline void cool(GAUGE_GROUP *link, GAUGE_GROUP const *const staple)
 	{
 	GAUGE_IMPL(cool)(link, staple);

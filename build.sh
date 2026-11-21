@@ -9,22 +9,22 @@ set -euo pipefail
 NCOLORS=3     # Number of colors
 STDIM=4       # Spacetime dimension
 
-NTHREADS=112  # Number of OpenMP threads (if OpenMP is enabled)
+NTHREADS=12  # Number of OpenMP threads (if OpenMP is enabled)
 NLEVELS=1     # Number of levels in multilevel algorithm
 
 # 1=yes, 0=no
 ENABLE_THETA=0         # Add theta term to the action
 ENABLE_MULTICAN=0      # Add multicanonical potential to the action
 ENABLE_MEAS_REPLICA=0  # Perform measurements on all PTBC replica
-ENABLE_OPENMP=1        # CPU multithreading with OpenMP
-ENABLE_OPENACC=0       # GPU offloading with OpenACC (incompatible with OpenMP)
+ENABLE_OPENMP=0        # CPU multithreading with OpenMP
+ENABLE_OPENACC=1       # GPU offloading with OpenACC (incompatible with OpenMP)
 ENABLE_DEBUG=0         # Perform extra sanity checks and debugging tests
 
 # Available configurations: gcc, nvhpc, leonardo, leonardo_gpu, galileo100, marconi
-COMPILE_CONFIG=leonardo
+COMPILE_CONFIG=nvhpc
 COMPILE_TARGETS=(all)
 
-BUILD_JOBS=112  # Number of parallel compilation jobs
+BUILD_JOBS=12  # Number of parallel compilation jobs
 BUILD_CLEAN=1   # Completely clean build (1=yes, 0=no)
 
 # ========================================================================

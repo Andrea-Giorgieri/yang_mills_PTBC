@@ -20,6 +20,7 @@ typedef struct U1
 // basic operations
 
 // A=vec
+ACC_ROUTINE_SEQ
 static inline void init_U1(U1 *restrict A, double complex const vec)
 	{
 	#ifdef __INTEL_COMPILER
@@ -31,6 +32,7 @@ static inline void init_U1(U1 *restrict A, double complex const vec)
 
 
 // A=1
+ACC_ROUTINE_SEQ
 static inline void one_U1(U1 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -42,6 +44,7 @@ static inline void one_U1(U1 *restrict A)
 
 
 // A=0
+ACC_ROUTINE_SEQ
 static inline void zero_U1(U1 *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -53,10 +56,11 @@ static inline void zero_U1(U1 *restrict A)
 
 
 // A=B
+ACC_ROUTINE_SEQ
 static inline void equal_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -69,10 +73,11 @@ static inline void equal_U1(U1 *restrict A, U1 const *const restrict B)
 
 
 // A=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -87,10 +92,11 @@ static inline void equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 // additions and subtractions
 
 // A+=B
+ACC_ROUTINE_SEQ
 static inline void plus_equal_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -103,10 +109,11 @@ static inline void plus_equal_U1(U1 *restrict A, U1 const *const restrict B)
 
 
 // A+=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void plus_equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -119,10 +126,11 @@ static inline void plus_equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 
 
 // A-=B
+ACC_ROUTINE_SEQ
 static inline void minus_equal_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -135,10 +143,11 @@ static inline void minus_equal_U1(U1 *restrict A, U1 const *const restrict B)
 
 
 // A-=(r*B)
+ACC_ROUTINE_SEQ
 static inline void minus_equal_times_real_U1(U1 *restrict A, U1 const *const restrict B, double const r)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -151,10 +160,11 @@ static inline void minus_equal_times_real_U1(U1 *restrict A, U1 const *const res
 
 
 // A-=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void minus_equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -169,6 +179,7 @@ static inline void minus_equal_dag_U1(U1 *restrict A, U1 const *const restrict B
 // multiplications
 
 // A*=r
+ACC_ROUTINE_SEQ
 static inline void times_equal_real_U1(U1 *restrict A, double const r)
 	{
 	#ifdef __INTEL_COMPILER
@@ -180,6 +191,7 @@ static inline void times_equal_real_U1(U1 *restrict A, double const r)
 
 
 // A*=r
+ACC_ROUTINE_SEQ
 static inline void times_equal_complex_U1(U1 *restrict A, double complex const r)
 	{
 	#ifdef __INTEL_COMPILER
@@ -191,10 +203,11 @@ static inline void times_equal_complex_U1(U1 *restrict A, double complex const r
 
 
 // A*=B
+ACC_ROUTINE_SEQ
 static inline void times_equal_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -207,10 +220,11 @@ static inline void times_equal_U1(U1 *restrict A, U1 const *const restrict B)
 
 
 // A*=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_equal_dag_U1(U1 *restrict A, U1 const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -223,14 +237,15 @@ static inline void times_equal_dag_U1(U1 *restrict A, U1 const *const restrict B
 
 
 // A=B*C
+ACC_ROUTINE_SEQ
 static inline void times_U1(U1 *restrict A,
                             U1 const *const restrict B,
                             U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -244,14 +259,15 @@ static inline void times_U1(U1 *restrict A,
 
 
 // A=B^{dag}*C
+ACC_ROUTINE_SEQ
 static inline void times_dag1_U1(U1 *restrict A,
                                  U1 const *const restrict B,
                                  U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -265,14 +281,15 @@ static inline void times_dag1_U1(U1 *restrict A,
 
 
 // A=B*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_dag2_U1(U1 *restrict A,
                                  U1 const *const restrict B,
                                  U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -286,14 +303,15 @@ static inline void times_dag2_U1(U1 *restrict A,
 
 
 // A=B^{dag}*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_dag12_U1(U1 *restrict A,
                                   U1 const *const restrict B,
                                   U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -309,14 +327,15 @@ static inline void times_dag12_U1(U1 *restrict A,
 // linear combinations
 
 // A=b*B+c*C
+ACC_ROUTINE_SEQ
 static inline void lin_comb_U1(U1 *restrict A,
                                double const b, U1 const *const restrict B,
                                double const c, U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -330,14 +349,15 @@ static inline void lin_comb_U1(U1 *restrict A,
 
 
 // A=b*B^{dag}+c*C
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag1_U1(U1 *restrict A,
                                     double const b, U1 const *const restrict B,
                                     double const c, U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -351,14 +371,15 @@ static inline void lin_comb_dag1_U1(U1 *restrict A,
 
 
 // A=b*B+c*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag2_U1(U1 *restrict A,
                                     double const b, U1 const *const restrict B,
                                     double const c, U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -372,14 +393,15 @@ static inline void lin_comb_dag2_U1(U1 *restrict A,
 
 
 // A=b*B^{dag}+c*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag12_U1(U1 *restrict A,
                                      double const b, U1 const *const restrict B,
                                      double const c, U1 const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -405,6 +427,7 @@ static inline void rand_matrix_U1(U1 *restrict A)
 // norms and traces
 
 // l2 norm
+ACC_ROUTINE_SEQ
 static inline double norm_U1(U1 const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -416,6 +439,7 @@ static inline double norm_U1(U1 const *const restrict A)
 
 
 // ReTr[A]/N
+ACC_ROUTINE_SEQ
 static inline double retr_U1(U1 const *const restrict A)
 	{
 	return creal(A->comp);
@@ -423,6 +447,7 @@ static inline double retr_U1(U1 const *const restrict A)
 
 
 // ReTr[A]/N
+ACC_ROUTINE_SEQ
 static inline double imtr_U1(U1 const *const restrict A)
 	{
 	return cimag(A->comp);
@@ -430,6 +455,7 @@ static inline double imtr_U1(U1 const *const restrict A)
 
 
 // norm(A - B) / (1/2 * \sqrt{norm(A - 1)**2 + norm(B - 1)**2})
+ACC_ROUTINE_SEQ
 static inline double relative_dist_U1(U1 const *const restrict A, U1 const *const restrict B)
 	{
 	#ifdef __INTEL_COMPILER
@@ -452,6 +478,7 @@ static inline double relative_dist_U1(U1 const *const restrict A, U1 const *cons
 // unitarization and exponentiation
 
 // unitarize A
+ACC_ROUTINE_SEQ
 static inline void unitarize_U1(U1 *restrict A)
 	{
 	double const p = norm_U1(A);
@@ -460,6 +487,7 @@ static inline void unitarize_U1(U1 *restrict A)
 
 
 // antihermitian part (NOT TRACELESS!)
+ACC_ROUTINE_SEQ
 static inline void ta_U1(U1 *restrict A)
 	{
 	A->comp = cimag(A->comp);
@@ -467,6 +495,7 @@ static inline void ta_U1(U1 *restrict A)
 
 
 // exponential of the antihermitian part (NOT TRACELESS!)
+ACC_ROUTINE_SEQ
 static inline void taexp_U1(U1 *restrict A)
 	{
 	double const angle = cimag(A->comp);

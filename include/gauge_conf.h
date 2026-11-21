@@ -311,6 +311,7 @@ void compute_md5sum_tube_conn_stuff(char *res,
 
 
 // in gauge_conf_meas.c
+ACC_ROUTINE_SEQ
 double plaquettep(Gauge_Conf const *const GC,
                   Geometry const *const geo,
                   GParam const *const param,
@@ -325,6 +326,7 @@ double complex plaquettep_complex(Gauge_Conf const *const GC,
                                   int i,
                                   int j);
 
+ACC_ROUTINE_SEQ
 void plaquettep_matrix(Gauge_Conf const *const GC,
                        Geometry const *const geo,
                        GParam const *const param,
@@ -339,6 +341,7 @@ void plaquette(Gauge_Conf const *const GC,
                double *plaqs,
                double *plaqt);
 
+ACC_ROUTINE_SEQ
 void clover(Gauge_Conf const *const GC,
             Geometry const *const geo,
             GParam const *const param,
@@ -347,6 +350,7 @@ void clover(Gauge_Conf const *const GC,
             int j,
             GAUGE_GROUP *M);
 
+ACC_ROUTINE_SEQ
 double loc_clover_energy(Gauge_Conf const *const GC,
                          Geometry const *const geo,
                          GParam const *const param,
@@ -406,6 +410,7 @@ void polyakov_adj(Gauge_Conf const *const GC,
                   double *impoly);
 
 
+ACC_ROUTINE_SEQ
 double loc_topcharge(Gauge_Conf const *const GC,
                      Geometry const *const geo,
                      GParam const *const param,
@@ -644,6 +649,7 @@ void perform_multilevel_long_update_zero(Gauge_Conf *GC,
                                          Multilevel_Obs const ml_obs);
 
 // in gauge_conf_upd.c
+ACC_ROUTINE_SEQ
 void calcstaples_wilson(Gauge_Conf const *const GC,
                         Geometry const *const geo,
                         GParam const *const gparam,
@@ -658,6 +664,7 @@ void calcstaples_tracedef(Gauge_Conf const *const GC,
                           int i,
                           GAUGE_GROUP *M);
 
+ACC_ROUTINE_SEQ
 void calcstaples_with_topo(Gauge_Conf const *const GC,
                            Geometry const *const geo,
                            GParam const *const param,
@@ -681,6 +688,7 @@ void compute_clovers_replica_rect(Gauge_Conf const *const GC,
                                   int dir,
                                   Rectangle const *const clover_rectangle);
 
+ACC_ROUTINE_SEQ
 void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
                                     Geometry const *const geo,
                                     GParam const *const param,
@@ -688,6 +696,7 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
                                     int i,
                                     GAUGE_GROUP *M);
 
+ACC_ROUTINE_SEQ
 void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
                                        Geometry const *const geo,
                                        GParam const *const param,
@@ -702,6 +711,7 @@ void heatbath(Gauge_Conf *const GC,
               long r,
               int i);
 
+ACC_ROUTINE_SEQ
 void overrelaxation(Gauge_Conf *const GC,
                     Geometry const *const geo,
                     GParam const *const param,
@@ -730,6 +740,7 @@ void heatbath_with_defect(Gauge_Conf *const GC,
                           long r,
                           int i);
 
+ACC_ROUTINE_SEQ
 void overrelaxation_with_defect(Gauge_Conf *const GC,
                                 Geometry const *const geo,
                                 GParam const *const param,
@@ -875,6 +886,7 @@ void swap(Gauge_Conf *const GC,
           Rectangle const *const swap_rectangle,
           Acc_Utils *acc_counters);
 
+ACC_ROUTINE_SEQ
 double delta_action_swap(Gauge_Conf const *const GC,
                          Geometry const *const geo,
                          GParam const *const param,
@@ -945,6 +957,7 @@ void print_tuning_stp(long,
                       Tune_Utils const *const,
                       GParam const *const);
 
+ACC_ROUTINE_SEQ
 double compute_topo_potential(int const,
                               double,
                               GParam const *const);
@@ -969,11 +982,13 @@ double topcharge_agf_multicanonic(Gauge_Conf *const,
                                   Meas_Utils *);
 
 
+ACC_ROUTINE_SEQ
 double metropolis_prob_multicanonic(int const,
                                     double const,
                                     double const,
                                     GParam const *const);
 
+ACC_ROUTINE_SEQ
 double delta_topo_potential_swap(Gauge_Conf const *const,
                                  int const,
                                  int const,
@@ -998,18 +1013,21 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const,
 
 // old implementation of multicanonic
 
+ACC_ROUTINE_SEQ
 void compute_single_clover_insertion(GAUGE_GROUP *,
                                      Gauge_Conf const *const,
                                      Geometry const *const,
                                      GParam const *const,
                                      long, int, int);
 
+ACC_ROUTINE_SEQ
 void compute_topostaple_alone(Gauge_Conf const *const,
                               Geometry const *const,
                               GParam const *const,
                               long, int,
                               GAUGE_GROUP *);
 
+ACC_ROUTINE_SEQ
 double delta_Q_upd(Gauge_Conf const *const,
                    Geometry const *const,
                    GParam const *const,

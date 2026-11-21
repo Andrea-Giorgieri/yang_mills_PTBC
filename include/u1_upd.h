@@ -46,6 +46,7 @@ static inline void single_heatbath_U1(U1 *link, U1 const *const staple, GParam c
 
 
 // overrelaxation
+ACC_ROUTINE_SEQ
 static inline void single_overrelaxation_U1(U1 *link, U1 const *const staple)
 	{
 	U1 newlink, helper;
@@ -70,6 +71,7 @@ static inline void single_overrelaxation_U1(U1 *link, U1 const *const staple)
 
 
 // cooling
+ACC_ROUTINE_SEQ
 static inline void cool_U1(U1 *link, U1 const *const staple)
 	{
 	U1 aux;

@@ -124,6 +124,7 @@ static inline void single_heatbath_aux_SuN(SuN *link, SuN const *const staple, d
 
 // Pseudo-overrelaxation by Cabibbo-Marinari (Phys. Lett. B 119, p.387 (1982)) in the implementation by
 // Kennedy, Pendleton (Phys. Lett. B 156, p.393 (1985))
+ACC_ROUTINE_SEQ
 static inline void single_overrelaxation_SuN(SuN *link, SuN const *const staple)
 	{
 	SuN prod;

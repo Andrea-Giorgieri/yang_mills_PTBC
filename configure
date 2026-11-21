@@ -652,6 +652,10 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+NVC_COMPILATION_FALSE
+NVC_COMPILATION_TRUE
+OPENACC_COMPILATION_FALSE
+OPENACC_COMPILATION_TRUE
 CRYPTO_COMPILATION_FALSE
 CRYPTO_COMPILATION_TRUE
 ST_dim
@@ -659,6 +663,7 @@ Num_threads
 Num_levels
 N_c
 OPENMP_CFLAGS
+OPENACC_CFLAGS
 am__fastdepCC_FALSE
 am__fastdepCC_TRUE
 CCDEPMODE
@@ -751,6 +756,7 @@ enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
 enable_use_openmp
+enable_use_openacc
 enable_use_theta
 enable_use_multicanonical
 enable_meas_replica
@@ -768,7 +774,8 @@ CPPFLAGS
 N_c
 Num_levels
 Num_threads
-ST_dim'
+ST_dim
+OPENACC_CFLAGS'
 
 
 # Initialize some variables set by options.
@@ -1399,6 +1406,8 @@ Optional Features:
   --disable-dependency-tracking
                           speeds up one-time build
   --enable-use-openmp     to enable the use of OpenMP
+  --enable-use-openacc    to enable GPU offloading with OpenACC (incompatible
+                          with --enable-use-openmp)
   --enable-use-theta      to enable the use of an imaginary theta term
   --enable-use-multicanonical
                           to enable the use of the multicanonical algorithm
@@ -1419,6 +1428,9 @@ Some influential environment variables:
   Num_levels  the number of levels in multilevel (default 1)
   Num_threads number of threads to be used in OpenMP (default 1)
   ST_dim      spacetime dimensionality (default 4)
+  OPENACC_CFLAGS
+              flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc
+              otherwise)
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -4737,6 +4749,15 @@ else $as_nop
 fi
 
 
+# Check whether --enable-use-openacc was given.
+if test ${enable_use_openacc+y}
+then :
+  enableval=$enable_use_openacc; use_openacc=${enableval}
+else $as_nop
+  use_openacc=no
+fi
+
+
 # Check whether --enable-use-theta was given.
 if test ${enable_use_theta+y}
 then :
@@ -4776,6 +4797,93 @@ fi
 
 
 ### FURTHER CHECKS
+
+# check whether the compiler is NVIDIA HPC SDK (nvc), which needs different warning flags
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether the C compiler is NVIDIA nvc" >&5
+printf %s "checking whether the C compiler is NVIDIA nvc... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#ifndef __NVCOMPILER
+#error "not nvc"
+#endif
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  is_nvc=yes
+else $as_nop
+  is_nvc=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: ${is_nvc}" >&5
+printf "%s\n" "${is_nvc}" >&6; }
+
+# nvc (tested 26.1, -O2/-O3, without -acc) wrongly fuses the element loops of consecutive inlined
+# restrict-qualified matrix functions acting on the same matrix (e.g. in clover()), giving wrong results.
+# Loop fusion is disabled; the flag is appended to CFLAGS because it must follow -O2/-O3 to be effective.
+if test x${is_nvc} = xyes; then
+  CFLAGS="${CFLAGS} -Mvect=nofuse"
+fi
+
+if test x${use_openacc} = xyes; then
+  if test x${use_openmp} = xyes; then
+    as_fn_error $? "--enable-use-openacc and --enable-use-openmp cannot be used together" "$LINENO" 5
+  fi
+
+  # default OpenACC flags, if not set by the user
+  if test "x${OPENACC_CFLAGS}" = x; then
+    if test x${is_nvc} = xyes; then
+      OPENACC_CFLAGS='-acc=gpu'
+    else
+      OPENACC_CFLAGS='-fopenacc'
+    fi
+  fi
+
+  # check that the compiler accepts the OpenACC flags and provides openacc.h
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ${CC} supports OpenACC with flags ${OPENACC_CFLAGS}" >&5
+printf %s "checking whether ${CC} supports OpenACC with flags ${OPENACC_CFLAGS}... " >&6; }
+  save_CFLAGS=${CFLAGS}
+  CFLAGS="${CFLAGS} ${OPENACC_CFLAGS}"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <openacc.h>
+#ifndef _OPENACC
+#error "_OPENACC not defined"
+#endif
+
+int
+main (void)
+{
+return acc_get_num_devices(acc_device_nvidia) < 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+     as_fn_error $? "the compiler ${CC} does not support OpenACC with flags ${OPENACC_CFLAGS}" "$LINENO" 5
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+  CFLAGS=${save_CFLAGS}
+else
+  OPENACC_CFLAGS=''
+fi
+
 
 if test x${use_openmp} = xyes; then
   #check for openmp options
@@ -4886,6 +4994,8 @@ fi
 
 
 
+
+
 ### DEFINITIONS
 
 if test x${has_md5}x${has_crypto} = xyesxyes; then
@@ -4897,6 +5007,12 @@ fi
 if test x${use_openmp} = xyes; then
 
 printf "%s\n" "#define OPENMP_MODE /**/" >>confdefs.h
+
+fi
+
+if test x${use_openacc} = xyes; then
+
+printf "%s\n" "#define OPENACC_MODE /**/" >>confdefs.h
 
 fi
 
@@ -5022,6 +5138,24 @@ fi
 else
   CRYPTO_COMPILATION_TRUE='#'
   CRYPTO_COMPILATION_FALSE=
+fi
+
+
+ if test x${use_openacc} = xyes; then
+  OPENACC_COMPILATION_TRUE=
+  OPENACC_COMPILATION_FALSE='#'
+else
+  OPENACC_COMPILATION_TRUE='#'
+  OPENACC_COMPILATION_FALSE=
+fi
+
+
+ if test x${is_nvc} = xyes; then
+  NVC_COMPILATION_TRUE=
+  NVC_COMPILATION_FALSE='#'
+else
+  NVC_COMPILATION_TRUE='#'
+  NVC_COMPILATION_FALSE=
 fi
 
 
@@ -5164,6 +5298,14 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${CRYPTO_COMPILATION_TRUE}" && test -z "${CRYPTO_COMPILATION_FALSE}"; then
   as_fn_error $? "conditional \"CRYPTO_COMPILATION\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${OPENACC_COMPILATION_TRUE}" && test -z "${OPENACC_COMPILATION_FALSE}"; then
+  as_fn_error $? "conditional \"OPENACC_COMPILATION\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${NVC_COMPILATION_TRUE}" && test -z "${NVC_COMPILATION_FALSE}"; then
+  as_fn_error $? "conditional \"NVC_COMPILATION\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 

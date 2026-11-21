@@ -121,6 +121,11 @@ void init_geometry(Geometry *geo, GParam const *const param)
 		for(int i = 0; i < STDIM - 1; i++)
 			geo->d_orth_dir[mu][i] = orthogonal_dir(mu, i);
 
+	// initialize device copies of the global lookup tables (TODO multi-GPU: repeat on every device used)
+	#if defined(OPENACC_MODE) && STDIM == 4
+	#pragma acc update device(g_signed_ord_orth_dir, g_indep_perm_dir)
+	#endif
+
 	#ifdef DEBUG
 	test_geometry(geo, param);
 	#endif
@@ -222,6 +227,7 @@ void test_geometry(Geometry const *const geo, GParam const *const param)
 // functions for switching between indexing methods inside geometry.c
 
 // cartesian coordinates -> lexicographic index
+ACC_ROUTINE_SEQ
 long cart_to_lex(int const *const cartcoord, GParam const *const param)
 	{
 	long res = 0;                  // res = cartcoord[0]
@@ -237,6 +243,7 @@ long cart_to_lex(int const *const cartcoord, GParam const *const param)
 
 
 // lexicographic index -> cartesian coordinates
+ACC_ROUTINE_SEQ
 void lex_to_cart(int *cartcoord, long lex, GParam const *const param)
 	{
 	long aux[STDIM];
@@ -256,6 +263,7 @@ void lex_to_cart(int *cartcoord, long lex, GParam const *const param)
 
 
 // cartesian coordinates -> lexicographic eo index
+ACC_ROUTINE_SEQ
 long cart_to_lexeo(int const *const cartcoord, GParam const *const param)
 	{
 	long const lex = cart_to_lex(cartcoord, param);
@@ -274,6 +282,7 @@ long cart_to_lexeo(int const *const cartcoord, GParam const *const param)
 
 
 // lexicographic eo index -> cartesian coordinates
+ACC_ROUTINE_SEQ
 void lexeo_to_cart(int *cartcoord, long lexeo, GParam const *const param)
 	{
 	long lex;
@@ -322,6 +331,7 @@ void lexeo_to_cart(int *cartcoord, long lexeo, GParam const *const param)
 
 
 //	lexicographic index -> lexicographic eo index
+ACC_ROUTINE_SEQ
 long lex_to_lexeo(long lex, GParam const *const param)
 	{
 	int cartcoord[STDIM];
@@ -333,6 +343,7 @@ long lex_to_lexeo(long lex, GParam const *const param)
 
 
 //	lexicographic eo index -> lexicographic index
+ACC_ROUTINE_SEQ
 long lexeo_to_lex(long lexeo, GParam const *const param)
 	{
 	int cartcoord[STDIM];
@@ -344,6 +355,7 @@ long lexeo_to_lex(long lexeo, GParam const *const param)
 
 
 // spatial cartesian coordinates -> spatial lexicographic index
+ACC_ROUTINE_SEQ
 long cartsp_to_lexsp(int const *const ccsp, GParam const *const param)
 	{
 	// the index for the spatial cartesian coord. goes from 0 to STDIM-2 hence ccsp[STDIM-1]
@@ -363,6 +375,7 @@ long cartsp_to_lexsp(int const *const ccsp, GParam const *const param)
 
 
 // spatial cartesian coordinates -> spatial lexicographic index
+ACC_ROUTINE_SEQ
 long cartsp_to_lexsp_mu(int const *const ccsp, int mu, GParam const *const param)
 	{
 	// the index for the spatial cartesian coord. goes from 0 to STDIM-2 hence ccsp[STDIM-1]
@@ -389,6 +402,7 @@ long cartsp_to_lexsp_mu(int const *const ccsp, int mu, GParam const *const param
 
 
 // spatial lexicographic index -> spatial cartesian coordinates
+ACC_ROUTINE_SEQ
 void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const *const param)
 	{
 	// the index for the spatial cartesian coord. goes from 0 to STDIM-2 hence ccsp[STDIM-1]
@@ -414,6 +428,7 @@ void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const *const param)
 
 
 // spatial cartesian coordinates -> spatial lexicographic eo index
+ACC_ROUTINE_SEQ
 long cartsp_to_lexeosp(int const *const ccsp, GParam const *const param)
 	{
 	long const lexsp = cartsp_to_lexsp(ccsp, param);
@@ -433,6 +448,7 @@ long cartsp_to_lexeosp(int const *const ccsp, GParam const *const param)
 
 
 // spatial cartesian coordinates -> spatial lexicographic eo index
+ACC_ROUTINE_SEQ
 long cartsp_to_lexeosp_mu(int const *const ccsp, int mu, GParam const *const param)
 	{
 	long const lexsp = cartsp_to_lexsp_mu(ccsp, mu, param);
@@ -452,6 +468,7 @@ long cartsp_to_lexeosp_mu(int const *const ccsp, int mu, GParam const *const par
 
 
 // spatial lexicographic eo index -> spatial cartesian coordinates
+ACC_ROUTINE_SEQ
 void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const *const param)
 	{
 	long lexsp;
@@ -498,6 +515,7 @@ void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const *const param)
 
 
 // spatial lexicographic index -> spatial lexicographic eo index
+ACC_ROUTINE_SEQ
 long lexsp_to_lexeosp(long lexsp, GParam const *const param)
 	{
 	int ccsp[STDIM];
@@ -509,6 +527,7 @@ long lexsp_to_lexeosp(long lexsp, GParam const *const param)
 
 
 //	spatial lexicographic eo index -> spatial lexicographic index
+ACC_ROUTINE_SEQ
 long lexeosp_to_lexsp(long lexeosp, GParam const *const param)
 	{
 	int ccsp[STDIM];
@@ -520,6 +539,7 @@ long lexeosp_to_lexsp(long lexeosp, GParam const *const param)
 
 
 // lexicographic eo spatial and time -> lexicographic eo index
+ACC_ROUTINE_SEQ
 long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const *const param)
 	{
 	int cc[STDIM];
@@ -532,6 +552,7 @@ long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const *const param)
 
 
 // lexicographic eo index -> lexicographic eo spatial and time
+ACC_ROUTINE_SEQ
 void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const *const param)
 	{
 	int cc[STDIM], ccsp[STDIM - 1];
@@ -549,6 +570,7 @@ void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const *con
 	}
 
 
+ACC_ROUTINE_SEQ
 void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const *const param)
 	{
 	int cc[STDIM], ccsp[STDIM - 1];
@@ -592,6 +614,7 @@ Updates are parallelized oly in the largest even sublattice.
 */
 
 // volume of the shell with given coordinates
+ACC_ROUTINE_SEQ
 static inline long shell_volume(int const *const shell_coord, GParam const *const param)
 	{
 	long res = param->d_even_volume;
@@ -608,6 +631,7 @@ static inline long shell_volume(int const *const shell_coord, GParam const *cons
 
 // lex index of the shell with given coordinates, with 0 always being the largest even sublattice
 // the shell coordinates are interpreted as a binary counter
+ACC_ROUTINE_SEQ
 static inline int shell_coord_to_shell_lex(int const *const shell_coord)
 	{
 	int res = 0;
@@ -625,6 +649,7 @@ static inline int shell_coord_to_shell_lex(int const *const shell_coord)
 
 
 // coordinates of the shell with given lex index
+ACC_ROUTINE_SEQ
 static inline void shell_lex_to_shell_coord(int *shell_coord, int const shell_lex, GParam const *const param)
 	{
 	int x = shell_lex;
@@ -646,6 +671,7 @@ static inline void shell_lex_to_shell_coord(int *shell_coord, int const shell_le
 
 // offset of the sites in the shell with given coordinates, i.e.
 // the number of sites in all previous shells
+ACC_ROUTINE_SEQ
 static inline long shell_offset(int const *const shell_coord, GParam const *const param)
 	{
 	long res = 0;
@@ -664,6 +690,7 @@ static inline long shell_offset(int const *const shell_coord, GParam const *cons
 
 // decompose the cartesian coordinates of a lattice site into the coordinates of its shell
 // and its cartesian coordinates inside the shell
+ACC_ROUTINE_SEQ
 static inline void cart_to_shell_coord_and_cart_shell(int *shell_coord, int *cart_shell, int const *const cartcoord, GParam const *const param)
 	{
 	for(int i = 0; i < STDIM; i++)
@@ -691,6 +718,7 @@ static inline void cart_to_shell_coord_and_cart_shell(int *shell_coord, int *car
 
 
 // restricted to a shell, cartesian coordinates of a site -> lexicographic eo index of the site
+ACC_ROUTINE_SEQ
 static inline long cart_shell_to_lexeo_shell(int const *const cart_shell, GParam const *const param)
 	{
 	int eo = 0;
@@ -711,6 +739,7 @@ static inline long cart_shell_to_lexeo_shell(int const *const cart_shell, GParam
 
 
 // cartesian coordinates of a site -> lexicographic shell + eo index of the site
+ACC_ROUTINE_SEQ
 long cart_to_lexeop(int const *const cartcoord, GParam const *const param)
 	{
 	int shell_coord[STDIM], cart_shell[STDIM];
@@ -724,6 +753,7 @@ long cart_to_lexeop(int const *const cartcoord, GParam const *const param)
 
 
 // cartesian -> lexicographic eo on a given rectangle
+ACC_ROUTINE_SEQ
 long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect)
 	{
 	int eo = 0;
@@ -741,10 +771,11 @@ long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect)
 
 
 //plane i-j -> single index, for twist factors
+ACC_ROUTINE_SEQ
 int dirs_to_si(int const i, int const j)
 	{
 	#ifdef DEBUG
-	ASSERT(i != j, "directions cannot be equal (%d)", i);
+	ASSERT_DEV(i != j, "directions cannot be equal (%d)", i);
 	#endif
 	if(i < j) return i * (2 * STDIM - 3 - i) / 2 + j - 1;                 //clockwise
 	return j * (2 * STDIM - 3 - j) / 2 + i - 1 + STDIM * (STDIM - 1) / 2; //anticlockwise
@@ -754,6 +785,7 @@ int dirs_to_si(int const i, int const j)
 // utilities and distances with periodic boundary conditions
 
 // check if lexeo index r is on the defect
+ACC_ROUTINE_SEQ
 int is_on_defect(long const r, GParam const *const param)
 	{
 	int cartcoord[STDIM];
@@ -776,6 +808,7 @@ int is_on_defect(long const r, GParam const *const param)
 
 
 // i-th direction orthogonal to mu
+ACC_ROUTINE_SEQ
 int orthogonal_dir(int const mu, int const i)
 	{
 	return (i < mu) ? i : i + 1;
@@ -783,6 +816,7 @@ int orthogonal_dir(int const mu, int const i)
 
 
 // reduce a generic integer component in the interval [0,L_max-1]
+ACC_ROUTINE_SEQ
 int periodic_condition(int const coord, int const L_max)
 	{
 	return (coord % L_max + L_max) % L_max;
@@ -790,6 +824,7 @@ int periodic_condition(int const coord, int const L_max)
 
 
 // distance between sites i and j on a 1D-ring with L sites
+ACC_ROUTINE_SEQ
 int ring_distance(int const i, int const j, int const L)
 	{
 	int const d = abs(i - j);
@@ -798,6 +833,7 @@ int ring_distance(int const i, int const j, int const L)
 
 
 // distance of site i from the link j -> j+1 on a 1D-ring with L sites
+ACC_ROUTINE_SEQ
 int link_ring_distance(int const i, int const j, int const L)
 	{
 	int const d0 = ring_distance(i, j, L);
@@ -807,6 +843,7 @@ int link_ring_distance(int const i, int const j, int const L)
 
 
 // square distance between sites i and j on a periodic lattice
+ACC_ROUTINE_SEQ
 double square_distance(long const i, long const j, GParam const *const param)
 	{
 	int x[STDIM], y[STDIM];

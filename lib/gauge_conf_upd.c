@@ -17,6 +17,7 @@
 
 
 // compute the staple in position r, direction i and save it in M
+ACC_ROUTINE_SEQ
 void calcstaples_wilson(Gauge_Conf const *const GC,
                         Geometry const *const geo,
                         GParam const *const param,
@@ -25,8 +26,8 @@ void calcstaples_wilson(Gauge_Conf const *const GC,
                         GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#else
 	(void) param;
 	#endif
@@ -141,6 +142,7 @@ void calcstaples_tracedef(Gauge_Conf const *const GC,
 
 // compute the staple in position r, direction i and save it in M
 // when an imaginary theta term is present
+ACC_ROUTINE_SEQ
 void calcstaples_with_topo(Gauge_Conf const *const GC,
                            Geometry const *const geo,
                            GParam const *const param,
@@ -149,8 +151,8 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
                            GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	#ifndef THETA_MODE
@@ -309,13 +311,7 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 	plus_equal(M, &topo_M);
 
 	#else
-	(void) GC;
-	(void) geo;
-	(void) param;
-	(void) r;
-	(void) i;
-	(void) M;
-	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
+	#error "theta term can only be used in 4 dimensions"
 	#endif
 	}
 
@@ -429,6 +425,7 @@ void compute_clovers_replica_rect(Gauge_Conf const *const GC,
 
 
 // evaluate non-topo staples with defect and twist factors in position r and direction i and save it in M
+ACC_ROUTINE_SEQ
 void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
                                     Geometry const *const geo,
                                     GParam const *const param,
@@ -437,8 +434,8 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
                                     GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#else
 	(void) param;
 	#endif
@@ -521,6 +518,7 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 
 // evaluate topo staples with defect on the non-topo contributions
 // in position r and direction i and save it in M
+ACC_ROUTINE_SEQ
 void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
                                        Geometry const *const geo,
                                        GParam const *const param,
@@ -529,8 +527,8 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
                                        GAUGE_GROUP *M)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	#ifndef THETA_MODE
@@ -692,13 +690,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 	plus_equal(M, &topo_M);
 
 	#else
-	(void) GC;
-	(void) geo;
-	(void) param;
-	(void) r;
-	(void) i;
-	(void) M;
-	REQUIRE(STDIM == 4, "theta term can only be used in 4 dimensions");
+	#error "theta term can only be used in 4 dimensions"
 	#endif
 	}
 
@@ -728,6 +720,7 @@ void heatbath(Gauge_Conf *const GC,
 
 
 // perform an update with overrelaxation
+ACC_ROUTINE_SEQ
 void overrelaxation(Gauge_Conf *const GC,
                     Geometry const *const geo,
                     GParam const *const param,
@@ -735,8 +728,8 @@ void overrelaxation(Gauge_Conf *const GC,
                     int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;
@@ -950,6 +943,7 @@ void heatbath_with_defect(Gauge_Conf *const GC,
 
 
 // perform an update with overrelaxation
+ACC_ROUTINE_SEQ
 void overrelaxation_with_defect(Gauge_Conf *const GC,
                                 Geometry const *const geo,
                                 GParam const *const param,
@@ -957,8 +951,8 @@ void overrelaxation_with_defect(Gauge_Conf *const GC,
                                 int i)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
 	GAUGE_GROUP stap;

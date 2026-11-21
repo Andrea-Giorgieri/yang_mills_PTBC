@@ -23,6 +23,7 @@ typedef struct SuN
 // basic operations
 
 // A=1
+ACC_ROUTINE_SEQ
 static inline void one_SuN(SuN *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -42,6 +43,7 @@ static inline void one_SuN(SuN *restrict A)
 
 
 // A=0
+ACC_ROUTINE_SEQ
 static inline void zero_SuN(SuN *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -56,10 +58,11 @@ static inline void zero_SuN(SuN *restrict A)
 
 
 // A=B
+ACC_ROUTINE_SEQ
 static inline void equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -75,10 +78,11 @@ static inline void equal_SuN(SuN *restrict A, SuN const *const restrict B)
 
 
 // A=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -99,10 +103,11 @@ static inline void equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 // additions and subtractions
 
 // A+=B
+ACC_ROUTINE_SEQ
 static inline void plus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -118,10 +123,11 @@ static inline void plus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 
 
 // A+=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void plus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -140,10 +146,11 @@ static inline void plus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict
 
 
 // A-=B
+ACC_ROUTINE_SEQ
 static inline void minus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -159,10 +166,11 @@ static inline void minus_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 
 
 // A-=(r*B)
+ACC_ROUTINE_SEQ
 static inline void minus_equal_times_real_SuN(SuN *restrict A, SuN const *const restrict B, double const r)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -178,10 +186,11 @@ static inline void minus_equal_times_real_SuN(SuN *restrict A, SuN const *const 
 
 
 // A-=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void minus_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -202,6 +211,7 @@ static inline void minus_equal_dag_SuN(SuN *restrict A, SuN const *const restric
 // multiplications
 
 // A*=r
+ACC_ROUTINE_SEQ
 static inline void times_equal_real_SuN(SuN *restrict A, double const r)
 	{
 	#ifdef __INTEL_COMPILER
@@ -216,6 +226,7 @@ static inline void times_equal_real_SuN(SuN *restrict A, double const r)
 
 
 // A*=r
+ACC_ROUTINE_SEQ
 static inline void times_equal_complex_SuN(SuN *restrict A, double complex const r)
 	{
 	#ifdef __INTEL_COMPILER
@@ -230,10 +241,11 @@ static inline void times_equal_complex_SuN(SuN *restrict A, double complex const
 
 
 // A*=B
+ACC_ROUTINE_SEQ
 static inline void times_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -264,10 +276,11 @@ static inline void times_equal_SuN(SuN *restrict A, SuN const *const restrict B)
 
 
 // A*=B^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_equal_dag_SuN(SuN *restrict A, SuN const *const restrict B)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -298,12 +311,13 @@ static inline void times_equal_dag_SuN(SuN *restrict A, SuN const *const restric
 
 
 // A=B*C
+ACC_ROUTINE_SEQ
 static inline void times_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -328,12 +342,13 @@ static inline void times_SuN(SuN *restrict A, SuN const *const restrict B, SuN c
 
 
 // A=B^{dag}*C
+ACC_ROUTINE_SEQ
 static inline void times_dag1_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -358,12 +373,13 @@ static inline void times_dag1_SuN(SuN *restrict A, SuN const *const restrict B, 
 
 
 // A=B*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_dag2_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -388,12 +404,13 @@ static inline void times_dag2_SuN(SuN *restrict A, SuN const *const restrict B, 
 
 
 // A=B^{dag}*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void times_dag12_SuN(SuN *restrict A, SuN const *const restrict B, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -420,12 +437,13 @@ static inline void times_dag12_SuN(SuN *restrict A, SuN const *const restrict B,
 // linear combinations
 
 // A=b*B+c*C
+ACC_ROUTINE_SEQ
 static inline void lin_comb_SuN(SuN *restrict A, double const b, SuN const *const restrict B, double const c, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -442,12 +460,13 @@ static inline void lin_comb_SuN(SuN *restrict A, double const b, SuN const *cons
 
 
 // A=b*B^{dag}+c*C
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag1_SuN(SuN *restrict A, double const b, SuN const *const restrict B, double const c, SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -467,13 +486,14 @@ static inline void lin_comb_dag1_SuN(SuN *restrict A, double const b, SuN const 
 
 
 // A=b*B+c*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag2_SuN(SuN *restrict A, double const b, SuN const *const restrict B, double const c,
                                      SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -493,13 +513,14 @@ static inline void lin_comb_dag2_SuN(SuN *restrict A, double const b, SuN const 
 
 
 // A=b*B^{dag}+c*C^{dag}
+ACC_ROUTINE_SEQ
 static inline void lin_comb_dag12_SuN(SuN *restrict A, double const b, SuN const *const restrict B, double const c,
                                       SuN const *const restrict C)
 	{
 	#ifdef DEBUG
-	ASSERT(A != B, "the same pointer is used twice");
-	ASSERT(A != C, "the same pointer is used twice");
-	ASSERT(B != C, "the same pointer is used twice");
+	ASSERT_DEV(A != B, "the same pointer is used twice");
+	ASSERT_DEV(A != C, "the same pointer is used twice");
+	ASSERT_DEV(B != C, "the same pointer is used twice");
 	#endif
 
 	#ifdef __INTEL_COMPILER
@@ -622,6 +643,7 @@ static inline void rand_algebra_gauss_matrix_SuN(SuN *A)
 // norms and traces
 
 // l2 norm
+ACC_ROUTINE_SEQ
 static inline double norm_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -639,6 +661,7 @@ static inline double norm_SuN(SuN const *const restrict A)
 
 
 // ReTr[A]/N
+ACC_ROUTINE_SEQ
 static inline double retr_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -655,6 +678,7 @@ static inline double retr_SuN(SuN const *const restrict A)
 
 
 // ImTr[A]/N
+ACC_ROUTINE_SEQ
 static inline double imtr_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -671,6 +695,7 @@ static inline double imtr_SuN(SuN const *const restrict A)
 
 
 // ArgTr[A]
+ACC_ROUTINE_SEQ
 static inline double argtr_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -687,6 +712,7 @@ static inline double argtr_SuN(SuN const *const restrict A)
 
 
 // Tr[A * B^{dag}] / N
+ACC_ROUTINE_SEQ
 static inline double complex tr_times_dag_SuN(SuN const *const restrict A, SuN const *const restrict B)
 	{
 	#ifdef __INTEL_COMPILER
@@ -707,6 +733,7 @@ static inline double complex tr_times_dag_SuN(SuN const *const restrict A, SuN c
 
 
 // norm(A - B) / (1/2 * \sqrt{norm(A - 1)**2 + norm(B - 1)**2})
+ACC_ROUTINE_SEQ
 static inline double relative_dist_SuN(SuN const *const restrict A, SuN const *const restrict B)
 	{
 	#ifdef __INTEL_COMPILER
@@ -767,6 +794,7 @@ static inline double relative_dist_SuN(SuN const *const restrict A, SuN const *c
 
 // LU decomposition with partial pivoting
 // from Numerical Recipes in C, pag 46
+ACC_ROUTINE_SEQ
 static inline void LU_SuN(SuN const *const restrict A, SuN *restrict res, int *restrict sign)
 	{
 	int i, j, k;
@@ -844,6 +872,7 @@ static inline void LU_SuN(SuN const *const restrict A, SuN *restrict res, int *r
 
 
 // Det[A]
+ACC_ROUTINE_SEQ
 static inline complex double det_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -889,6 +918,7 @@ static inline complex double det_SuN(SuN const *const restrict A)
 
 
 // gives 0 if the matrix is in SU(N) and 1 otherwise
+ACC_ROUTINE_SEQ
 static inline int scheck_SuN(SuN const *const restrict A)
 	{
 	int res = 0;
@@ -926,6 +956,7 @@ static inline int scheck_SuN(SuN const *const restrict A)
 // 4 xi^2 = redet2[s-s^(dag)+1*tr(s^(dag))]
 // u = [s-s^(dag)+1*tr(s^(dag))]/2/xi
 // (see Kennedy, Pendleton Phys. Lett. B 156, 393 (1985))
+ACC_ROUTINE_SEQ
 static inline void ennetodue(SuN const *const in, int const i, int const j, double *xi, Su2 *u)
 	{
 	double s[2][2][2], aux_re[2][2], aux_im[2][2];
@@ -975,6 +1006,7 @@ static inline void ennetodue(SuN const *const in, int const i, int const j, doub
 
 
 // given a 2x2 matrix, extend it to an NxN matrix with 1 on the diagonal
+ACC_ROUTINE_SEQ
 static inline void duetoenne(Su2 const *const in, int const i, int const j, SuN *out)
 	{
 	one_SuN(out);
@@ -989,6 +1021,7 @@ static inline void duetoenne(Su2 const *const in, int const i, int const j, SuN 
 // cooling, unitarization and exponentiation
 
 // cooling
+ACC_ROUTINE_SEQ
 static inline void cool_SuN(SuN *link, SuN const *const staple)
 	{
 	SuN prod;
@@ -1042,6 +1075,7 @@ static inline void cool_SuN(SuN *link, SuN const *const staple)
 
 
 // TODO: bugged cooling for testing, remove
+ACC_ROUTINE_SEQ
 static inline void bad_cool_SuN(SuN *link, SuN const *const staple)
 	{
 	SuN prod;
@@ -1087,6 +1121,7 @@ static inline void bad_cool_SuN(SuN *link, SuN const *const staple)
 
 
 // unitarize A
+ACC_ROUTINE_SEQ
 static inline void unitarize_SuN(SuN *restrict A)
 	{
 	SuN F;                   // F = A^{dag}, force to unitarize A by cooling
@@ -1127,6 +1162,7 @@ static inline void unitarize_SuN(SuN *restrict A)
 
 
 // takes the traceless antihermitian part
+ACC_ROUTINE_SEQ
 static inline void ta_SuN(SuN *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -1157,6 +1193,7 @@ static inline void ta_SuN(SuN *restrict A)
 
 
 // exponential of the traceless antihermitian part
+ACC_ROUTINE_SEQ
 static inline void taexp_SuN(SuN *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -1199,6 +1236,7 @@ static inline void taexp_SuN(SuN *restrict A)
 
 
 // return 0 if matrix is traceless antihermitian, 1 otherwise
+ACC_ROUTINE_SEQ
 static inline int ta_check_SuN(SuN const *const restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -1229,6 +1267,7 @@ static inline int ta_check_SuN(SuN const *const restrict A)
 
 
 // exponential of a TA matrix
+ACC_ROUTINE_SEQ
 static inline void exp_of_ta_SuN(SuN *restrict A)
 	{
 	#ifdef __INTEL_COMPILER
@@ -1239,7 +1278,7 @@ static inline void exp_of_ta_SuN(SuN *restrict A)
 	// exp(x)=1+x(1+x/2(1+x/3*(1+x/4*(1+x/5*....
 
 	#ifdef DEBUG
-	ASSERT(ta_check_SuN(A) == 0, "exponential of a non-TA matrix");
+	ASSERT_DEV(ta_check_SuN(A) == 0, "exponential of a non-TA matrix");
 	#endif
 
 	SuN aux, uno;

@@ -462,6 +462,7 @@ void print_tuning_stp(long upd_index, Tune_Utils const *const tune_utils, GParam
 
 
 // compute topo potential V_a(x)
+ACC_ROUTINE_SEQ
 double compute_topo_potential(int const a, double x, GParam const *const param)
 	{
 	// alpha-rounding of topological charge
@@ -509,6 +510,7 @@ void compute_topo_potential_debug(char *filename, double const x_min, double con
 
 
 // compute the difference of the local topological charge for two gauge confs
+ACC_ROUTINE_SEQ
 double multicanonic_delta_loc_topcharge(Gauge_Conf const *const GC1,
                                         Gauge_Conf const *const GC2,
                                         Geometry const *const geo,
@@ -572,6 +574,9 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const *const GC1,
 	angle -= atan2(cimag(u1matrix.comp), creal(u1matrix.comp)) / PI2;
 
 	return angle;
+
+	#elif defined(OPENACC_MODE)
+	#error "unsupported configuration for topological charge (STDIM, NCOLOR)"
 
 	#else
 
@@ -712,6 +717,7 @@ double topcharge_agf_multicanonic(Gauge_Conf *const GC,
 
 
 // compute the multicanonic Metropolis probability p=exp(-delta V_a) where V_a is the topo potential for replica a
+ACC_ROUTINE_SEQ
 double metropolis_prob_multicanonic(int const a, double const Q_new, double const Q_old, GParam const *const param)
 	{
 	double const V_old = compute_topo_potential(a, Q_old, param);
@@ -721,6 +727,7 @@ double metropolis_prob_multicanonic(int const a, double const Q_new, double cons
 
 
 // compute variation of topo potential swapping two replicas
+ACC_ROUTINE_SEQ
 double delta_topo_potential_swap(Gauge_Conf const *const GC, int const a, int const b, GParam const *const param)
 	{
 	double const Q_a = GC[a].stored_topcharge;
@@ -812,6 +819,7 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const 
 
 
 // compute single clover insertion and store it in <clover_insertion>
+ACC_ROUTINE_SEQ
 void compute_single_clover_insertion(GAUGE_GROUP *clover_insertion, Gauge_Conf const *const GC,
                                      Geometry const *const geo, GParam const *const param, long r, int i, int j)
 	{
@@ -823,6 +831,7 @@ void compute_single_clover_insertion(GAUGE_GROUP *clover_insertion, Gauge_Conf c
 	}
 
 // compute staple of topological charge relative to link (r,i)
+ACC_ROUTINE_SEQ
 void compute_topostaple_alone(Gauge_Conf const *const GC,
                               Geometry const *const geo,
                               GParam const *const param,
@@ -831,9 +840,9 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
                               GAUGE_GROUP *topo_stap)
 	{
 	#ifdef DEBUG
-	ASSERT(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
-	ASSERT(i < STDIM, "i too large: %d >= %d", i, STDIM);
-	ASSERT(STDIM == 4, "compute_topostaple_alone can be used only in 4 dimensions");
+	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
+	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
+	ASSERT_DEV(STDIM == 4, "compute_topostaple_alone can be used only in 4 dimensions");
 	#endif
 
 	GAUGE_GROUP link1, link2, link3, link12, stap, aux, clover_insertion;
@@ -987,6 +996,7 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 	}
 
 // compute the variation of the clover topological charge when the link (r,i) is updated starting from <old_link>
+ACC_ROUTINE_SEQ
 double delta_Q_upd(Gauge_Conf const *const GC,
                    Geometry const *const geo,
                    GParam const *const param,

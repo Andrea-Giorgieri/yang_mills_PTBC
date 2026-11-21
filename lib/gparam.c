@@ -968,6 +968,9 @@ void print_configuration_parameters(FILE *fp)
 	#ifdef OPENMP_MODE
 	fprintf(fp, "Using OpenMP with %d threads\n\n", NTHREADS);
 	#endif
+	#ifdef OPENACC_MODE
+	fprintf(fp, "Using OpenACC\n\n");
+	#endif
 
 	if(endian() == 0) fprintf(fp, "Little endian machine\n\n");
 	else fprintf(fp, "Big endian machine\n\n");
@@ -1625,6 +1628,10 @@ void print_compilation_details(void)
 
 	#ifdef OPENMP_MODE
 	printf("\n\tusing OpenMP with %d threads\n", NTHREADS);
+	#endif
+
+	#ifdef OPENACC_MODE
+	printf("\n\tusing OpenACC\n");
 	#endif
 
 	#ifdef THETA_MODE

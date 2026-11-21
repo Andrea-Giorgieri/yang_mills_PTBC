@@ -111,6 +111,13 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
   [is_nvc=no])
 AC_MSG_RESULT([${is_nvc}])
 
+# nvc (tested 26.1, -O2/-O3, without -acc) wrongly fuses the element loops of consecutive inlined
+# restrict-qualified matrix functions acting on the same matrix (e.g. in clover()), giving wrong results.
+# Loop fusion is disabled; the flag is appended to CFLAGS because it must follow -O2/-O3 to be effective.
+if test x${is_nvc} = xyes; then
+  CFLAGS="${CFLAGS} -Mvect=nofuse"
+fi
+
 if test x${use_openacc} = xyes; then
   if test x${use_openmp} = xyes; then
     AC_MSG_ERROR([--enable-use-openacc and --enable-use-openmp cannot be used together])

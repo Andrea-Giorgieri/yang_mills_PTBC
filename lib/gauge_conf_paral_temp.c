@@ -135,6 +135,7 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 	}
 
 
+ACC_ROUTINE_SEQ
 double delta_action_swap(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param,
                          long const r, int const i, int const j, int const a, int const b)
 	{

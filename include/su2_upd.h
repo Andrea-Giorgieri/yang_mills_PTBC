@@ -95,6 +95,7 @@ static inline void single_heatbath_Su2(Su2 *link, Su2 const *const staple, GPara
 
 
 // overrelaxation
+ACC_ROUTINE_SEQ
 static inline void single_overrelaxation_Su2(Su2 *link, Su2 const *const staple)
 	{
 	Su2 matrix1, matrix2;
@@ -118,6 +119,7 @@ static inline void single_overrelaxation_Su2(Su2 *link, Su2 const *const staple)
 
 
 // cooling
+ACC_ROUTINE_SEQ
 static inline void cool_Su2(Su2 *link, Su2 const *const staple)
 	{
 	Su2 matrix1;

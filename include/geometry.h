@@ -9,6 +9,10 @@
 // 4d-only global lookup tables for topological charge and theta-term
 extern const int g_signed_ord_orth_dir[4][4][2]; // (mu, nu, sood[mu][nu][0], sood[mu][nu][1]) is an even permutation of (0,1,2,3)
 extern const int g_indep_perm_dir[4][3];         // (ipd[0][i], ipd[1][i], ipd[2][i], ipd[3][i]) is the i-th independent permutation of (0,1,2,3)
+#ifdef OPENACC_MODE
+// device copies of the tables, initialized by init_geometry with acc update device
+#pragma acc declare create(g_signed_ord_orth_dir, g_indep_perm_dir)
+#endif
 #endif
 
 typedef struct Geometry
@@ -53,59 +57,85 @@ void test_geometry(Geometry const *const geo, GParam const *const param);
 
 // functions for switching between indexing methods inside geometry.c
 
+ACC_ROUTINE_SEQ
 long cart_to_lex(int const *const cartcoord, GParam const *const param);                            // cartesian coordinates -> lexicographic index
 
+ACC_ROUTINE_SEQ
 void lex_to_cart(int *cartcoord, long lex, GParam const *const param);                              // lexicographic index -> cartesian coordinates
 
+ACC_ROUTINE_SEQ
 long cart_to_lexeo(int const *const cartcoord, GParam const *const param);                          // cartesian coordinates -> lexicographic eo index
 
+ACC_ROUTINE_SEQ
 void lexeo_to_cart(int *cartcoord, long lexeo, GParam const *const param);                          // lexicographic eo index -> cartesian coordinates
 
+ACC_ROUTINE_SEQ
 long cart_to_lexeop(int const *const cartcoord, GParam const *const param);                         // cartesian coordinates -> lexicographic eo index for pbc with odd sides
 
+ACC_ROUTINE_SEQ
 long lex_to_lexeo(long lex, GParam const *const param);                                             // lexicographic index -> lexicographic eo index
 
+ACC_ROUTINE_SEQ
 long lexeo_to_lex(long lexeo, GParam const *const param);                                           // lexicographic eo index -> lexicographic index
 
+ACC_ROUTINE_SEQ
 long cartsp_to_lexsp(int const *const ccsp, GParam const *const param);                             // spatial cartesian coordinates -> spatial lexicographic index
 
+ACC_ROUTINE_SEQ
 long cartsp_to_lexsp_mu(int const *const ccsp, int mu, GParam const *const param);                  // (nu != mu) cartesian coordinates -> (nu != mu) lexicographic index
 
+ACC_ROUTINE_SEQ
 void lexsp_to_cartsp(int *ccsp, long lexsp, GParam const *const param);                             // spatial lexicographic index -> spatial cartesian coordinates
 
+ACC_ROUTINE_SEQ
 long cartsp_to_lexeosp(int const *const ccsp, GParam const *const param);                           // spatial cartesian coordinates -> spatial lexicographic eo index
 
+ACC_ROUTINE_SEQ
 long cartsp_to_lexeosp_mu(int const *const ccsp, int mu, GParam const *const param);                // (nu != mu) cartesian coordinates -> (nu != mu) lexicographic eo index
 
+ACC_ROUTINE_SEQ
 void lexeosp_to_cartsp(int *ccsp, long lexeosp, GParam const *const param);                         // spatial lexicographic eo index -> spatial cartesian coordinates
 
+ACC_ROUTINE_SEQ
 long lexsp_to_lexeosp(long lexsp, GParam const *const param);                                       // spatial lexicographic index -> spatial lexicographic eo index
 
+ACC_ROUTINE_SEQ
 long lexeosp_to_lexsp(long lexeosp, GParam const *const param);                                     // spatial lexicographic eo index -> spatial lexicographic index
 
+ACC_ROUTINE_SEQ
 long lexeosp_and_t_to_lexeo(long lexeosp, int t, GParam const *const param);                        // lexicographic eo spatial and time -> lexicographic eo index
 
+ACC_ROUTINE_SEQ
 void lexeo_to_lexeosp_and_t(long *lexeosp, int *t, long lexeo, GParam const *const param);          // lex. eo index -> lex. eo spatial and t
 
+ACC_ROUTINE_SEQ
 void lexeo_to_lexeosp_and_mu(long *lexeosp, int *t, long lexeo, int mu, GParam const *const param); // lex. eo index -> lex. eo (nu != mu) and mu
 
+ACC_ROUTINE_SEQ
 long cart_to_lexeo_rect(int const *const cartcoord, Rectangle const *const rect);                   // cartesian -> lexicographic eo on a given rectangle
 
+ACC_ROUTINE_SEQ
 int dirs_to_si(int const i, int const j);                                                           //plane i-j -> single index, for twist factors
 
 
 // utilities and distances with periodic boundary conditions
 
+ACC_ROUTINE_SEQ
 int is_on_defect(long const r, GParam const *const param);
 
+ACC_ROUTINE_SEQ
 int orthogonal_dir(int const mu, int const i);
 
+ACC_ROUTINE_SEQ
 int periodic_condition(int const coord, int const L_max);
 
+ACC_ROUTINE_SEQ
 int ring_distance(int const i, int const j, int const L);
 
+ACC_ROUTINE_SEQ
 int link_ring_distance(int const i, int const j, int const L);
 
+ACC_ROUTINE_SEQ
 double square_distance(long const i, long const j, GParam const *const param);
 
 
@@ -127,6 +157,7 @@ void free_rect_utils(Rect_Utils *rect_aux, GParam const *const param);
 // wrappers for switching between indexing methods outside of geometry.c
 
 // cartesian coordinates -> single index
+ACC_ROUTINE_SEQ
 static inline long cart_to_si(int const *const cartcoord, GParam const *const param)
 	{
 	return cart_to_lexeo(cartcoord, param);
@@ -134,6 +165,7 @@ static inline long cart_to_si(int const *const cartcoord, GParam const *const pa
 
 
 // single index -> cartesian coordinates
+ACC_ROUTINE_SEQ
 static inline void si_to_cart(int *cartcoord, long const si, GParam const *const param)
 	{
 	lexeo_to_cart(cartcoord, si, param);
@@ -141,6 +173,7 @@ static inline void si_to_cart(int *cartcoord, long const si, GParam const *const
 
 
 // lexicographic -> single index
+ACC_ROUTINE_SEQ
 static inline long lex_to_si(long const lex, GParam const *const param)
 	{
 	return lex_to_lexeo(lex, param);
@@ -148,6 +181,7 @@ static inline long lex_to_si(long const lex, GParam const *const param)
 
 
 // single index -> lexicographic
+ACC_ROUTINE_SEQ
 static inline long si_to_lex(long const si, GParam const *const param)
 	{
 	return lexeo_to_lex(si, param);
@@ -155,6 +189,7 @@ static inline long si_to_lex(long const si, GParam const *const param)
 
 
 // single index spatial and time -> single index tot
+ACC_ROUTINE_SEQ
 static inline long sisp_and_t_to_si_compute(long const sisp, int const t, GParam const *const param)
 	{
 	return lexeosp_and_t_to_lexeo(sisp, t, param);
@@ -162,6 +197,7 @@ static inline long sisp_and_t_to_si_compute(long const sisp, int const t, GParam
 
 
 // single index tot -> single index spatial and time
+ACC_ROUTINE_SEQ
 static inline void si_to_sisp_and_t_compute(long *const sisp, int *const t, long const si, GParam const *const param)
 	{
 	lexeo_to_lexeosp_and_t(sisp, t, si, param);
@@ -169,6 +205,7 @@ static inline void si_to_sisp_and_t_compute(long *const sisp, int *const t, long
 
 
 // single index tot -> single index spatial and mu
+ACC_ROUTINE_SEQ
 static inline void si_to_sisp_and_mu_compute(long *const sisp, int *const t, long const si, int const mu, GParam const *const param)
 	{
 	lexeo_to_lexeosp_and_mu(sisp, t, si, mu, param);
@@ -176,6 +213,7 @@ static inline void si_to_sisp_and_mu_compute(long *const sisp, int *const t, lon
 
 
 // cartesian -> single index on rectangles
+ACC_ROUTINE_SEQ
 static inline long cart_to_si_rect(int const *const cartcoord, Rectangle const *const rect)
 	{
 	return cart_to_lexeo_rect(cartcoord, rect);
@@ -185,6 +223,7 @@ static inline long cart_to_si_rect(int const *const cartcoord, Rectangle const *
 // functions for accessing pre-computed indices
 
 // next neighbour in + direction
+ACC_ROUTINE_SEQ
 static inline long nnp(Geometry const *const geo, long const r, int const i)
 	{
 	return geo->d_nnp[r][i];
@@ -192,6 +231,7 @@ static inline long nnp(Geometry const *const geo, long const r, int const i)
 
 
 // next neighbour in - direction
+ACC_ROUTINE_SEQ
 static inline long nnm(Geometry const *const geo, long const r, int const i)
 	{
 	return geo->d_nnm[r][i];
@@ -199,6 +239,7 @@ static inline long nnm(Geometry const *const geo, long const r, int const i)
 
 
 // single index spatial and time -> single index tot
+ACC_ROUTINE_SEQ
 static inline long sisp_and_t_to_si(Geometry const *const geo, long const sisp, int const t)
 	{
 	return geo->d_mutimespace[0][t][sisp];
@@ -206,6 +247,7 @@ static inline long sisp_and_t_to_si(Geometry const *const geo, long const sisp, 
 
 
 // single index nu != mu and mu -> single index tot
+ACC_ROUTINE_SEQ
 static inline long sisp_and_mu_to_si(Geometry const *const geo, long const sisp, int const t, int const mu)
 	{
 	return geo->d_mutimespace[mu][t][sisp];
@@ -213,6 +255,7 @@ static inline long sisp_and_mu_to_si(Geometry const *const geo, long const sisp,
 
 
 // single index tot -> single index spatial and time
+ACC_ROUTINE_SEQ
 static inline void si_to_sisp_and_t(long *sisp, int *t, Geometry const *const geo, long const si)
 	{
 	*sisp = geo->d_muorth[0][si];

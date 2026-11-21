@@ -10,10 +10,13 @@ bin_PROGRAMS = conf_check \
             yang_mills_local_agf \
             yang_mills_local_pt_agf \
             yang_mills_conf_analysis \
-            yang_mills_tuning_pt_mc \
-            yang_mills_multilevel \
-            yang_mills_multilevel_long \
-            yang_mills_tracedef
+            yang_mills_tuning_pt_mc
+
+if !OPENACC_COMPILATION
+bin_PROGRAMS += yang_mills_multilevel \
+                yang_mills_multilevel_long \
+                yang_mills_tracedef
+endif
 
 timing = ./include/timing.h \
         ./lib/timing.c
@@ -294,4 +297,8 @@ yang_mills_tuning_pt_mc_SOURCES=./src/yang_mills_tuning_pt_mc.c \
                           $(tens_prod) \
                           $(u1)
 
-AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@
+if NVC_COMPILATION
+AM_CFLAGS = -c99 -Minform=warn @OPENMP_CFLAGS@ @OPENACC_CFLAGS@
+else
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -pedantic -Wconversion @OPENMP_CFLAGS@ @OPENACC_CFLAGS@
+endif

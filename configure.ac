@@ -66,6 +66,12 @@ AC_ARG_ENABLE([use-openmp],
               [use_openmp=yes],
               [use_openmp=no])
 
+AC_ARG_ENABLE([use-openacc],
+              [AS_HELP_STRING([--enable-use-openacc],
+                              [to enable GPU offloading with OpenACC (incompatible with --enable-use-openmp)])],
+              [use_openacc=${enableval}],
+              [use_openacc=no])
+
 AC_ARG_ENABLE([use-theta],
               [AS_HELP_STRING([--enable-use-theta],
                               [to enable the use of an imaginary theta term])],
@@ -94,6 +100,50 @@ AC_ARG_ENABLE([debug],
 
 ### FURTHER CHECKS
 
+# check whether the compiler is NVIDIA HPC SDK (nvc), which needs different warning flags
+AC_MSG_CHECKING([whether the C compiler is NVIDIA nvc])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef __NVCOMPILER
+#error "not nvc"
+#endif
+]], [[]])],
+  [is_nvc=yes],
+  [is_nvc=no])
+AC_MSG_RESULT([${is_nvc}])
+
+if test x${use_openacc} = xyes; then
+  if test x${use_openmp} = xyes; then
+    AC_MSG_ERROR([--enable-use-openacc and --enable-use-openmp cannot be used together])
+  fi
+
+  # default OpenACC flags, if not set by the user
+  if test "x${OPENACC_CFLAGS}" = x; then
+    if test x${is_nvc} = xyes; then
+      OPENACC_CFLAGS='-acc=gpu'
+    else
+      OPENACC_CFLAGS='-fopenacc'
+    fi
+  fi
+
+  # check that the compiler accepts the OpenACC flags and provides openacc.h
+  AC_MSG_CHECKING([whether ${CC} supports OpenACC with flags ${OPENACC_CFLAGS}])
+  save_CFLAGS=${CFLAGS}
+  CFLAGS="${CFLAGS} ${OPENACC_CFLAGS}"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <openacc.h>
+#ifndef _OPENACC
+#error "_OPENACC not defined"
+#endif
+]], [[return acc_get_num_devices(acc_device_nvidia) < 0;]])],
+    [AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])
+     AC_MSG_ERROR([the compiler ${CC} does not support OpenACC with flags ${OPENACC_CFLAGS}])])
+  CFLAGS=${save_CFLAGS}
+else
+  OPENACC_CFLAGS=''
+fi
+AC_SUBST(OPENACC_CFLAGS)
+
 if test x${use_openmp} = xyes; then
   #check for openmp options
   AC_OPENMP
@@ -114,6 +164,8 @@ AC_ARG_VAR(Num_threads, number of threads to be used in OpenMP (default 1))
 
 AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
+AC_ARG_VAR(OPENACC_CFLAGS, flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc otherwise))
+
 
 
 ### DEFINITIONS
@@ -124,6 +176,10 @@ fi
 
 if test x${use_openmp} = xyes; then
   AC_DEFINE(OPENMP_MODE,, [Enable the use of OpenMP])
+fi
+
+if test x${use_openacc} = xyes; then
+  AC_DEFINE(OPENACC_MODE,, [Enable GPU offloading with OpenACC])
 fi
 
 if test x${use_theta} = xyes; then
@@ -197,6 +253,10 @@ fi
 ### CONDITIONALS
 
 AM_CONDITIONAL([CRYPTO_COMPILATION], [test x${has_crypto}x${has_md5} = xyesxyes])
+
+AM_CONDITIONAL([OPENACC_COMPILATION], [test x${use_openacc} = xyes])
+
+AM_CONDITIONAL([NVC_COMPILATION], [test x${is_nvc} = xyes])
 
 
 

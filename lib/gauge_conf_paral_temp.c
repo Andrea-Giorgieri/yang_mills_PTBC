@@ -199,9 +199,6 @@ void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * cons
 // metropolis step to swap replica a and b with probability p, including the twist factors
 void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, double const p, Acc_Utils *acc_counters)
 	{
-	// increase counter of tried swaps for replicas (a, a+1)
-	acc_counters->num_swap[a]++;
-
 	// Metropolis test: p<1 => acc=1 with probability p, p>=1 => acc=1 (already assigned)
 	int acc = 1;
 	if(p < 1 && casuale() > p) acc = 0;
@@ -260,6 +257,10 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 		// increase counter of successful swaps for replicas (a, a+1)
 		acc_counters->num_accepted_swap[a]++;
 		}
+
+	// increase counter of tried swaps for replicas (a, a+1) and update acceptance ratio
+	acc_counters->num_swap[a]++;
+	acc_counters->acc_swap[a] = (double) acc_counters->num_accepted_swap[a] / (double) acc_counters->num_swap[a];
 	}
 
 
@@ -362,6 +363,7 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 		{
 		acc_counters->num_accepted_swap = NULL;
 		acc_counters->num_swap = NULL;
+		acc_counters->acc_swap = NULL;
 		acc_counters->metro_swap_prob = NULL;
 		acc_counters->swaptrackfilep = NULL;
 		}
@@ -369,11 +371,13 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 		{
 		allocate_array_long(&(acc_counters->num_accepted_swap), param->d_N_replica_pt - 1, __FILE__, __LINE__);
 		allocate_array_long(&(acc_counters->num_swap), param->d_N_replica_pt - 1, __FILE__, __LINE__);
+		allocate_array_double(&(acc_counters->acc_swap), param->d_N_replica_pt - 1, __FILE__, __LINE__);
 		allocate_array_double(&(acc_counters->metro_swap_prob), param->d_N_replica_pt - 1, __FILE__, __LINE__);
 		for(int i = 0; i < (param->d_N_replica_pt - 1); i++)
 			{
 			acc_counters->num_accepted_swap[i] = 0;
 			acc_counters->num_swap[i] = 0;
+			acc_counters->acc_swap[i] = 0.0;
 			}
 		init_swap_track_file(&(acc_counters->swaptrackfilep), param);
 		}
@@ -389,6 +393,7 @@ void free_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 		{
 		free(acc_counters->num_accepted_swap);
 		free(acc_counters->num_swap);
+		free(acc_counters->acc_swap);
 		free(acc_counters->metro_swap_prob);
 		fclose(acc_counters->swaptrackfilep);
 		}
@@ -421,7 +426,7 @@ void print_acceptances(Acc_Utils const *const acc_counters, GParam const *const 
 		#endif
 		if(acc_counters->num_swap[k] > 1)
 			{
-			acc = (double) acc_counters->num_accepted_swap[k] / (double) acc_counters->num_swap[k];
+			acc = acc_counters->acc_swap[k];
 			err_acc = sqrt(acc * (1.0 - acc) / ((double) acc_counters->num_swap[k] - 1.0));
 			}
 		else if(acc_counters->num_swap[k] == 1)

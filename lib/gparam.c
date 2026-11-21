@@ -300,6 +300,7 @@ void set_defaults(GParam *const param)
 	param->d_topo_tuning_thr = 0.1;
 	param->d_topo_tuning_stp = 0.1;
 	param->d_topo_tuning_save_every = 0;
+	param->d_topo_tuning_weights_every = 1000;
 	param->d_topo_tuning_even = 1;
 
 	// walltime
@@ -484,6 +485,7 @@ void readinput(char const *const in_file, GParam *const param)
 			DOUBLE_PARAM("topo_tuning_thr", d_topo_tuning_thr, param_nonnegative_double),
 			DOUBLE_PARAM("topo_tuning_stp", d_topo_tuning_stp, param_positive_double),
 			INT_PARAM("topo_tuning_save_every", d_topo_tuning_save_every, param_nonnegative_int),
+			INT_PARAM("topo_tuning_weights_every", d_topo_tuning_weights_every, param_nonnegative_int),
 			INT_PARAM("topo_tuning_even", d_topo_tuning_even, param_bool_int),
 
 			// other
@@ -557,7 +559,7 @@ void readinput(char const *const in_file, GParam *const param)
 
 	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even. This prevents naive even-odd parallelization of updates.
 	// This is dealt with only when sweeping the full lattice, not when sweeping the spatial lattice as required by trace deformation.
-	#ifndef OPENMP_MODE
+	#ifdef OPENMP_MODE
 	for(i = 0; i < NCOLOR / 2; i++)
 		{
 		if(param->d_h[i] != 0.0)
@@ -752,19 +754,34 @@ void read_topo_potential(GParam *const param)
 	FILE *fp = fopen(param->d_topo_potential_file, "r");
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", param->d_topo_potential_file);
 
+	allocate_array_double(&(param->d_grid_weight), param->d_N_replica_pt, __FILE__, __LINE__);
 	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
 	for(int a = 0; a < param->d_N_replica_pt; a++)
 		{
 		allocate_array_double(&(param->d_grid[a]), param->d_n_grid, __FILE__, __LINE__);
 		}
 
-	// read x and V_a(x) from topo_potential file
+	// read grid_step_coarse
+	int err = fscanf(fp, "%lf", &(param->d_grid_step_coarse));
+	REQUIRE(err == 1, "can't read grid_step_coarse");
+
+	// read grid_weights
+	for(int a = 0; a < param->d_N_replica_pt; a++)
+		{
+		double w;
+
+		err = fscanf(fp, "%lf", &w);
+		REQUIRE(err == 1, "can't read grid_weigh for replica %d", a);
+		param->d_grid_weight[a] = w;
+		}
+
+	// read x and V_a(x)
 	for(int i = 0; i < param->d_n_grid; i++)
 		{
 		double x, V;
 
 		// read x
-		int err = fscanf(fp, "%lf", &x);
+		err = fscanf(fp, "%lf", &x);
 		REQUIRE(err == 1, "can't read x at row %d", i);
 		int j = (int) floor((x + param->d_grid_max + (param->d_grid_step / 2.0)) / param->d_grid_step);
 		REQUIRE(i == j, "grid mismatch: found %d for x=%lf, expected %d", j, x, i);
@@ -787,6 +804,16 @@ void write_topo_potential(GParam const *const param, char const *const filename)
 	{
 	FILE *fp = fopen(filename, "w");
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", filename);
+
+	// write grid_step_coarse
+	fprintf(fp, "% 12.6e ", param->d_grid_step_coarse);
+
+	// write grid_weights
+	for(int a = 0; a < param->d_N_replica_pt; a++)
+		{
+		fprintf(fp, "% 12.6e ", param->d_grid_weight[a]);
+		}
+	fprintf(fp, "\n");
 
 	// write x and V_a(x)
 	for(int i = 0; i < param->d_n_grid; i++)
@@ -987,10 +1014,11 @@ void print_multicanonic_parameters(FILE *fp, GParam const *const param)
 void print_multicanonic_tuning_parameters(FILE *fp, GParam const *const param)
 	{
 	fprintf(fp, "Tuning Multicanonical method with\n");
-	fprintf(fp, "topo_tuning_thr:         %lf\n", param->d_topo_tuning_thr);
-	fprintf(fp, "topo_tuning_stp:         %lf\n", param->d_topo_tuning_stp);
-	fprintf(fp, "topo_tuning_save_every:  %d\n", param->d_topo_tuning_save_every);
-	fprintf(fp, "topo_tuning_even:        %d\n", param->d_topo_tuning_even);
+	fprintf(fp, "topo_tuning_thr:            %lf\n", param->d_topo_tuning_thr);
+	fprintf(fp, "topo_tuning_stp:            %lf\n", param->d_topo_tuning_stp);
+	fprintf(fp, "topo_tuning_save_every:     %d\n", param->d_topo_tuning_save_every);
+	fprintf(fp, "topo_tuning_weights_every:  %d\n", param->d_topo_tuning_weights_every);
+	fprintf(fp, "topo_tuning_even:           %d\n", param->d_topo_tuning_even);
 	fprintf(fp, "\n");
 	}
 
@@ -1520,10 +1548,11 @@ void print_template_multicanonic_parameters(FILE *fp)
 void print_template_multicanonic_tuning_parameters(FILE *fp)
 	{
 	fprintf(fp, "# Multicanonic tuning parameters\n");
-	fprintf(fp, "topo_tuning_thr           0.05 # tuning ends if topo potential changes less than this threshold\n");
-	fprintf(fp, "topo_tuning_stp           0.1  # maximum variation of topo_potential at each point every step \n");
-	fprintf(fp, "topo_tuning_save_every    1    # save topo_potential at each point every step \n");
-	fprintf(fp, "topo_tuning_even          1    # force topo_potential to be even during tuning (0 = False, 1 = True) \n");
+	fprintf(fp, "topo_tuning_thr              0.05 # tuning ends if topo potential changes less than this threshold\n");
+	fprintf(fp, "topo_tuning_stp              0.1  # maximum variation of topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_save_every       1    # save topo_potential at each point every step \n");
+	fprintf(fp, "topo_tuning_weights_every    1000 # update weights of coarse and fine topo_potentials every this number of proposed replica swaps\n");
+	fprintf(fp, "topo_tuning_even             1    # force topo_potential to be even during tuning (0 = False, 1 = True) \n");
 	fprintf(fp, "\n");
 	}
 

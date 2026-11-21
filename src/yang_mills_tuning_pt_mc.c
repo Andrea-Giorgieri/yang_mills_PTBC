@@ -138,19 +138,22 @@ void real_main(char const *in_file)
 				}
 			}
 
-		// tune topo_potential
-		tune_topo_potential(GC, &param, &tune_utils);
-
-		// save current potentials
-		if(param.d_topo_tuning_save_every != 0)
+		if(GC[0].update_index >= param.d_thermal)
 			{
-			if(GC[0].update_index % param.d_topo_tuning_save_every == 0)
+			// tune topo_potential
+			tune_topo_potential(GC, &param, &tune_utils, &acc_counters);
+
+			// save current potentials
+			if(param.d_topo_tuning_save_every != 0)
 				{
-				strcpy(name, param.d_topo_potential_file);
-				strcat(name, "_step_");
-				sprintf(aux, "%ld", GC[0].update_index);
-				strcat(name, aux);
-				write_topo_potential(&param, name);
+				if(GC[0].update_index % param.d_topo_tuning_save_every == 0)
+					{
+					strcpy(name, param.d_topo_potential_file);
+					strcat(name, "_step_");
+					sprintf(aux, "%ld", GC[0].update_index);
+					strcat(name, aux);
+					write_topo_potential(&param, name);
+					}
 				}
 			}
 

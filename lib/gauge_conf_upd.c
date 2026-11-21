@@ -1466,15 +1466,6 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf *const GC, Geometry 
                                                  Rect_Utils const *const rect_aux,
                                                  Acc_Utils *acc_counters)
 	{
-	// set multicanonic Metropolis acceptance counters to zero to compute mean acc over single updating step
-	#ifdef MULTICANONICAL_MODE
-	for(int i = 0; i < param->d_N_replica_pt; i++)
-		{
-		acc_counters->num_accepted_metro_multicanonic[i] = 0;
-		acc_counters->num_metro_multicanonic[i] = 0;
-		}
-	#endif
-
 	// full update + hierarchical update + swaps and translations after every sweep
 	update_with_defect(GC, geo, param, acc_counters);
 	if(param->d_N_replica_pt > 1)
@@ -1489,7 +1480,7 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf *const GC, Geometry 
 	for(int i = 0; i < param->d_N_replica_pt; i++)
 		GC[i].update_index++;
 
-	// print mean multicanonic acceptance over a single updating step
+	// print mean multicanonic acceptance
 	#ifdef MULTICANONICAL_MODE
 	print_multicanonic_acceptance(GC, param, acc_counters);
 	#endif

@@ -164,18 +164,21 @@ typedef struct GParam
 	// for multicanonical potential
 	char d_topo_potential_file[STD_STRING_LENGTH];
 	double d_grid_step;
+	double d_grid_step_coarse;
 	double d_grid_max;
-	double **d_grid;        // d_grid [a][x] = V_a(x) is the topo potential for replica a
+	double *d_grid_weight;  // d_grid_weight[a] interpolates V_a(x) between coarse V_0(x) and fine V_{Nr-1}(x) potential
+	double **d_grid;        // d_grid[a][x] = V_a(x) is the topo potential for replica a
 	int d_topo_cooling;     // cooling strat for topcharge before evaluating V_a: 0 = none, 1 = cooling
 	int d_topo_coolsteps;   // cooling steps of the charge before evaluating V_a
 	double d_topo_agf_time; // adaptive gradflow time before evaluating V_a. TODO: unused, debug only, remove?
 	double d_topo_alpha;    // alpha parameter for alpha-rounding of cooled charge
 
 	// for tuning of multicanonical potential
-	int d_topo_tuning_even;       // force V_a(x) to be even during tuning (0 = False, 1 = True)
-	int d_topo_tuning_save_every; // save tuned V_a(x) every this number of steps (0 = Never)
-	double d_topo_tuning_thr;     // threshold below which tuning of topo potential is completed
-	double d_topo_tuning_stp;     // initial variation of topo potential during tuning
+	int d_topo_tuning_even;            // force V_a(x) to be even during tuning (0 = False, 1 = True)
+	int d_topo_tuning_save_every;      // save tuned V_a(x) every this number of steps (0 = Never)
+	double d_topo_tuning_thr;          // threshold below which tuning of topo potential is completed
+	double d_topo_tuning_stp;          // initial variation of topo potential during tuning
+	int d_topo_tuning_weights_every;   // number of proposed swaps between updates of topo potential weights during tuning
 
 	// for multilevel
 	char d_ml_obs_str[STD_STRING_LENGTH];

@@ -101,7 +101,7 @@ void free_multicanonic_acc_utils(Acc_Utils *acc_counters)
 // print metropolis acceptance of multicanonic algorithm on file
 void print_multicanonic_acceptance(Gauge_Conf const *const GC, GParam const *const param, Acc_Utils const *const acc_counters)
 	{
-	if(GC->update_index % param->d_measevery == 0)
+	if(param->d_measevery != 0 && GC->update_index % param->d_measevery == 0)
 		{
 		double mean_acc;
 		fprintf(acc_counters->multicanonic_acc_filep, "%9ld ", GC->update_index);
@@ -115,6 +115,13 @@ void print_multicanonic_acceptance(Gauge_Conf const *const GC, GParam const *con
 			}
 		fprintf(acc_counters->multicanonic_acc_filep, "\n");
 		fflush(acc_counters->multicanonic_acc_filep);
+
+		// reset counters
+		for(int i = 0; i < param->d_N_replica_pt; i++)
+			{
+			acc_counters->num_accepted_metro_multicanonic[i] = 0;
+			acc_counters->num_metro_multicanonic[i] = 0;
+			}
 		}
 	}
 
@@ -122,10 +129,25 @@ void print_multicanonic_acceptance(Gauge_Conf const *const GC, GParam const *con
 // initialize auxiliary arrays and flags for tuning of topo_potential
 void init_tune_utils(Tune_Utils *const tune_utils, GParam const *const param)
 	{
+	int const n_grid_aux = (int) round(2.0 * param->d_grid_max / param->d_grid_step_coarse + 1.0);
+	tune_utils->d_n_grid_aux = n_grid_aux;
+	allocate_array_double(&(tune_utils->grid_coarse), param->d_n_grid, __FILE__, __LINE__);
+	allocate_array_double(&(tune_utils->grid_fine), param->d_n_grid, __FILE__, __LINE__);
 	allocate_array_double(&(tune_utils->tuning_stp), param->d_N_replica_pt, __FILE__, __LINE__);
+	allocate_array_double(&(tune_utils->grid_coarse_aux), n_grid_aux, __FILE__, __LINE__);
 	allocate_array_int(&(tune_utils->sweep_counter), param->d_N_replica_pt, __FILE__, __LINE__);
 	allocate_array_int(&(tune_utils->sweep_flag), param->d_N_replica_pt, __FILE__, __LINE__);
 	allocate_array_int(&(tune_utils->sweep_check), param->d_N_replica_pt, __FILE__, __LINE__);
+	for(int i = 0; i < param->d_n_grid; i++)
+		{
+		tune_utils->grid_coarse[i] = param->d_grid[0][i];
+		tune_utils->grid_fine[i] = param->d_grid[param->d_N_replica_pt - 1][i];
+		}
+	int const stride = (int) round(param->d_grid_step_coarse / param->d_grid_step);
+	for(int i = 0; i < n_grid_aux; i++)
+		{
+		tune_utils->grid_coarse_aux[i] = tune_utils->grid_coarse[i * stride];
+		}
 	for(int a = 0; a < param->d_N_replica_pt; a++)
 		{
 		tune_utils->tuning_stp[a] = param->d_topo_tuning_stp;
@@ -139,18 +161,77 @@ void init_tune_utils(Tune_Utils *const tune_utils, GParam const *const param)
 // free auxiliary arrays and flags for tuning of topo_potential
 void free_tune_utils(Tune_Utils *tune_utils)
 	{
+	free(tune_utils->grid_coarse);
+	free(tune_utils->grid_fine);
 	free(tune_utils->tuning_stp);
+	free(tune_utils->grid_coarse_aux);
 	free(tune_utils->sweep_counter);
 	free(tune_utils->sweep_flag);
 	free(tune_utils->sweep_check);
 	}
 
-static inline void update_topo_grid(double *grid, int const n_grid, double const grid_max, double const grid_step, double const x, double const s)
+
+// left-index of interval containing x in a grid from -grid_max to grid_max at steps grid_step (no bound check)
+static inline int topo_grid_index(double const x, double const grid_max, double const grid_step)
+	{
+	return (int) floor((x + grid_max) / grid_step);
+	}
+
+
+// shift the grid values such that the gris is zero for the left-index of the interval containing zero
+static inline void shift_topo_grid(double *grid, int const n_grid, double const grid_max, double const grid_step)
+	{
+	double const offset = grid[topo_grid_index(0.0, grid_max, grid_step)];
+	for(int i = 0; i < n_grid; i++)
+		{
+		grid[i] -= offset;
+		}
+	}
+
+
+// construct the grids interpolating between the coarse and the fine grids for all replicas
+static inline void combine_topo_grids(Tune_Utils *const tune_utils, GParam *const param)
+	{
+	for(int a = 0; a < param->d_N_replica_pt; a++)
+		{
+		double const replica_weight = param->d_grid_weight[a];
+		for(int i = 0; i < param->d_n_grid; i++)
+			{
+			param->d_grid[a][i] = replica_weight * tune_utils->grid_coarse[i] + (1.0 - replica_weight) * tune_utils->grid_fine[i];
+			}
+		}
+	}
+
+
+// interpolate linearly the coarse grid with the step of the fine grid
+static void interpolate_coarse_grid(const double *grid_aux, int n_grid_aux, double *grid, int n_grid, double grid_step, double grid_step_coarse)
+	{
+	for(int i = 0; i < n_grid; i++)
+		{
+		double const i_coarse = (i * grid_step) / grid_step_coarse;
+		int i_left = (int) floor(i_coarse);
+		if(i_left < 0)
+			i_left = 0;
+		if(i_left >= n_grid_aux - 1)
+			{
+			grid[i] = grid_aux[n_grid_aux - 1];
+			}
+		else
+			{
+			double const t = i_coarse - i_left;
+			grid[i] = (1.0 - t) * grid_aux[i_left] + t * grid_aux[i_left + 1];
+			}
+		}
+	}
+
+
+// update the values of the grid at the edges of the interval containing x
+static inline void update_topo_grid_fine(double *grid, int const n_grid, double const grid_max, double const grid_step, double const x, double const s)
 	{
 	// index of grid interval containing x
-	int const i_grid = (int) floor((x + grid_max) / grid_step);
+	int const i_grid = topo_grid_index(x, grid_max, grid_step);
 
-	// change potential with linear weights: t = (x-x0)/x_step;  V_a(x0) += s*(1-t); V_a(x0+x_step) += s*(t)
+	// change potential with linear weights: t = (x - x0) / x_step;  V_a(x0) += s * (1-t); V_a(x0 + x_step) += s * t
 	if(i_grid < 0)
 		{
 		grid[0] += s;
@@ -167,14 +248,63 @@ static inline void update_topo_grid(double *grid, int const n_grid, double const
 		grid[i_grid] += s * (1.0 - t);
 		grid[i_grid + 1] += s * t;
 		}
+
+	// shift grid to have V_a(0) = 0
+	shift_topo_grid(grid, n_grid, grid_max, grid_step);
 	}
 
-void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_Utils *const tune_utils)
+
+// update the coarse grid as if it were defined only at multiples of the coarse step
+static void update_topo_grid_coarse(double *grid, double *grid_aux, int const n_grid, int n_grid_aux, double const grid_max,
+	double const grid_step, double const grid_step_coarse, double const x, double const s)
+	{
+	double const s_coarse = s * grid_step / grid_step_coarse;
+	update_topo_grid_fine(grid_aux, n_grid_aux, grid_max, grid_step_coarse,	x, s_coarse);
+	interpolate_coarse_grid(grid_aux, n_grid_aux, grid,	n_grid, grid_step, grid_step_coarse);
+	}
+
+
+// update the weights of the interpolation between the coarse and the fine grid for all replicas
+static inline void update_topo_grid_weights(GParam *const param, Acc_Utils *const acc_counters)
 	{
 	int const n_replica = param->d_N_replica_pt;
+
+	// calculate mean of swap acceptances
+	double acc_mean = 0.0;
+	for(int a = 0; a < n_replica - 1; a++)
+		{
+		acc_mean += acc_counters->acc_swap[a];
+		}
+	acc_mean = acc_mean / (n_replica - 1);
+
+	// coeff_diff(r,r+1) -> coeff_diff(r,r+1) + diff_factor*(a(r,r+1)-<a>) :
+	// distance between coefficients of two replicas decreased/increased if their acc is lower/higher than acc_mean,
+	// first and last coefficients are fixed
+	double coeff_diff = 0.0;
+	double const diff_factor = param->d_topo_tuning_stp * (param->d_grid_weight[n_replica - 1] - param->d_grid_weight[0]) / n_replica;
+	for(int a = 1; a < n_replica - 1; a++)
+		{
+		coeff_diff += diff_factor * (acc_counters->acc_swap[a - 1] - acc_mean);
+		param->d_grid_weight[a] += coeff_diff;
+		if(param->d_grid_weight[a] < 0.0)
+			{
+			param->d_grid_weight[a] = 0.0;
+			}
+		if(param->d_grid_weight[a] > 1.0)
+			{
+			param->d_grid_weight[a] = 1.0;
+			}
+		}
+	}
+
+
+void tune_topo_potential_unconstrained(Gauge_Conf const *const GC, GParam *const param, Tune_Utils *const tune_utils)
+	{
+	int const n_replica = param->d_N_replica_pt;
+
 	for(int a = 0; a < n_replica; a++)
 		{
-		// get stored_topcharge x
+		// get stored topcharge x
 		double x = GC[a].stored_topcharge;
 		if(param->d_topo_alpha > MIN_VALUE)
 			x = round(param->d_topo_alpha * x);
@@ -183,11 +313,13 @@ void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_U
 		double const s = tune_utils->tuning_stp[a];
 
 		// update V_a(x)
-		update_topo_grid(param->d_grid[a], param->d_n_grid, param->d_grid_max, param->d_grid_step, x, s);
+		update_topo_grid_fine(param->d_grid[a], param->d_n_grid, param->d_grid_max, param->d_grid_step, x, s);
 
 		// update V_a(-x) to enforce even potential (V_a(0) updated twice as intended)
 		if(param->d_topo_tuning_even)
-			update_topo_grid(param->d_grid[a], param->d_n_grid, param->d_grid_max, param->d_grid_step, -x, s);
+			{
+			update_topo_grid_fine(param->d_grid[a], param->d_n_grid, param->d_grid_max, param->d_grid_step, -x, s);
+			}
 
 		// update counters
 		tune_utils->sweep_counter[a] += 1 - tune_utils->sweep_check[a];
@@ -203,17 +335,90 @@ void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_U
 		}
 
 	// normalize V_a(0) = 0 for all replicas
-	int const i_grid_0 = (int) floor(param->d_grid_max / param->d_grid_step);
+	for(int a = 0; a < n_replica; a++)
+		shift_topo_grid(param->d_grid[a], param->d_n_grid, param->d_grid_max, param->d_grid_step);
+	}
+
+
+void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_Utils *const tune_utils, Acc_Utils *const acc_counters)
+	{
+	int const n_replica = param->d_N_replica_pt;
+	if(n_replica < 3)
+		{
+		tune_topo_potential_unconstrained(GC, param, tune_utils);
+		return;
+		}
+
+	// get stored topcharge x
+	double x_coarse = GC[0].stored_topcharge;
+	double x_fine = GC[n_replica - 1].stored_topcharge;
+	if(param->d_topo_alpha > MIN_VALUE)
+		{
+		x_coarse = round(param->d_topo_alpha * x_coarse);
+		x_fine = round(param->d_topo_alpha * x_fine);
+		}
+
+	// get tuning step
+	double const s_coarse = tune_utils->tuning_stp[0];
+	double const s_fine = tune_utils->tuning_stp[n_replica - 1];
+
+	// update coarse V_0(x) and fine V_{Nr-1}(x) grids
+	int const n_grid = param->d_n_grid;
+	int const n_grid_aux = tune_utils->d_n_grid_aux;
+	double const grid_max = param->d_grid_max;
+	double const grid_step = param->d_grid_step;
+	double const grid_step_coarse = param->d_grid_step_coarse;
+	update_topo_grid_coarse(tune_utils->grid_coarse, tune_utils->grid_coarse_aux, n_grid, n_grid_aux, grid_max, grid_step, grid_step_coarse, x_coarse, s_coarse);
+	update_topo_grid_fine(tune_utils->grid_fine, n_grid, grid_max, grid_step, x_fine, s_fine);
+
+	// update with x -> -x to enforce even potential (x = 0 updated twice as intended)
+	if(param->d_topo_tuning_even)
+		{
+		update_topo_grid_coarse(tune_utils->grid_coarse, tune_utils->grid_coarse_aux, n_grid, n_grid_aux, grid_max, grid_step, grid_step_coarse, -x_coarse, s_coarse);
+		update_topo_grid_fine(tune_utils->grid_fine, n_grid, grid_max, grid_step, -x_fine, s_fine);
+		}
+
+	// update weights for interpolation of V_a(x) from V_0(x) and V_{Nr-1}(x)
+	if(acc_counters->num_swap[0] > param->d_topo_tuning_weights_every)
+		{
+		update_topo_grid_weights(param, acc_counters);
+		for(int a = 0; a < n_replica; a++)
+			{
+			acc_counters->num_swap[a] = 0;
+			acc_counters->num_accepted_swap[a] = 0;
+			acc_counters->acc_swap[a] = 0.0;
+			}
+		}
+
+	// reconstruct V_a(x) for all replicas from coarse and fine grids
+	combine_topo_grids(tune_utils, param);
+
 	for(int a = 0; a < n_replica; a++)
 		{
-		double const offset = param->d_grid[a][i_grid_0];
-		for(int i = 0; i < param->d_n_grid; i++)
-			param->d_grid[a][i] -= offset;
+		// get stored topcharge x
+		double x = GC[a].stored_topcharge;
+		if(param->d_topo_alpha > MIN_VALUE)
+			x = round(param->d_topo_alpha * x);
+
+		// update counters
+		tune_utils->sweep_counter[a] += 1 - tune_utils->sweep_check[a];
+
+		int const i_grid = topo_grid_index(x, grid_max, grid_step);
+		int const flag = tune_utils->sweep_flag[a];
+
+		if((i_grid <= 0 && flag == 1) || (i_grid >= n_grid - 1 && flag == -1))
+			{
+			tune_utils->sweep_flag[a] = -flag;
+			tune_utils->sweep_check[a] = 1;
+			}
+
+		// normalize V_a(0) = 0
+		shift_topo_grid(param->d_grid[a], n_grid, grid_max, grid_step);
 		}
 	}
 
-int update_tuning_stp(Tune_Utils *const tune_utils,
-                      GParam const *const param)
+
+int update_tuning_stp(Tune_Utils *const tune_utils, GParam const *const param)
 	{
 	int const n_replica = param->d_N_replica_pt;
 
@@ -254,6 +459,7 @@ void print_tuning_stp(long upd_index, Tune_Utils const *const tune_utils, GParam
 	fprintf(stdout, "\n");
 	fflush(stdout);
 	}
+
 
 // compute topo potential V_a(x)
 double compute_topo_potential(int const a, double x, GParam const *const param)
@@ -353,9 +559,6 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const *const GC1,
 
 	return loc_charge;
 
-	// TODO: debug, remove
-	//fprintf(stderr, "%ld % f ", r, loc_charge);
-
 	#elif (STDIM==2 && NCOLOR==1)
 	GAUGE_GROUP u1matrix;
 	double angle;
@@ -402,7 +605,7 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const *const GC,
 	#endif
 	for(long n = 0; n < (topcharge_rect->d_vol_rect); n++)
 		{
-		long r = topcharge_rect->rect_sites[n];
+		long const r = topcharge_rect->rect_sites[n];
 		res += multicanonic_delta_loc_topcharge(GC, &helper, geo, param, r);
 		}
 
@@ -426,7 +629,6 @@ double multicanonic_delta_topcharge_rectangle(Gauge_Conf const *const GC,
 
 
 // compute the topological charge after some cooling
-// in the cooling procedure the action at theta=0 is minimized
 double multicanonic_topcharge_cooling(Gauge_Conf *const GC,
                                       Geometry const *const geo,
                                       GParam const *const param)
@@ -437,9 +639,9 @@ double multicanonic_topcharge_cooling(Gauge_Conf *const GC,
 
 		equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const *) GC->lattice, param);
 
-		// TODO: unitarize before cooling?
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
+
 		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
 		return topcharge(&helper, geo, param);
 		}
@@ -448,14 +650,12 @@ double multicanonic_topcharge_cooling(Gauge_Conf *const GC,
 
 
 // compute the difference of the topological charge after some cooling only on a rectangle
-// in the cooling procedure the action at theta=0 is minimized
 double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf *const GC,
                                                       Geometry const *const geo,
                                                       GParam const *const param,
                                                       int const hierarc_level,
                                                       Rect_Utils const *const rect_aux)
 	{
-	// TODO: debug and benchmark hierarchical_cooling
 	if(param->d_topo_coolsteps > 0)
 		{
 		Gauge_Conf helper;
@@ -468,8 +668,9 @@ double multicanonic_delta_topcharge_cooling_rectangle(Gauge_Conf *const GC,
 		helper.lattice_copy = GC->lattice_copy_cold;
 		helper.Z_copy = GC->Z_copy;
 
+		// TODO: debug and benchmark hierarchical_cooling
 		//hierarchical_cooling(&helper, geo, param, rect_aux->cooling_rect[hierarc_level]);
-		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
+		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE); // if using RND_DIR_RNDEO_SITE, must also assign helper's shuffle arrays
 		return multicanonic_delta_topcharge_rectangle(&helper, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
 		}
 	return multicanonic_delta_topcharge_rectangle(GC, geo, param, &(rect_aux->topcharge_rect[hierarc_level]));
@@ -566,6 +767,7 @@ int multicanonic_metropolis_step_all_links(Gauge_Conf *const GC, Geometry const 
 	return acc;
 	}
 
+
 // Metropolis test with p_metro=exp(- delta topo_potential) only on a given rectangle when using cold charge
 int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                            int const hierarc_level, Rect_Utils const *const rect_aux)
@@ -588,7 +790,7 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const 
 			REQUIRE(0, "unsupported cooling method %d", param->d_topo_cooling);
 		}
 	// TODO: debug, remove
-	//fprintf(stdout, "%ld %d %f %f\n", GC->update_index, hierarc_level, Q_new, Q_new_debug);
+	//REQUIRE(fabs(Q_new - Q_new_debug) < MIN_VALUE, "discrepancy: %ld %d %f %f\n", GC->update_index, hierarc_level, Q_new, Q_new_debug);
 
 	// Metropolis test, p >= 1: always accept; p < 1: accept with probability p
 	double const p = metropolis_prob_multicanonic(GC->replica_index, Q_new, Q_old, param);

@@ -65,6 +65,7 @@ typedef struct Acc_Utils
 	{
 	long *num_accepted_swap; // number of accepted swaps during parallel tempering
 	long *num_swap;          // number of proposed swaps during parallel tempering
+	double *acc_swap;          // acceptance of swaps during parallel tempering
 	double *metro_swap_prob; // to store swap probabilities
 	FILE *swaptrackfilep;    // pointer to file to track replicas during parallel tempering
 
@@ -114,7 +115,11 @@ typedef struct Meas_Utils
 // auxiliary arrays and flags for tuning of topo_potential
 typedef struct Tune_Utils
 	{
+	double *grid_coarse;
+	double *grid_fine;
 	double *tuning_stp;
+	double *grid_coarse_aux;
+	int d_n_grid_aux;
 	int *sweep_counter;
 	int *sweep_check;
 	int *sweep_flag;
@@ -924,9 +929,14 @@ void init_tune_utils(Tune_Utils *const,
 
 void free_tune_utils(Tune_Utils *);
 
+void tune_topo_potential_unconstrained(Gauge_Conf const *const,
+						 GParam *const,
+						 Tune_Utils *const);
+
 void tune_topo_potential(Gauge_Conf const *const,
                          GParam *const,
-                         Tune_Utils *const);
+                         Tune_Utils *const,
+                         Acc_Utils *const);
 
 int update_tuning_stp(Tune_Utils *const,
                       GParam const *const);

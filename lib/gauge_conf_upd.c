@@ -1401,25 +1401,23 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 			}
 		}
 
-	// PHASE7_BRIDGE: Metropolis test, accept and restore still on the host
-	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
-
-	// Metropolis test if using multicanonical
+	// multicanonic Metropolis tests (charges on the devices, tests on the host in slot order)
+	int *acc;
+	allocate_array_int(&acc, Nr, __FILE__, __LINE__);
+	for(int j = 0; j < Nr; j++) acc[j] = 1;
+	#ifdef MULTICANONICAL_MODE
+	multicanonic_metropolis_replica(GC, geo, param, acc);
 	for(int j = 0; j < Nr; j++)
 		{
-		int acc = 1;
-		// multicanonic Metropolis tests and acceptance counters update
-		#ifdef MULTICANONICAL_MODE
-		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
-		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc; // counters by replica index
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc[j]; // counters by replica index
 		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
-		#endif
-		// update or restore the lattice and auxiliary copies
-		if(acc == 1) accept_gauge_conf(&(GC[j]), param);
-		else restore_gauge_conf(&(GC[j]), param);
 		}
+	#endif
 
-	copy_gauge_conf_replica_to_device(GC, param, GC_LATTICE | GC_COPY | GC_COLD); // PHASE7_BRIDGE
+	// update or restore the lattice and auxiliary copies
+	for(int j = 0; j < Nr; j++)
+		accept_or_restore_gauge_conf_device(&(GC[j]), param, acc[j]);
+	free(acc);
 	}
 
 
@@ -1549,29 +1547,24 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 			}
 		}
 
-	// PHASE7_BRIDGE: Metropolis test, accept and restore still on the host
-	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
-
-	// Metropolis test if using multicanonical
+	// multicanonic Metropolis tests (charges on the devices, tests on the host in slot order)
 	// TODO: check rectangle version (seems ok)
+	int *acc;
+	allocate_array_int(&acc, Nr, __FILE__, __LINE__);
+	for(int j = 0; j < Nr; j++) acc[j] = 1;
+	#ifdef MULTICANONICAL_MODE
+	multicanonic_metropolis_rectangle_replica(GC, geo, param, hierarc_level, rect_aux, acc);
 	for(int j = 0; j < Nr; j++)
 		{
-		int acc = 1;
-		// multicanonic Metropolis tests and acceptance counters update
-		#ifdef MULTICANONICAL_MODE
-		//acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
-		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux);
-		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc; // counters by replica index
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc[j]; // counters by replica index
 		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
-		#endif
-		// update or restore the lattice and auxiliary copies
-		if(acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
-		else restore_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
-		//if (acc == 1) accept_gauge_conf(&(GC[j]), param);
-		//else restore_gauge_conf(&(GC[j]), param);
 		}
+	#endif
 
-	copy_gauge_conf_replica_to_device(GC, param, GC_LATTICE | GC_COPY | GC_COLD); // PHASE7_BRIDGE
+	// update or restore the lattice and auxiliary copies
+	for(int j = 0; j < Nr; j++)
+		accept_or_restore_gauge_conf_rectangle_device(&(GC[j]), hierarc_level, rect_aux, acc[j]);
+	free(acc);
 	}
 
 

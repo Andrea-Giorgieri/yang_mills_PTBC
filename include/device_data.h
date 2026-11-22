@@ -16,7 +16,8 @@
 // table: host pointers would overwrite the device ones. Only blocks and scalar members are updated, with the
 // functions below.
 //
-// Without OPENACC_MODE all the functions do nothing (swap_lattice_cold only swaps on the host).
+// Without OPENACC_MODE all the functions do nothing (swap_lattice_cold only swaps on the host, the views live on the
+// host).
 
 // fields of a configuration to be copied between host and device (bit mask)
 enum
@@ -69,5 +70,19 @@ void copy_topo_grid_to_device(GParam *param);
 
 // exchange lattice_cold and lattice_copy_cold, on the host and on the device holding GC (if present there)
 void swap_lattice_cold(Gauge_Conf *GC);
+
+// views: persistent auxiliary configurations, one per slot and kind, whose lattice and Z point to other fields of the
+// configuration of the slot (allocated by init_device_data in every build, on the devices with OPENACC_MODE)
+typedef enum
+	{
+	VIEW_COLD,      // lattice = lattice_cold, Z = Z, lattice_copy = lattice_copy_cold, Z_copy = Z_copy
+	VIEW_COPY,      // lattice = lattice_copy, Z = Z_copy
+	VIEW_COLD_COPY, // lattice = lattice_copy_cold, Z = Z_copy
+	NUM_VIEWS
+	} View_Kind;
+
+// view of the given kind of GC (an element of the array given to init_device_data); the pointers are assigned on the
+// host and, in the queue QUEUE_DEVICE, on the device holding GC: call it again after swap_lattice_cold
+Gauge_Conf *gauge_conf_view(Gauge_Conf const *GC, View_Kind kind);
 
 #endif

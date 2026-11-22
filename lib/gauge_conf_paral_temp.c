@@ -102,6 +102,9 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 	int const num_even = (num_swaps + is_even) / 2; // number of swaps for even replica
 	int const num_odd = (num_swaps - is_even) / 2;  // number of swaps for odd replica
 
+	// PHASE7_BRIDGE: the swaps still run on the host (the update ends on the devices)
+	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
+
 	// to be sure detailed balance is satisfied, choose randomly whether to swap first odd or even copies
 	int is_even_first, num_swaps_1, num_swaps_2;
 	if(casuale(rng_host()) < 0.5) // first swap all even copies, then all odd copies
@@ -176,6 +179,9 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 // direction is chosen randomly, verse is always positive
 void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
+	// PHASE7_BRIDGE: the translation still runs on the host and reads the auxiliary copies (accepted on the devices)
+	copy_gauge_conf_to_host(GC, param, GC_COPY | GC_COLD);
+
 	// extract random direction
 	int const dir = (int) (STDIM * casuale(rng_host()));
 	GC->translation[dir] += 1;

@@ -266,6 +266,15 @@ void restore_gauge_conf_rectangle(Gauge_Conf *const GC,
                                   int const hierarc_level,
                                   Rect_Utils const *const rect_aux);
 
+void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC,
+                                         GParam const *const param,
+                                         int const acc);
+
+void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC,
+                                                   int const hierarc_level,
+                                                   Rect_Utils const *const rect_aux,
+                                                   int const acc);
+
 void write_conf_on_file_with_name(Gauge_Conf const *const GC,
                                   GParam const *const param,
                                   char const *const filename);
@@ -1056,6 +1065,18 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const,
                                            GParam const *const,
                                            int const,
                                            Rect_Utils const *const);
+
+void multicanonic_metropolis_replica(Gauge_Conf *const GC,
+                                     Geometry const *const geo,
+                                     GParam const *const param,
+                                     int *const acc);
+
+void multicanonic_metropolis_rectangle_replica(Gauge_Conf *const GC,
+                                               Geometry const *const geo,
+                                               GParam const *const param,
+                                               int const hierarc_level,
+                                               Rect_Utils const *const rect_aux,
+                                               int *const acc);
 
 // old implementation of multicanonic
 

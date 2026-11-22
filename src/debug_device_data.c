@@ -431,6 +431,10 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 				one(&(gc->lattice_copy_cold[r][i]));
 		copy_gauge_conf_to_device(gc, param, GC_COLD);
 		swap_lattice_cold(gc);
+		// the swap is in the queue of the device of the slot (wait_devices would leave the last device selected)
+		#ifdef OPENACC_MODE
+		#pragma acc wait(QUEUE_DEVICE)
+		#endif
 		for(int w = 2; w < 4; w++)
 			{
 			double const s_dev = lattice_sum_device(gc, w, V);
@@ -438,7 +442,29 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 			sprintf(what, "slot %d (device %d): %s after swap", g, gc->device, lat_name[w]);
 			check(close_enough(s_dev, s_host), what, s_dev, s_host);
 			}
+
+		// views on the device (after the swap): lattice and Z of the view = the fields of the slot
+		char const *const view_name[NUM_VIEWS] = {"VIEW_COLD", "VIEW_COPY", "VIEW_COLD_COPY"};
+		int const view_lat[NUM_VIEWS] = {2, 1, 3}; // lattice_cold, lattice_copy, lattice_copy_cold
+		for(int k = 0; k < NUM_VIEWS; k++)
+			{
+			Gauge_Conf *v = gauge_conf_view(gc, (View_Kind) k);
+			#ifdef OPENACC_MODE
+			#pragma acc wait(QUEUE_DEVICE)
+			#endif
+			double s_dev = lattice_sum_device(v, 0, V);
+			double s_host = lattice_sum_host(lattice_of(gc, view_lat[k]), V);
+			sprintf(what, "slot %d (device %d): %s lattice", g, gc->device, view_name[k]);
+			check(close_enough(s_dev, s_host), what, s_dev, s_host);
+			s_dev = Z_sum_device(v, 0, V, nZ);
+			s_host = Z_sum_host((k == VIEW_COLD) ? gc->Z : gc->Z_copy, V, nZ);
+			sprintf(what, "slot %d (device %d): %s Z", g, gc->device, view_name[k]);
+			check(close_enough(s_dev, s_host), what, s_dev, s_host);
+			}
 		swap_lattice_cold(gc);
+		#ifdef OPENACC_MODE
+		#pragma acc wait(QUEUE_DEVICE)
+		#endif
 		#endif
 		}
 	}

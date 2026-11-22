@@ -7,6 +7,7 @@
 #include <complex.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef OPENACC_MODE
 #include <openacc.h>
 #endif
@@ -344,6 +345,120 @@ static void update_gauge_conf(Gauge_Conf *GC, GParam const *const param, int con
 
 
 // ---------------------------------------------------------------------------------------------------------------------
+// views (every build)
+// ---------------------------------------------------------------------------------------------------------------------
+
+static Gauge_Conf const *s_gc_base = NULL; // array of configurations given to init_device_data
+static long s_n_slots = 0;                 // its number of elements
+static Gauge_Conf *s_view[NUM_VIEWS];      // [kind][slot]
+
+
+static void init_views(Gauge_Conf const *GC, GParam const *const param)
+	{
+	s_gc_base = GC;
+	s_n_slots = param->d_N_replica_pt;
+	for(int k = 0; k < NUM_VIEWS; k++)
+		{
+		s_view[k] = (Gauge_Conf *) calloc((size_t) s_n_slots, sizeof(Gauge_Conf));
+		REQUIRE(s_view[k] != NULL, "allocation of the views failed");
+		for(long g = 0; g < s_n_slots; g++)
+			s_view[k][g].device = GC[g].device;
+		}
+
+	#ifdef OPENACC_MODE
+	// shallow copies: the pointers are assigned on the device by gauge_conf_view
+	FOR_EACH_DEVICE(d)
+		{
+		select_device(d);
+		long const first = device_slot_begin(d);
+		long const n = device_slot_end(d) - first;
+		for(int k = 0; k < NUM_VIEWS; k++)
+			acc_copyin(&(s_view[k][first]), (size_t) n * sizeof(Gauge_Conf));
+		}
+	#endif
+	}
+
+
+static void free_views(void)
+	{
+	#ifdef OPENACC_MODE
+	FOR_EACH_DEVICE(d)
+		{
+		select_device(d);
+		long const first = device_slot_begin(d);
+		long const n = device_slot_end(d) - first;
+		for(int k = 0; k < NUM_VIEWS; k++)
+			acc_delete(&(s_view[k][first]), (size_t) n * sizeof(Gauge_Conf));
+		}
+	#endif
+
+	for(int k = 0; k < NUM_VIEWS; k++)
+		{
+		free(s_view[k]);
+		s_view[k] = NULL;
+		}
+	s_gc_base = NULL;
+	s_n_slots = 0;
+	}
+
+
+Gauge_Conf *gauge_conf_view(Gauge_Conf const *GC, View_Kind const kind)
+	{
+	long const g = (long) (GC - s_gc_base);
+	REQUIRE(s_gc_base != NULL && g >= 0 && g < s_n_slots, "configuration without views (init_device_data not called?)");
+	Gauge_Conf *v = &(s_view[kind][g]);
+
+	switch(kind)
+		{
+		case VIEW_COLD:
+			v->lattice = GC->lattice_cold;
+			v->Z = GC->Z;
+			v->lattice_copy = GC->lattice_copy_cold;
+			v->Z_copy = GC->Z_copy;
+			break;
+		case VIEW_COPY:
+			v->lattice = GC->lattice_copy;
+			v->Z = GC->Z_copy;
+			break;
+		case VIEW_COLD_COPY:
+			v->lattice = GC->lattice_copy_cold;
+			v->Z = GC->Z_copy;
+			break;
+		default:
+			REQUIRE(0, "unknown view kind %d", (int) kind);
+		}
+
+	#ifdef OPENACC_MODE
+	// the same assignment on the device, with the device pointers of GC
+	select_device(GC->device);
+	int const k = (int) kind;
+	#pragma acc serial present(GC[0:1], v[0:1]) async(QUEUE_DEVICE)
+		{
+		if(k == VIEW_COLD)
+			{
+			v->lattice = GC->lattice_cold;
+			v->Z = GC->Z;
+			v->lattice_copy = GC->lattice_copy_cold;
+			v->Z_copy = GC->Z_copy;
+			}
+		else if(k == VIEW_COPY)
+			{
+			v->lattice = GC->lattice_copy;
+			v->Z = GC->Z_copy;
+			}
+		else
+			{
+			v->lattice = GC->lattice_copy_cold;
+			v->Z = GC->Z_copy;
+			}
+		}
+	#endif
+
+	return v;
+	}
+
+
+// ---------------------------------------------------------------------------------------------------------------------
 // public functions
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -374,13 +489,13 @@ void init_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *
 		}
 	acc_wait_all();
 	#else
-	(void) GC;
 	(void) geo;
-	(void) param;
 	(void) rect_aux;
 	(void) meas_aux;
 	(void) n_meas;
 	#endif
+
+	init_views(GC, param);
 	}
 
 
@@ -398,6 +513,9 @@ void wait_devices(void)
 
 void free_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *rect_aux, Meas_Utils *meas_aux, int const n_meas)
 	{
+	wait_devices();
+	free_views();
+
 	#ifdef OPENACC_MODE
 	FOR_EACH_DEVICE(d)
 		{

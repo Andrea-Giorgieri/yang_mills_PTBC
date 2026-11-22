@@ -916,6 +916,87 @@ void restore_gauge_conf_rectangle(Gauge_Conf *const GC, int const hierarc_level,
 	}
 
 
+// accept (acc = 1) or restore (acc = 0) a configuration of the replica array: with OPENACC_MODE on the device holding it
+// (in the queue QUEUE_DEVICE), otherwise accept_gauge_conf / restore_gauge_conf on the host
+void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *const param, int const acc)
+	{
+	#ifdef OPENACC_MODE
+	select_device(GC->device);
+	long const n = STDIM * param->d_volume;
+	if(acc == 1)
+		{
+		#ifdef MULTICANONICAL_MODE
+		swap_lattice_cold(GC);
+		#endif
+
+		#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+		for(long s = 0; s < n; s++)
+			{
+			long const r = s % (param->d_volume);
+			int const i = (int) ((s - r) / (param->d_volume));
+			unitarize(&(GC->lattice[r][i]));
+			equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
+			}
+		}
+	else
+		{
+		#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+		for(long s = 0; s < n; s++)
+			{
+			long const r = s % (param->d_volume);
+			int const i = (int) ((s - r) / (param->d_volume));
+			equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
+			}
+		}
+	#else
+	if(acc == 1) accept_gauge_conf(GC, param);
+	else restore_gauge_conf(GC, param);
+	#endif
+	}
+
+
+// the same on the rectangle update_rect[hierarc_level]
+void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC, int const hierarc_level, Rect_Utils const *const rect_aux,
+                                                   int const acc)
+	{
+	#ifdef OPENACC_MODE
+	select_device(GC->device);
+	long const vol_rect = (rect_aux->update_rect[hierarc_level]).d_vol_rect;
+	long const n = STDIM * vol_rect;
+	if(acc == 1)
+		{
+		#pragma acc parallel loop present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+		for(long s = 0; s < n; s++)
+			{
+			long const m = s % vol_rect;
+			long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[m];
+			int const i = (int) ((s - m) / vol_rect);
+			unitarize(&(GC->lattice[r][i]));
+			equal(&(GC->lattice_copy[r][i]), &(GC->lattice[r][i]));
+			}
+
+		#ifdef MULTICANONICAL_MODE
+		swap_lattice_cold(GC);
+		#endif
+		}
+	else
+		{
+		#pragma acc parallel loop present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+		for(long s = 0; s < n; s++)
+			{
+			long const m = s % vol_rect;
+			long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[m];
+			int const i = (int) ((s - m) / vol_rect);
+			equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
+			}
+		}
+	#else
+	if(acc == 1) accept_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
+	else restore_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
+	#endif
+	}
+
+
 // save a configuration in ILDG-like format
 void write_conf_on_file_with_name(Gauge_Conf const *const GC,
                                   GParam const *const param,

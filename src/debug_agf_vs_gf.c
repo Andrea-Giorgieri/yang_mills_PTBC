@@ -87,6 +87,7 @@ void real_main(char const *in_file)
 		// perform measures only on homogeneous configuration
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
+			copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_COPY | GC_Z);
 			time(&time3);
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux_agf);
 			time(&time4);

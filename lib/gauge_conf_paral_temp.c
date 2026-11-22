@@ -12,6 +12,7 @@
 #endif
 
 #include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -124,6 +125,9 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 	swap_group(GC, geo, param, swap_rectangle, acc_counters, 1 - is_even_first, num_swaps_2, D); // second group: reverse parity
 
 	free(D);
+
+	// the defect coefficients read on the devices depend on replica_index
+	copy_replica_index_to_device(GC, param);
 	}
 
 
@@ -197,10 +201,7 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 
 	// swap translated cold lattice with previous cold lattice
 	#ifdef MULTICANONICAL_MODE
-	GAUGE_GROUP **aux;
-	aux = GC->lattice_cold;
-	GC->lattice_cold = GC->lattice_copy_cold;
-	GC->lattice_copy_cold = aux;
+	swap_lattice_cold(GC);
 	#endif
 
 	// update the auxiliary confs

@@ -8,6 +8,7 @@ bin_PROGRAMS = conf_check \
             debug_agf_vs_gf \
             debug_agf_vs_delta \
             debug_device \
+            debug_device_data \
             yang_mills_gpu_plan \
             yang_mills_local_agf \
             yang_mills_local_pt_agf \
@@ -48,7 +49,9 @@ endian = ./include/endianness.h  \
 
 gauge_group = ./include/gauge_group.h
 
-gauge_conf = ./include/gauge_conf.h \
+gauge_conf = ./include/device_data.h \
+            ./include/gauge_conf.h \
+            ./lib/device_data.c \
             ./lib/gauge_conf_def.c \
             ./lib/gauge_conf_meas.c \
             ./lib/gauge_conf_multilevel.c \
@@ -86,6 +89,7 @@ conf_check_SOURCES=./src/conf_check.c \
                    $(dSFMT) \
                    $(endian) \
                    $(gauge_group) \
+                   $(geometry) \
                    $(gparam) \
                    $(random) \
                    $(su2) \
@@ -134,6 +138,7 @@ debug_su2_SOURCES=./src/debug_su2.c \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
+                  $(geometry) \
                   $(gparam) \
                   ./include/macro.h \
                   $(random) \
@@ -144,6 +149,7 @@ debug_sun_SOURCES=./src/debug_sun.c \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
+                  $(geometry) \
                   $(gparam) \
                   ./include/macro.h \
                   $(random) \
@@ -155,12 +161,29 @@ debug_u1_SOURCES=./src/debug_u1.c \
                   $(align) \
                   $(dSFMT) \
                   $(endian) \
+                  $(geometry) \
                   $(gparam) \
                   ./include/macro.h \
                   $(random) \
                   $(u1)
 
 debug_device_SOURCES=./src/debug_device.c \
+                          $(timing) \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(gauge_group) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+debug_device_data_SOURCES=./src/debug_device_data.c \
                           $(timing) \
                           $(align) \
                           $(dSFMT)  \

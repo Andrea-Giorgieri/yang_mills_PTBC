@@ -56,6 +56,8 @@ void allocate_array_rng(rng_t **const array, long size, char const *const file, 
 // [n1][n2]: array[i] = block + i * n2
 void allocate_array_GAUGE_GROUP_2d(GAUGE_GROUP ***const array, long n1, long n2, char const *const file, int line);
 
+void allocate_array_double_2d(double ***const array, long n1, long n2, char const *const file, int line);
+
 void allocate_array_double_complex_2d(double complex ***const array, long n1, long n2, char const *const file, int line);
 
 void allocate_array_long_2d(long ***const array, long n1, long n2, char const *const file, int line);
@@ -67,6 +69,8 @@ void allocate_array_GAUGE_GROUP_3d(GAUGE_GROUP ****const array, long n1, long n2
 
 // free the block and the tables of the arrays allocated with the functions above
 void free_array_GAUGE_GROUP_2d(GAUGE_GROUP **array);
+
+void free_array_double_2d(double **array);
 
 void free_array_double_complex_2d(double complex **array);
 

@@ -1151,6 +1151,9 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const 
 	if(num_meas < param->d_coolrepeat)
 		num_meas = param->d_coolrepeat;
 
+	for(int i = 0; i < 4; i++)
+		meas_aux->lattice_aux[i] = NULL;
+
 	if(num_meas > 0)
 		{
 		// allocate meas arrays
@@ -1198,10 +1201,12 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const 
 			allocate_array_double(&(meas_aux->potential), num_meas, __FILE__, __LINE__);
 			}
 
-		// allocate auxiliary lattices
-		for(int i = 0; i < 4; i++)
+		// allocate auxiliary lattices: only the physical replica owns them, the other replicas share them
+		// (set by init_meas_utils_replica, the measurements are sequential)
+		if(replica_index == 0)
 			{
-			allocate_array_GAUGE_GROUP_2d(&(meas_aux->lattice_aux[i]), param->d_volume, STDIM, __FILE__, __LINE__);
+			for(int i = 0; i < 4; i++)
+				allocate_array_GAUGE_GROUP_2d(&(meas_aux->lattice_aux[i]), param->d_volume, STDIM, __FILE__, __LINE__);
 			}
 		}
 
@@ -1283,10 +1288,11 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const *const param, int const r
 			free(meas_aux.potential);
 			}
 
-		// free auxiliary lattices
-		for(int i = 0; i < 4; i++)
+		// free auxiliary lattices (owned by the physical replica)
+		if(replica_index == 0)
 			{
-			free_array_GAUGE_GROUP_2d(meas_aux.lattice_aux[i]);
+			for(int i = 0; i < 4; i++)
+				free_array_GAUGE_GROUP_2d(meas_aux.lattice_aux[i]);
 			}
 		}
 
@@ -1321,7 +1327,23 @@ void init_meas_utils_replica(Meas_Utils **meas_aux, GParam const *const param)
 	// init meas utils for other replicas if using replica meas mode
 	#ifdef REPLICA_MEAS_MODE
 	for(int i = 1; i < param->d_N_replica_pt; i++)
+		{
 		init_meas_utils(&((*meas_aux)[i]), param, i);
+		for(int k = 0; k < 4; k++)
+			(*meas_aux)[i].lattice_aux[k] = (*meas_aux)[0].lattice_aux[k];
+		}
+	#endif
+	}
+
+
+// number of initialized elements of the array of init_meas_utils_replica
+int num_meas_utils_replica(GParam const *const param)
+	{
+	#ifdef REPLICA_MEAS_MODE
+	return param->d_N_replica_pt;
+	#else
+	(void) param;
+	return 1;
 	#endif
 	}
 

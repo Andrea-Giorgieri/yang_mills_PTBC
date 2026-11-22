@@ -11,6 +11,7 @@
 #endif
 
 #include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_conf.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -63,6 +64,9 @@ void real_main(char const *in_file)
 	// initialize gauge configuration of all replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);
 
+	// copy shared data and configurations to the devices
+	init_device_data(GC, &geo, &param, &rect_aux, meas_aux, num_meas_utils_replica(&param));
+
 	stop_timer(&(timers.init_timer));
 
 	// if number of MC updates is set to 0, perform measures on initialized configuration
@@ -70,10 +74,14 @@ void real_main(char const *in_file)
 		{
 		start_timer(&(timers.step_timer));
 		start_timer(&(timers.meas_timer));
+		copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_Z);
 		perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 		#ifdef REPLICA_MEAS_MODE
 		for(int i = 1; i < param.d_N_replica_pt; i++)
+			{
+			copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[i]]), &param, GC_LATTICE | GC_Z);
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
+			}
 		#endif
 		start_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
@@ -87,6 +95,7 @@ void real_main(char const *in_file)
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		start_timer(&(timers.update_timer));
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
+		copy_gauge_conf_replica_to_device(GC, &param, GC_ALL); // PHASE7_BRIDGE: the update still runs on the host
 		stop_timer(&(timers.update_timer));
 		print_conf_labels(GC, &param, &acc_counters);
 
@@ -94,10 +103,14 @@ void real_main(char const *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			start_timer(&(timers.meas_timer));
+			copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_Z);
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 			#ifdef REPLICA_MEAS_MODE
 			for(int i = 1; i < param.d_N_replica_pt; i++)
+				{
+				copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[i]]), &param, GC_LATTICE | GC_Z);
 				perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
+				}
 			#endif
 			stop_timer(&(timers.meas_timer));
 			}
@@ -107,6 +120,7 @@ void real_main(char const *in_file)
 			{
 			if(GC[0].update_index % param.d_saveconf_back_every == 0)
 				{
+				copy_gauge_conf_replica_to_host(GC, &param, GC_LATTICE | GC_Z);
 				// simple
 				write_replica_on_file(GC, &param);
 				// backup copy
@@ -123,6 +137,7 @@ void real_main(char const *in_file)
 				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
+				copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_Z);
 				write_conf_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 
 				strcpy(name, param.d_twist_file);
@@ -140,13 +155,20 @@ void real_main(char const *in_file)
 	stop_timer(&(timers.prog_timer));
 
 	// save configurations
-	if(param.d_saveconf_back_every != 0) write_replica_on_file(GC, &param);
+	if(param.d_saveconf_back_every != 0)
+		{
+		copy_gauge_conf_replica_to_host(GC, &param, GC_LATTICE | GC_Z);
+		write_replica_on_file(GC, &param);
+		}
 
 	// print simulation details
 	print_parameters_local_pt_agf(&param, &timers);
 
 	// print acceptances of parallel tempering
 	print_acceptances(&acc_counters, &param);
+
+	// free device copies
+	free_device_data(GC, &geo, &param, &rect_aux, meas_aux, num_meas_utils_replica(&param));
 
 	// free gauge configurations
 	free_gauge_conf_replica(GC, &param);

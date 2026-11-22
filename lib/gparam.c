@@ -782,11 +782,7 @@ void read_topo_potential(GParam *const param)
 	REQUIRE(fp != NULL, "failed to open topological potential file %s", param->d_topo_potential_file);
 
 	allocate_array_double(&(param->d_grid_weight), param->d_N_replica_pt, __FILE__, __LINE__);
-	allocate_array_double_pointer(&(param->d_grid), param->d_N_replica_pt, __FILE__, __LINE__);
-	for(int a = 0; a < param->d_N_replica_pt; a++)
-		{
-		allocate_array_double(&(param->d_grid[a]), param->d_n_grid, __FILE__, __LINE__);
-		}
+	allocate_array_double_2d(&(param->d_grid), param->d_N_replica_pt, param->d_n_grid, __FILE__, __LINE__);
 
 	// read grid_step_coarse
 	int err = fscanf(fp, "%lf", &(param->d_grid_step_coarse));
@@ -985,12 +981,7 @@ void free_gparam(GParam *const param)
 	free(param->d_N_sweep_rect);
 	free(param->d_multipolyakov_dirs);
 	free(param->d_theta_profile);
-	if(param->d_grid != NULL)
-		{
-		for(int a = 0; a < param->d_N_replica_pt; a++)
-			free(param->d_grid[a]);
-		free(param->d_grid);
-		}
+	if(param->d_grid != NULL) free_array_double_2d(param->d_grid);
 	free(param->d_grid_weight);
 
 	param->d_pt_bound_cond_coeff = NULL;

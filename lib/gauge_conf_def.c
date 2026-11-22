@@ -16,6 +16,7 @@
 #endif
 
 #include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -818,10 +819,7 @@ void equal_gauge_conf(Gauge_Conf *GC1, Gauge_Conf *GC2, GParam const *const para
 void accept_gauge_conf(Gauge_Conf *const GC, GParam const *const param)
 	{
 	#ifdef MULTICANONICAL_MODE
-	GAUGE_GROUP **aux;
-	aux = GC->lattice_cold;
-	GC->lattice_cold = GC->lattice_copy_cold;
-	GC->lattice_copy_cold = aux;
+	swap_lattice_cold(GC);
 	#endif
 
 	#ifdef OPENMP_MODE
@@ -868,10 +866,7 @@ void accept_gauge_conf_rectangle(Gauge_Conf *const GC, int const hierarc_level, 
 		}
 
 	#ifdef MULTICANONICAL_MODE
-	GAUGE_GROUP **aux;
-	aux = GC->lattice_cold;
-	GC->lattice_cold = GC->lattice_copy_cold;
-	GC->lattice_copy_cold = aux;
+	swap_lattice_cold(GC);
 	/*
 	rect = &(rect_aux->topcharge_rect[hierarc_level]);
 	#ifdef OPENMP_MODE

@@ -10,7 +10,7 @@
 extern const int g_signed_ord_orth_dir[4][4][2]; // (mu, nu, sood[mu][nu][0], sood[mu][nu][1]) is an even permutation of (0,1,2,3)
 extern const int g_indep_perm_dir[4][3];         // (ipd[0][i], ipd[1][i], ipd[2][i], ipd[3][i]) is the i-th independent permutation of (0,1,2,3)
 #ifdef OPENACC_MODE
-// device copies of the tables, initialized by init_geometry with acc update device
+// device copies of the tables, initialized on every used device by init_device_data
 #pragma acc declare create(g_signed_ord_orth_dir, g_indep_perm_dir)
 #endif
 #endif
@@ -141,6 +141,8 @@ double square_distance(long const i, long const j, GParam const *const param);
 
 
 // geometry of rectangles used in the hierarchical update during parallel tempering
+
+long rect_volume(int L_R, GParam const *const param);
 
 void init_rect(Rectangle *rect, int L_R, GParam const *const param);
 

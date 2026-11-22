@@ -528,6 +528,8 @@ void free_meas_utils(Meas_Utils meas_aux,
 void init_meas_utils_replica(Meas_Utils **meas_aux,
                              GParam const *const param);
 
+int num_meas_utils_replica(GParam const *const param);
+
 void free_meas_utils_replica(Meas_Utils *meas_aux,
                              GParam const *const param);
 

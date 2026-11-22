@@ -10,6 +10,7 @@
 #include <omp.h>
 #endif
 
+#include "../include/device_data.h"
 #include "../include/gauge_group.h"
 #include "../include/gparam.h"
 #include "../include/memalign.h"
@@ -48,9 +49,7 @@ void init_multicanonic_gauge_conf(Gauge_Conf *const GC, Geometry const *const ge
 		}
 
 	// move lattice_cold to lattice_copy_cold, lattice_cold will be initialized before topcharge calculation
-	GAUGE_GROUP **aux = GC->lattice_cold;
-	GC->lattice_cold = GC->lattice_copy_cold;
-	GC->lattice_copy_cold = aux;
+	swap_lattice_cold(GC);
 	}
 
 

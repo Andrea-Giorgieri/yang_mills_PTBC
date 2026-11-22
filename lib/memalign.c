@@ -146,6 +146,15 @@ void allocate_array_GAUGE_GROUP_2d(GAUGE_GROUP ***const array, long n1, long n2,
 		(*array)[i] = block + i * n2;
 	}
 
+void allocate_array_double_2d(double ***const array, long n1, long n2, char const *const file, int line)
+	{
+	double *block;
+	allocate_array_double(&block, n1 * n2, file, line);
+	allocate_array_double_pointer(array, n1, file, line);
+	for(long i = 0; i < n1; i++)
+		(*array)[i] = block + i * n2;
+	}
+
 void allocate_array_double_complex_2d(double complex ***const array, long n1, long n2, char const *const file, int line)
 	{
 	double complex *block;
@@ -191,6 +200,12 @@ void allocate_array_GAUGE_GROUP_3d(GAUGE_GROUP ****const array, long n1, long n2
 
 
 void free_array_GAUGE_GROUP_2d(GAUGE_GROUP **array)
+	{
+	free(array[0]);
+	free(array);
+	}
+
+void free_array_double_2d(double **array)
 	{
 	free(array[0]);
 	free(array);

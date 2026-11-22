@@ -12,6 +12,7 @@
 #endif
 
 #include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_conf.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -67,6 +68,9 @@ void real_main(char const *in_file)
 	strcpy(param.d_data_file, name_agf);
 	init_meas_utils(&meas_aux_gf, &param, 0);
 	strcpy(param.d_data_file, aux);
+
+	// copy shared data and configurations to the devices (measurements on the host)
+	init_device_data(GC, &geo, &param, &rect_aux, &meas_aux_agf, 1);
 	//step_filep = fopen("./data/step_file.dat", "w");
 
 	// Monte Carlo begin
@@ -78,6 +82,7 @@ void real_main(char const *in_file)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
+		copy_gauge_conf_replica_to_device(GC, &param, GC_ALL); // PHASE7_BRIDGE: the update still runs on the host
 		print_conf_labels(GC, &param, &acc_counters);
 
 		// perform measures only on homogeneous configuration
@@ -128,6 +133,9 @@ void real_main(char const *in_file)
 
 	time(&time2);
 	// Monte Carlo end
+
+	// free device copies
+	free_device_data(GC, &geo, &param, &rect_aux, &meas_aux_agf, 1);
 
 	// close data file
 	free_meas_utils(meas_aux_agf, &param, 0);

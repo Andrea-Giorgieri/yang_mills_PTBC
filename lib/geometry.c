@@ -132,11 +132,6 @@ void init_geometry(Geometry *geo, GParam const *const param)
 	for(long r = 0; r < param->d_volume; r++)
 		geo->d_defect_mask[r] = is_on_defect(r, param);
 
-	// initialize device copies of the global lookup tables (TODO multi-GPU: repeat on every device used)
-	#if defined(OPENACC_MODE) && STDIM == 4
-	#pragma acc update device(g_signed_ord_orth_dir, g_indep_perm_dir)
-	#endif
-
 	#ifdef DEBUG
 	test_geometry(geo, param);
 	#endif
@@ -874,10 +869,10 @@ double square_distance(long const i, long const j, GParam const *const param)
 
 // geometry of rectangles used in the hierarchical update during parallel tempering
 
-void init_rect(Rectangle *rect, int L_R, GParam const *const param)
+// sizes and min of the coordinates of the rectangle with border L_R around the defect
+static void rect_sizes(int *rect_size, int *min_coord, int L_R, GParam const *const param)
 	{
-	// sizes of rectangle and ranges of rect coordinates
-	int defect_size[STDIM], defect_coord[STDIM], rect_size[STDIM], min_coord[STDIM];
+	int defect_size[STDIM], defect_coord[STDIM];
 
 	// full defect sizes and coordinates
 	defect_size[param->d_defect_dir] = 1;
@@ -904,11 +899,27 @@ void init_rect(Rectangle *rect, int L_R, GParam const *const param)
 		rect_size[i] = defect_size[i] + LR2;
 		min_coord[i] = defect_coord[i] - LR2 / 2;
 		}
+	}
 
-	// volume of rectangle
+
+// number of sites of the rectangle with border L_R (used also for the memory estimate of the devices)
+long rect_volume(int L_R, GParam const *const param)
+	{
+	int rect_size[STDIM], min_coord[STDIM];
+	rect_sizes(rect_size, min_coord, L_R, param);
 	long V = 1;
 	for(int i = 0; i < STDIM; i++)
 		V *= rect_size[i];
+	return V;
+	}
+
+
+void init_rect(Rectangle *rect, int L_R, GParam const *const param)
+	{
+	// sizes of rectangle and ranges of rect coordinates
+	int rect_size[STDIM], min_coord[STDIM];
+	rect_sizes(rect_size, min_coord, L_R, param);
+	long const V = rect_volume(L_R, param);
 
 	// allocate rectangle
 	allocate_array_long(&(rect->rect_sites), V, __FILE__, __LINE__);
@@ -1025,18 +1036,13 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 	int border = 1;
 	init_rect(&(rect_aux->swap_rect), border, param);
 
-	if(param->d_N_hierarc_levels == 0)
-		{
-		rect_aux->update_rect = NULL;
-		#ifdef THETA_MODE
-		rect_aux->clover_rect = NULL;
-		#endif
-		#ifdef MULTICANONICAL_MODE
-		rect_aux->cooling_rect = NULL;
-		rect_aux->topcharge_rect = NULL;
-		#endif
-		}
-	else
+	// rectangles not used in this build or with these parameters stay NULL
+	rect_aux->update_rect = NULL;
+	rect_aux->clover_rect = NULL;
+	rect_aux->topcharge_rect = NULL;
+	rect_aux->cooling_rect = NULL;
+
+	if(param->d_N_hierarc_levels > 0)
 		{
 		// update_rect: border = d_L_rect
 		allocate_array_Rectangle(&(rect_aux->update_rect), param->d_N_hierarc_levels, __FILE__, __LINE__);
@@ -1079,10 +1085,6 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 					init_rect(&(rect_aux->cooling_rect[i][j]), border, param);
 					}
 				}
-			}
-		else
-			{
-			rect_aux->cooling_rect = NULL;
 			}
 		#endif
 		}

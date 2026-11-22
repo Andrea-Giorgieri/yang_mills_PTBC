@@ -11,6 +11,7 @@
 #endif
 
 #include "../include/gauge_group.h"
+#include "../include/geometry.h"
 #include "../include/gparam.h"
 #include "../include/random.h"
 
@@ -57,6 +58,29 @@ size_t bytes_shared(GParam const *const param)
 	bytes += bytes_2d(STDIM, V, sizeof(long));            // d_muorth
 	bytes += (size_t) STDIM * (size_t) V * sizeof(long);  // d_mutimespace (block)
 	bytes += (size_t) V * sizeof(int);                    // d_defect_mask
+
+	// sites of the rectangles (same borders as init_rect_utils)
+	long rect_sites = rect_volume(1, param); // swap_rect
+	for(int i = 0; i < param->d_N_hierarc_levels; i++)
+		{
+		int const L_R = param->d_L_rect[i];
+		rect_sites += rect_volume(L_R, param); // update_rect
+		#ifdef THETA_MODE
+		rect_sites += rect_volume(L_R + 2, param); // clover_rect
+		#endif
+		#ifdef MULTICANONICAL_MODE
+		int const cool = (param->d_topo_cooling == 1) ? param->d_topo_coolsteps : 0;
+		rect_sites += rect_volume(L_R + 2 + 4 * cool, param); // topcharge_rect
+		if(param->d_topo_cooling == 1)
+			for(int j = 0; j < param->d_topo_coolsteps; j++)
+				rect_sites += rect_volume(L_R + 2 + 8 * param->d_topo_coolsteps - 4 * (j + 1), param); // cooling_rect
+		#endif
+		}
+	bytes += (size_t) rect_sites * sizeof(long);
+
+	#ifdef MULTICANONICAL_MODE
+	bytes += bytes_2d(param->d_N_replica_pt, param->d_n_grid, sizeof(double)); // topological potential d_grid
+	#endif
 
 	// auxiliary lattices for smoothing measurements, one set per device (the physical replica can be on any device)
 	if(param->d_agf_num_meas > 0 || param->d_gf_num_meas > 0 || param->d_coolrepeat > 0)

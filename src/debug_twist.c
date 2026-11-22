@@ -244,43 +244,57 @@ void real_main(char const *in_file)
 		}
 
 	printf("\n\n");
-	printf("VERIFY THAT metropolis_single_swap SWAPS THE TWIST FACTORS ...\n\n");
+	printf("VERIFY THAT metropolis_single_swap EXCHANGES THE REPLICA INDICES (TWIST FACTORS STAY WITH THE CONFIGURATION) ...\n\n");
 
 	err = 0;
 	for(long r = 0; r < param.d_volume; r++)
 		{
 		for(int j = 0; j < param.d_n_planes; j++)
 			{
-			Z_a = GC[0].Z[r][j];
-			Z_b = GC[1].Z[r][j];
+			int const gc_0 = acc_counters.replica_to_gc[0];
+			int const gc_1 = acc_counters.replica_to_gc[1];
+			Z_a = GC[gc_0].Z[r][j];
+			Z_b = GC[gc_1].Z[r][j];
 			metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
 
-			if(cabs(GC[1].Z[r][j] - Z_a) > MIN_VALUE || cabs(GC[0].Z[r][j] - Z_b) > MIN_VALUE)
+			// the configuration with replica index 1 is the one that had replica index 0, and viceversa
+			int const ok_map = (acc_counters.replica_to_gc[0] == gc_1 && acc_counters.replica_to_gc[1] == gc_0 &&
+			                    GC[gc_0].replica_index == 1 && GC[gc_1].replica_index == 0);
+			int const ok_Z = (cabs(GC[acc_counters.replica_to_gc[1]].Z[r][j] - Z_a) < MIN_VALUE &&
+			                  cabs(GC[acc_counters.replica_to_gc[0]].Z[r][j] - Z_b) < MIN_VALUE);
+			if(!ok_map || !ok_Z)
 				{
 				err = 1;
 				printf("    ERROR:\n    ");
-				printf("Error swapping Z[%ld][%d]\n\n", r, j);
+				printf("Error swapping replica indices 0 and 1, Z[%ld][%d]\n\n", r, j);
 				}
 			}
 		}
-	if(err == 0) printf("Z[r][j] swaps OK\n");
+	if(err == 0) printf("replica index swaps OK\n");
 	metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
 
 	printf("\n\n");
-	printf("VERIFY THAT delta_action_swap IS CORRECT ...\n\n");
+	printf("VERIFY THAT swap_action_site GIVES THE CORRECT SWAP ACTION DIFFERENCE ...\n\n");
 
 	err = 0;
 	param.d_start = 1;
+	free_gauge_conf_replica(GC, &param);
 	init_gauge_conf_replica(&GC, &geo, &param);
+	for(int a = 0; a < param.d_N_replica_pt; a++) acc_counters.replica_to_gc[a] = a; // GC[i].replica_index = i again
+	double const c_0 = param.d_pt_bound_cond_coeff[0];
+	double const c_1 = param.d_pt_bound_cond_coeff[1];
 	for(int i = 0; i < STDIM; i++)
 		for(int j = 0; j < STDIM; j++)
 			if (i != j)
 				for(long r = 0; r < param.d_volume; r++)
 					{
-					double delta_action = delta_action_swap(GC, &geo, &param, r, i, j, 0, 1);
-					double action = action_with_defect(GC, &geo, &param, 0, 1, r, i, j);
+					int const gc_0 = acc_counters.replica_to_gc[0];
+					int const gc_1 = acc_counters.replica_to_gc[1];
+					double const delta_action = param.d_beta * (swap_action_site(&(GC[gc_0]), &geo, &param, r, i, j, c_0, c_1) -
+					                                            swap_action_site(&(GC[gc_1]), &geo, &param, r, i, j, c_0, c_1));
+					double const action = action_with_defect(GC, &geo, &param, gc_0, gc_1, r, i, j);
 					metropolis_single_swap(GC, 0, 1, 1.0, &acc_counters);
-					double swapped_action = action_with_defect(GC, &geo, &param, 0, 1, r, i, j);
+					double const swapped_action = action_with_defect(GC, &geo, &param, gc_0, gc_1, r, i, j);
 
 					if(fabs(delta_action - (swapped_action - action)) > MIN_VALUE)
 						{
@@ -290,7 +304,7 @@ void real_main(char const *in_file)
 						printf("Delta S manual: %lf, function: %lf\n", swapped_action - action, delta_action);
 						}
 					}
-	if(err == 0) printf("delta_action_swap OK\n");
+	if(err == 0) printf("swap_action_site OK\n");
 
 	free_gauge_conf_replica(GC, &param);
 	free_geometry(&geo, &param);
@@ -325,10 +339,11 @@ void conf_translation_dir(Gauge_Conf *GC, Geometry const *const geo, GParam cons
 	free_gauge_conf(&aux_conf, param);
 	}
 
+// action of the plaquette (r, i, j) of the configurations GC[a] and GC[b], each one with its current replica index
 double action_with_defect(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param, int a, int b, long r, int i, int j)
 	{
-	double K_a = (GC[a].C[r][i]) * (GC[a].C[nnp(geo, r, i)][j]) * (GC[a].C[nnp(geo, r, j)][i]) * (GC[a].C[r][j]);
-	double K_b = (GC[b].C[r][i]) * (GC[b].C[nnp(geo, r, i)][j]) * (GC[b].C[nnp(geo, r, j)][i]) * (GC[b].C[r][j]);
+	double K_a = plaquette_defect_coeff(geo, param, r, nnp(geo, r, i), nnp(geo, r, j), i, j, replica_defect_coeff(&(GC[a]), param));
+	double K_b = plaquette_defect_coeff(geo, param, r, nnp(geo, r, i), nnp(geo, r, j), i, j, replica_defect_coeff(&(GC[b]), param));
 	double re_tr_plaq_a = plaquettep(&(GC[a]), geo, param, r, i, j);
 	double re_tr_plaq_b = plaquettep(&(GC[b]), geo, param, r, i, j);
 	return -param->d_beta * (K_a * re_tr_plaq_a + K_b * re_tr_plaq_b);

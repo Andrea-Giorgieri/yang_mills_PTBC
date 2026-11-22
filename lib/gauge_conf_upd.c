@@ -436,8 +436,6 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 	#ifdef DEBUG
 	ASSERT_DEV(r < param->d_volume, "r too large: %ld >= %ld", r, param->d_volume);
 	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
-	#else
-	(void) param;
 	#endif
 
 	GAUGE_GROUP link1, link2, link3, link12, stap;
@@ -446,6 +444,7 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 	zero(M);
 
 	long const rpi = nnp(geo, r, i);
+	double const c_def = replica_defect_coeff(GC, param); // boundary condition coefficient on the defect
 
 	for(int l = i + 1; l < i + STDIM; l++)
 		{
@@ -477,9 +476,9 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 		times_dag2(&stap, &link12, &link3);  // stap = link12 * link3^{dag}
 
 		// boundary condition and twist (clockwise plaquette) modification
-		factor = GC->Z[r][dirs_to_si(i, j)];                                         // Z_\mu\nu(x)
-		factor *= (GC->C[r][i]) * (GC->C[rpi][j]) * (GC->C[rpj][i]) * (GC->C[r][j]); // *= K_\mu\nu(x)
-		times_equal_complex(&stap, factor);                                          // K_\mu\nu(x) * Z_\mu\nu(x) * staple
+		factor = GC->Z[r][dirs_to_si(i, j)];                               // Z_\mu\nu(x)
+		factor *= plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_def); // *= K_\mu\nu(x)
+		times_equal_complex(&stap, factor);                                // K_\mu\nu(x) * Z_\mu\nu(x) * staple
 
 		// accumulate M
 		plus_equal(M, &stap);
@@ -506,9 +505,9 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 		times(&stap, &link12, &link3);        // stap = link12 * link3
 
 		// boundary condition and twist (anticlockwise plaquette) modification
-		factor = GC->Z[rmj][dirs_to_si(j, i)];                                           // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		factor *= (GC->C[rmj][i]) * (GC->C[rpimj][j]) * (GC->C[r][i]) * (GC->C[rmj][j]); // *= K_\mu\nu(x-\nu)
-		times_equal_complex(&stap, factor);                                              // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
+		factor = GC->Z[rmj][dirs_to_si(j, i)];                                // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
+		factor *= plaquette_defect_coeff(geo, param, rmj, rpimj, r, i, j, c_def); // *= K_\mu\nu(x-\nu)
+		times_equal_complex(&stap, factor);                                   // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 
 		// accumulate M
 		plus_equal(M, &stap);
@@ -550,6 +549,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 	zero(&topo_M);
 
 	long const rpi = nnp(geo, r, i);
+	double const c_def = replica_defect_coeff(GC, param); // boundary condition coefficient on the defect
 	double const Zr = creal(GC->Z[r][param->d_n_planes]);
 	double const Zrpi = creal(GC->Z[rpi][param->d_n_planes]);
 
@@ -623,7 +623,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 		// boundary condition (only affects non-topo staple) and twist (clockwise plaquette) modification
 		factor = GC->Z[r][dirs_to_si(i, j)];                                         // Z_\mu\nu(x)
 		times_equal_complex(&topo_stap, factor);                                     // Z_\mu\nu(x) * topo_staple
-		factor *= (GC->C[r][i]) * (GC->C[rpi][j]) * (GC->C[rpj][i]) * (GC->C[r][j]); // *= K_\mu\nu(x)
+		factor *= plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_def);      // *= K_\mu\nu(x)
 		times_equal_complex(&stap, factor);                                          // K_\mu\nu(x) * Z_\mu\nu(x) * staple
 
 		// accumulate M and topo_M
@@ -677,7 +677,7 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 		// boundary condition (only affects non-topo staple) and twist (anticlockwise plaquette) modification
 		factor = GC->Z[rmj][dirs_to_si(j, i)];                                           // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
 		times_equal_complex(&topo_stap, factor);                                         // Z_\nu\mu(x-\nu) * topo_staple
-		factor *= (GC->C[rmj][i]) * (GC->C[rpimj][j]) * (GC->C[r][i]) * (GC->C[rmj][j]); // *= K_\mu\nu(x-\nu)
+		factor *= plaquette_defect_coeff(geo, param, rmj, rpimj, r, i, j, c_def);        // *= K_\mu\nu(x-\nu)
 		times_equal_complex(&stap, factor);                                              // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
 
 		// accumulate M and topo_M (with minus sign from definition of topological charge)
@@ -1317,8 +1317,8 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 		// multicanonic Metropolis tests and acceptance counters update
 		#ifdef MULTICANONICAL_MODE
 		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
-		acc_counters->num_accepted_metro_multicanonic[j] += acc;
-		acc_counters->num_metro_multicanonic[j] += 1;
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc; // counters by replica index
+		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
 		#endif
 		// update or restore the lattice and auxiliary copies
 		if(acc == 1) accept_gauge_conf(&(GC[j]), param);
@@ -1423,8 +1423,8 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 		#ifdef MULTICANONICAL_MODE
 		//acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
 		acc = multicanonic_metropolis_step_rectangle(&(GC[j]), geo, param, hierarc_level, rect_aux);
-		acc_counters->num_accepted_metro_multicanonic[j] += acc;
-		acc_counters->num_metro_multicanonic[j] += 1;
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc; // counters by replica index
+		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
 		#endif
 		// update or restore the lattice and auxiliary copies
 		if(acc == 1) accept_gauge_conf_rectangle(&(GC[j]), hierarc_level, rect_aux);
@@ -1451,7 +1451,7 @@ void hierarchical_update_rectangle_with_defect(Gauge_Conf *const GC, Geometry co
 				{
 				swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
 				if(fabs(param->d_pt_bound_cond_coeff[0] - 1.0) < MIN_VALUE)
-					conf_translation(&(GC[0]), geo, param);
+					conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 				}
 			hierarchical_update_rectangle_with_defect(GC, geo, param, hierarc_level + 1, rect_aux, acc_counters);
 			}
@@ -1471,7 +1471,7 @@ void parallel_tempering_with_hierarchical_update(Gauge_Conf *const GC, Geometry 
 		{
 		swap(GC, geo, param, &(rect_aux->swap_rect), acc_counters);
 		if(fabs(param->d_pt_bound_cond_coeff[0] - 1.0) < MIN_VALUE)
-			conf_translation(&(GC[0]), geo, param);
+			conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 		}
 	hierarchical_update_rectangle_with_defect(GC, geo, param, 0, rect_aux, acc_counters);
 

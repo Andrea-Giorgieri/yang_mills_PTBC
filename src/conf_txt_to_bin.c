@@ -149,7 +149,6 @@ void init_gauge_conf_from_txt(char const *const conf_file_in, Gauge_Conf *const 
 	long const num_lines_expected = STDIM * NCOLOR * NCOLOR * param->d_volume;
 	REQUIRE(num_lines == num_lines_expected, "expected %ld lines, got %ld", num_lines_expected, num_lines);
 
-	GC->conf_label = 0;
 	GC->replica_index = 0;
 	GC->update_index = 0;
 	}

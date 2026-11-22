@@ -563,13 +563,11 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 
 void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param)
 	{
-	GC->conf_label = 0;
 	GC->replica_index = 0;
 
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_rng_gauge_conf(GC, param, 0);
 	init_twist_cond_from_file_with_name(GC, param, param->d_twist_file);
-	init_ptbc_defect(GC, param);
 	#ifdef MULTICANONICAL_MODE
 	init_multicanonic_gauge_conf(GC, geo, param);
 	#else
@@ -774,44 +772,6 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 	}
 
 
-// initialization of the defect for a single replica
-void init_ptbc_defect(Gauge_Conf *GC, GParam const *const param)
-	{
-	// allocation of C[r][j]
-	allocate_array_double_pointer(&(GC->C), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_double(&(GC->C[r]), STDIM, __FILE__, __LINE__);
-		}
-
-	// initialization of C[r][j]
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < param->d_volume; r++)
-		for(int j = 0; j < STDIM; j++)
-			{
-			if(j == param->d_defect_dir && is_on_defect(r, param) == 1)
-				GC->C[r][j] = param->d_pt_bound_cond_coeff[GC->replica_index];
-			else
-				GC->C[r][j] = 1.0;
-			}
-	}
-
-
-void free_ptbc_defect(Gauge_Conf *GC, GParam const *const param)
-	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		free(GC->C[r]);
-		}
-	free(GC->C);
-	}
-
-
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam const *const param)
 	{
@@ -837,10 +797,7 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 		strcat(filename, replica_index_str); // filename = param->d_twist_file + "_replica_${i}"
 		init_twist_cond_from_file_with_name(&((*GC)[i]), param, filename);
 
-		((*GC)[i]).conf_label = i;
-		((*GC)[i]).replica_index = i;
-
-		init_ptbc_defect(&((*GC)[i]), param);
+		((*GC)[i]).replica_index = i; // GC[i] has initial replica index i (replica_to_gc = identity)
 
 		#ifdef MULTICANONICAL_MODE
 		init_multicanonic_gauge_conf(&((*GC)[i]), geo, param);
@@ -856,7 +813,6 @@ void free_gauge_conf_replica(Gauge_Conf *GC, GParam const *const param)
 	for(int i = 0; i < param->d_N_replica_pt; i++)
 		{
 		free_gauge_conf(&(GC[i]), param);
-		free_ptbc_defect(&(GC[i]), param);
 		}
 	free(GC);
 	}
@@ -1149,6 +1105,7 @@ void write_conf_on_file_back(Gauge_Conf const *const GC, GParam const *const par
 	}
 
 
+// the files of replica a contain the configuration with replica_index a
 void write_replica_on_file(Gauge_Conf const *const GC, GParam const *const param)
 	{
 	#ifdef OPENMP_MODE
@@ -1159,18 +1116,19 @@ void write_replica_on_file(Gauge_Conf const *const GC, GParam const *const param
 		char filename[STD_STRING_LENGTH], replica_index_str[STD_STRING_LENGTH];
 		strcpy(filename, param->d_conf_file);
 		strcat(filename, "_replica_");
-		sprintf(replica_index_str, "%d", i);
-		strcat(filename, replica_index_str); // filename = d_conf_file + "_replica_${i}"
+		sprintf(replica_index_str, "%d", GC[i].replica_index);
+		strcat(filename, replica_index_str); // filename = d_conf_file + "_replica_${replica_index}"
 		write_conf_on_file_with_name(&(GC[i]), param, filename);
 
 		strcpy(filename, param->d_twist_file);
 		strcat(filename, "_replica_");
-		strcat(filename, replica_index_str); // filename = d_twist_file + "_replica_${i}"
+		strcat(filename, replica_index_str); // filename = d_twist_file + "_replica_${replica_index}"
 		write_twist_on_file_with_name(&(GC[i]), param, filename);
 		}
 	}
 
 
+// the files of replica a contain the configuration with replica_index a
 void write_replica_on_file_back(Gauge_Conf const *const GC, GParam const *const param)
 	{
 	static int counter = 0;
@@ -1187,9 +1145,9 @@ void write_replica_on_file_back(Gauge_Conf const *const GC, GParam const *const 
 			sprintf(aux_back, "_back1");
 		strcpy(filename, param->d_conf_file);
 		strcat(filename, "_replica_");
-		sprintf(replica_index_str, "%d", i);
+		sprintf(replica_index_str, "%d", GC[i].replica_index);
 		strcat(filename, replica_index_str);
-		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${i}_back${counter}"
+		strcat(filename, aux_back); // filename = d_conf_file + "_replica_${replica_index}_back${counter}"
 		write_conf_on_file_with_name(&(GC[i]), param, filename);
 
 		strcpy(filename, param->d_twist_file);

@@ -121,6 +121,11 @@ void init_geometry(Geometry *geo, GParam const *const param)
 		for(int i = 0; i < STDIM - 1; i++)
 			geo->d_orth_dir[mu][i] = orthogonal_dir(mu, i);
 
+	// mask of the sites whose link in the defect direction is on the defect (parallel tempering boundary conditions)
+	allocate_array_int(&(geo->d_defect_mask), param->d_volume, __FILE__, __LINE__);
+	for(long r = 0; r < param->d_volume; r++)
+		geo->d_defect_mask[r] = is_on_defect(r, param);
+
 	// initialize device copies of the global lookup tables (TODO multi-GPU: repeat on every device used)
 	#if defined(OPENACC_MODE) && STDIM == 4
 	#pragma acc update device(g_signed_ord_orth_dir, g_indep_perm_dir)
@@ -156,6 +161,8 @@ void free_geometry(Geometry *geo, GParam const *const param)
 	free(geo->d_mutimespace);
 	free(geo->d_muorth);
 	free(geo->d_mucomp);
+
+	free(geo->d_defect_mask);
 	}
 
 

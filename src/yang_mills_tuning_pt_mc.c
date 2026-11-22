@@ -76,10 +76,10 @@ void real_main(char const *in_file)
 		{
 		start_timer(&(timers.step_timer));
 		start_timer(&(timers.meas_timer));
-		perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
+		perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 		#ifdef REPLICA_MEAS_MODE
 		for(int i = 1; i < param.d_N_replica_pt; i++)
-			perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
 		#endif
 		start_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
@@ -96,14 +96,14 @@ void real_main(char const *in_file)
 		stop_timer(&(timers.update_timer));
 		print_conf_labels(GC, &param, &acc_counters);
 
-		// perform measures only on physical replica, unless REPLICA_MEAS_MODE is enabled
+		// perform measures only on physical replica (replica index 0), unless REPLICA_MEAS_MODE is enabled
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			start_timer(&(timers.meas_timer));
-			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux[0]));
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 			#ifdef REPLICA_MEAS_MODE
 			for(int i = 1; i < param.d_N_replica_pt; i++)
-				perform_measures_localobs(&(GC[i]), &geo, &param, &(meas_aux[i]));
+				perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
 			#endif
 			stop_timer(&(timers.meas_timer));
 			}
@@ -129,12 +129,12 @@ void real_main(char const *in_file)
 				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
-				write_conf_on_file_with_name(&(GC[0]), &param, name);
+				write_conf_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
-				write_twist_on_file_with_name(&(GC[0]), &param, name);
+				write_twist_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 				}
 			}
 

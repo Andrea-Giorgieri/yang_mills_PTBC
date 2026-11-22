@@ -18,14 +18,10 @@
 typedef struct Gauge_Conf
 	{
 	long update_index;
-	int replica_index;
+	int replica_index; // index of the parallel tempering replica (defect coefficient), exchanged by the swaps
 
 	GAUGE_GROUP **lattice;       // [volume] [STDIM]
 	GAUGE_GROUP ***clover_array; // [volume] [STDIM] [STDIM]
-
-	// for the parallel tempering of volume defect
-	double **C;     // C [volume] [STDIM], this factor changes the boundary condition for the link on the defect
-	int conf_label; // save the label of the configuration to keep track of the swaps
 
 	// for the boundary conditions
 	double complex **Z; // Z [volume] [STDIM*(STDIM-1)+1], this factor implements twisted and open (including the bulk identification) boundary conditions
@@ -75,12 +71,41 @@ typedef struct Gauge_Conf
 #endif
 
 
+// boundary condition coefficient of the replica: d_pt_bound_cond_coeff[replica_index]
+ACC_ROUTINE_SEQ
+static inline double replica_defect_coeff(Gauge_Conf const *const GC, GParam const *const param)
+	{
+	return param->d_pt_bound_cond_coeff[GC->replica_index];
+	}
+
+
+// boundary condition factor of the link (r, i) for defect coefficient c: c on the defect, 1 elsewhere
+ACC_ROUTINE_SEQ
+static inline double link_defect_coeff(Geometry const *const geo, GParam const *const param, long const r, int const i, double const c)
+	{
+	return (i == param->d_defect_dir && geo->d_defect_mask[r] == 1) ? c : 1.0;
+	}
+
+
+// boundary condition factor K_ij(s) of the plaquette (s, i, j) for defect coefficient c, with spi = s+i and spj = s+j
+ACC_ROUTINE_SEQ
+static inline double plaquette_defect_coeff(Geometry const *const geo, GParam const *const param,
+                                            long const s, long const spi, long const spj, int const i, int const j, double const c)
+	{
+	return link_defect_coeff(geo, param, s, i, c) * link_defect_coeff(geo, param, spi, j, c) * link_defect_coeff(geo, param, spj, i, c) * link_defect_coeff(geo, param, s, j, c);
+	}
+
+
 // to compute swap and multicanonic acceptances during parallel tempering evolution
 typedef struct Acc_Utils
 	{
+	// replica_to_gc[a] = position in GC of the configuration with replica_index a, inverse of GC[i].replica_index:
+	// replica_to_gc[GC[i].replica_index] = i, GC[replica_to_gc[a]].replica_index = a
+	int *replica_to_gc;
+
 	long *num_accepted_swap; // number of accepted swaps during parallel tempering
 	long *num_swap;          // number of proposed swaps during parallel tempering
-	double *acc_swap;          // acceptance of swaps during parallel tempering
+	double *acc_swap;        // acceptance of swaps during parallel tempering
 	double *metro_swap_prob; // to store swap probabilities
 	FILE *swaptrackfilep;    // pointer to file to track replicas during parallel tempering
 
@@ -214,12 +239,6 @@ int read_gauge_conf_step(Gauge_Conf *GC,
 void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC,
                                      Gauge_Conf const *const GC2,
                                      GParam const *const param);
-
-void init_ptbc_defect(Gauge_Conf *GC,
-                      GParam const *const param);
-
-void free_ptbc_defect(Gauge_Conf *GC,
-                      GParam const *const param);
 
 void init_gauge_conf_replica(Gauge_Conf **GC,
                              Geometry const *const geo,
@@ -910,14 +929,14 @@ void swap(Gauge_Conf *const GC,
           Acc_Utils *acc_counters);
 
 ACC_ROUTINE_SEQ
-double delta_action_swap(Gauge_Conf const *const GC,
-                         Geometry const *const geo,
-                         GParam const *const param,
-                         long const r,
-                         int const i,
-                         int const j,
-                         int const a,
-                         int const b);
+double swap_action_site(Gauge_Conf const *const GC,
+                        Geometry const *const geo,
+                        GParam const *const param,
+                        long const r,
+                        int const i,
+                        int const j,
+                        double const c_a,
+                        double const c_b);
 
 void metropolis_single_swap(Gauge_Conf *const GC,
                             int const a,
@@ -965,8 +984,9 @@ void init_tune_utils(Tune_Utils *const,
 void free_tune_utils(Tune_Utils *);
 
 void tune_topo_potential_unconstrained(Gauge_Conf const *const,
-						 GParam *const,
-						 Tune_Utils *const);
+                                       GParam *const,
+                                       Tune_Utils *const,
+                                       Acc_Utils const *const);
 
 void tune_topo_potential(Gauge_Conf const *const,
                          GParam *const,
@@ -1013,8 +1033,7 @@ double metropolis_prob_multicanonic(int const,
 
 ACC_ROUTINE_SEQ
 double delta_topo_potential_swap(Gauge_Conf const *const,
-                                 int const,
-                                 int const,
+                                 Gauge_Conf const *const,
                                  GParam const *const);
 
 

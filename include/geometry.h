@@ -24,6 +24,7 @@ typedef struct Geometry
 	long **d_muorth;                  // d_muorth[mu][r]    = mu-orthogonal-space component of r
 	long ***d_mutimespace;            // d_mutimespace[mu][t][rsp] = r such that mu component = t, nu != mu component = rsp
 	int d_orth_dir[STDIM][STDIM - 1]; // d_orth_dir[mu][i] = i-th direction orthogonal to mu
+	int *d_defect_mask;               // d_defect_mask[r] = 1 if the link (r, defect_dir) is on the defect, 0 otherwise
 	} Geometry;
 
 

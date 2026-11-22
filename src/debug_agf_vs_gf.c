@@ -80,11 +80,11 @@ void real_main(char const *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			time(&time3);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &meas_aux_agf);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux_agf);
 			time(&time4);
-			//perform_measures_localobs_debug(&(GC[0]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
+			//perform_measures_localobs_debug(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, datafilep, chiprimefilep, topchar_tcorr_filep, step_filep);
 			time(&time5);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &meas_aux_gf);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux_gf);
 			time(&time6);
 			agf_time += time4 - time3;
 			dagf_time += time5 - time4;
@@ -112,12 +112,12 @@ void real_main(char const *in_file)
 				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
-				write_conf_on_file_with_name(&(GC[0]), &param, name);
+				write_conf_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
-				write_twist_on_file_with_name(&(GC[0]), &param, name);
+				write_twist_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 				}
 			}
 		}

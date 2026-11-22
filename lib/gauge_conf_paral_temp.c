@@ -18,20 +18,76 @@
 #include "../include/random.h"
 
 
-// swaps are parallelized, evaluation of swap probabilities is parallelized
+// one group of n_pairs swaps: pairs (a, a+1) with a = first, first + 2, ...
+//
+// Swapping replicas a and b = a+1 exchanges the replica indices of A = GC[replica_to_gc[a]] and B = GC[replica_to_gc[b]]
+// The action difference
+//   swapped - unswapped = beta * (D_A - D_B),
+//   D_X = sum_{r in swap_rect, j != mu} [K_{c_a}(r,mu,j) - K_{c_b}(r,mu,j)] ReTr(Z plaq_X(r,mu,j))/N_c,
+// is computed as two independent sums, each one on a single configuration.
+static void swap_group(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                       Rectangle const *const swap_rectangle, Acc_Utils *acc_counters,
+                       int const first, int const n_pairs, double *const D)
+	{
+	int const Nr = param->d_N_replica_pt;
+	int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
+	long const vol_rect = swap_rectangle->d_vol_rect;
+	int const *const replica_to_gc = acc_counters->replica_to_gc;
+	double *const aux_p = acc_counters->metro_swap_prob; // alias for the Metropolis probabilities of the pairs
+
+	for(int a = 0; a < Nr; a++)
+		D[a] = 0.0;
+
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:D[:Nr])
+	#endif
+	for(long s = 0; s < 2 * n_pairs * vol_rect; s++)
+		{
+		// s = (2 * k + side) * vol_rect + n
+		long const n = s % vol_rect;
+		long const t = (s - n) / vol_rect;
+		int const k = (int) (t / 2);                   // index of the pair in the group
+		int const a = 2 * k + first;                   // index of the first replica in the pair
+		int const b = a + 1;                           // index of the second replica in the pair
+		int const x = (t % 2 == 0) ? a : b;            // replica index of the configuration summed
+		long const r = swap_rectangle->rect_sites[n];  // site index of the configuration summed
+
+		double const c_a = param->d_pt_bound_cond_coeff[a];
+		double const c_b = param->d_pt_bound_cond_coeff[b];
+		Gauge_Conf const *const GC_x = &(GC[replica_to_gc[x]]);
+
+		for(int i = 0; i < STDIM - 1; i++)
+			{
+			int const j = geo->d_orth_dir[mu][i];
+			D[x] += swap_action_site(GC_x, geo, param, r, mu, j, c_a, c_b);
+			}
+		}
+
+	// Metropolis tests and swaps (serial with Philox: the Metropolis tests use the single host generator)
+	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(int k = 0; k < n_pairs; k++)
+		{
+		int const a = 2 * k + first;
+		int const b = a + 1;
+
+		aux_p[a] = param->d_beta * (D[a] - D[b]); // swapped action - unswapped action
+		#ifdef MULTICANONICAL_MODE
+		aux_p[a] += delta_topo_potential_swap(&(GC[replica_to_gc[a]]), &(GC[replica_to_gc[b]]), param);
+		#endif
+		aux_p[a] = exp(-aux_p[a]);                                // Metropolis swap probability
+		metropolis_single_swap(GC, a, b, aux_p[a], acc_counters); // Metropolis step
+		}
+	}
+
+
+// swaps of all neighbouring replica pairs, in two groups (even and odd pairs) in random order
 void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
           Rectangle const *const swap_rectangle, Acc_Utils *acc_counters)
 	{
-	// Just an alias to be used in reduction clause for OpenMP. icc gives error during
-	// optimization if reduction(+:acc_counters->metro_swap_prob[:num_swaps]) is used
-	double *aux_p = acc_counters->metro_swap_prob;
-
 	// N_replica_pt - 1 is the total number of swaps
-	int const num_swaps = ((param->d_N_replica_pt) - 1);
-
-	// set all probabilities to 0
-	for(int a = 0; a < num_swaps; a++)
-		aux_p[a] = 0.0;
+	int const num_swaps = param->d_N_replica_pt - 1;
 
 	int const is_even = num_swaps % 2;              // check if num_swaps is even or not
 	int const num_even = (num_swaps + is_even) / 2; // number of swaps for even replica
@@ -52,208 +108,47 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 		num_swaps_2 = num_even;
 		}
 
-	// swaps are done for all couples (mu,j) where mu=defect_dir and j != mu => three couples
-	int const mu = param->d_defect_dir;
+	// local sums of the action differences, one per replica index
+	double *D;
+	allocate_array_double(&D, param->d_N_replica_pt, __FILE__, __LINE__);
 
-	// first group of swaps
+	swap_group(GC, geo, param, swap_rectangle, acc_counters, is_even_first, num_swaps_1, D);     // first group
+	swap_group(GC, geo, param, swap_rectangle, acc_counters, 1 - is_even_first, num_swaps_2, D); // second group: reverse parity
 
-	// compute action differences (multicanonical contribution in the next loop)
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps])
-	#endif
-	for(long s = 0; s < num_swaps_1 * (swap_rectangle->d_vol_rect); s++)
-		{
-		long const n = s % (swap_rectangle->d_vol_rect);              // action changes only in the first neighborhood of the defect,
-		long const r = swap_rectangle->rect_sites[n];                 // having also swapped the twist factors
-		int const k = (int) ((s - n) / (swap_rectangle->d_vol_rect)); // index of replica pair to swap
-		int const a = 2 * k + is_even_first;                          // label of 1st replica
-		int const b = a + 1;                                          // label of 2nd replica
-
-		for(int i = 0; i < STDIM - 1; i++)
-			{
-			int const j = geo->d_orth_dir[mu][i];
-			// contribution to action difference between replicas a and b of site r on plane (mu,j)
-			aux_p[a] += delta_action_swap(GC, geo, param, r, mu, j, a, b);
-			}
-		}
-
-	// do the swaps (serial with Philox: the Metropolis tests use the single host generator)
-	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(int k = 0; k < num_swaps_1; k++)
-		{
-		int const a = 2 * k + is_even_first;
-		int const b = a + 1;
-
-		// multicanonical contribution to the action difference
-		#ifdef MULTICANONICAL_MODE
-		aux_p[a] += delta_topo_potential_swap(GC, a, b, param);
-		#endif
-		aux_p[a] = exp(-aux_p[a]);                                // metropolis swap probability = exp{ - (swapped action - unswapped action) }
-		metropolis_single_swap(GC, a, b, aux_p[a], acc_counters); // metropolis step
-		}
-
-
-	// second group of swaps: reverse parity of replica pairs to swap
-	is_even_first = 1 - is_even_first; //
-
-	// compute action differences
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:aux_p[:num_swaps])
-	#endif
-	for(long s = 0; s < num_swaps_2 * (swap_rectangle->d_vol_rect); s++)
-		{
-		long const n = s % (swap_rectangle->d_vol_rect);
-		long const r = swap_rectangle->rect_sites[n];
-		int const k = (int) ((s - n) / (swap_rectangle->d_vol_rect));
-		int const a = 2 * k + is_even_first;
-		int const b = a + 1;
-
-		for(int i = 0; i < STDIM - 1; i++)
-			{
-			int const j = geo->d_orth_dir[mu][i];
-			aux_p[a] += delta_action_swap(GC, geo, param, r, mu, j, a, b);
-			}
-		}
-
-	// do the swaps (serial with Philox: the Metropolis tests use the single host generator)
-	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(int k = 0; k < num_swaps_2; k++)
-		{
-		int const a = 2 * k + is_even_first;
-		int const b = a + 1;
-
-		#ifdef MULTICANONICAL_MODE
-		aux_p[a] += delta_topo_potential_swap(GC, a, b, param);
-		#endif
-		aux_p[a] = exp(-aux_p[a]);
-		metropolis_single_swap(GC, a, b, aux_p[a], acc_counters);
-		}
+	free(D);
 	}
 
 
+// contribution of the site r, plane (i,j) of the configuration GC to the swap action difference of replicas with
+// defect coefficients c_a and c_b: [K_{c_a}(r,i,j) - K_{c_b}(r,i,j)] ReTr(Z plaq(r,i,j))/N_c
 ACC_ROUTINE_SEQ
-double delta_action_swap(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param,
-                         long const r, int const i, int const j, int const a, int const b)
+double swap_action_site(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param,
+                        long const r, int const i, int const j, double const c_a, double const c_b)
 	{
-	// plaquettes, including twist factors in function plaquettep
-	double const re_tr_plaq_a = plaquettep(&(GC[a]), geo, param, r, i, j); // (Re Tr plaq_a(r,i,j) )/N_c , replica label = a
-	double const re_tr_plaq_b = plaquettep(&(GC[b]), geo, param, r, i, j); // (Re Tr plaq_b(r,i,j) )/N_c , replica label = b
-
-	// boundary conditions
 	long const rpi = nnp(geo, r, i);
 	long const rpj = nnp(geo, r, j);
-	double const K_a = (GC[a].C[r][i]) * (GC[a].C[rpi][j]) * (GC[a].C[rpj][i]) * (GC[a].C[r][j]);
-	double const K_b = (GC[b].C[r][i]) * (GC[b].C[rpi][j]) * (GC[b].C[rpj][i]) * (GC[b].C[r][j]);
+	double const delta_K = plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_a) - plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_b);
 
-	// (swapped action - unswapped action) = beta * delta_K * delta_plaq (twist factors swapped, otherwise delta_K -> K_a*Z_a-K_b*Z_b )
-	return param->d_beta * (K_a - K_b) * (re_tr_plaq_a - re_tr_plaq_b);
+	return delta_K * plaquettep(GC, geo, param, r, i, j); // plaquettep includes the twist factors
 	}
 
-// swaps are serial, evaluation of swap probability is parallelized (use this version of 'swap' if gcc_version < 6.0 or icc_version < 14.0)
-/*
-void swap(Gauge_Conf * const GC, Geometry const * const geo, GParam const * const param,
-				 Rectangle const * const swap_rectangle, Acc_Utils *acc_counters)
-  {
-	int aux_i, i, j, num_swaps, a, b;
-	long n;
-	double metro_swap_prob = 0.0;
-
-	// for each value of defect_dir, determine the three orthogonal directions to it
-	int perp_dir[4][3] = { {1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2} };
-
-	// N_replica_pt - 1 is the total number of swaps
-	num_swaps = ((param->d_N_replica_pt)-1);
-
-	// swaps are done for all couples (i,j) where i=defect_dir and j !=i => three couples
-	i=param->d_defect_dir;
-
-	for(a=0;a<num_swaps;a++)
-		{
-		b=a+1;
-		metro_swap_prob = 0.0;
-		// compute action difference between replica a and b
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) reduction(+:metro_swap_prob) private(n,aux_i,j)
-		#endif
-		for(n=0;n<(swap_rectangle->d_vol_rect);n++)
-			{
-			long r = swap_rectangle->rect_sites[n]; // action changes only in the first neighborhood of the defect
-			for(aux_i=0; aux_i<STDIM-1; aux_i++)
-				{
-				j = perp_dir[param->d_defect_dir][aux_i];
-				metro_swap_prob += delta_action_swap(GC, geo, param, r, i, j, a, b);
-				}
-			}
-
-		// do the swap
-		metro_swap_prob=exp(-metro_swap_prob); // metropolis swap probability
-		metropolis_single_swap(GC,a,b,metro_swap_prob,acc_counters);
-		}
-	}
-*/
-
-
-// metropolis step to swap replica a and b with probability p, including the twist factors
+// Metropolis step to swap replicas a and b with probability p: the configurations with replica index a and b
+// exchange their replica indices (configurations, twist factors, charges and translations stay in their position in GC)
 void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, double const p, Acc_Utils *acc_counters)
 	{
 	// Metropolis test: p<1 => acc=1 with probability p, p>=1 => acc=1 (already assigned)
 	int acc = 1;
 	if(p < 1 && casuale(rng_host()) > p) acc = 0;
 
-	// if Metropolis is accepted, swap replicas, including the twist factors and the stored charges for multicanonic
 	if(acc == 1)
 		{
-		// swap of configurations
-		GAUGE_GROUP **aux = GC[a].lattice;
-		GC[a].lattice = GC[b].lattice;
-		GC[b].lattice = aux;
+		int const gc_a = acc_counters->replica_to_gc[a];
+		int const gc_b = acc_counters->replica_to_gc[b];
 
-		double complex **aux_Z = GC[a].Z;
-		GC[a].Z = GC[b].Z;
-		GC[b].Z = aux_Z;
-
-		// swap of auxiliary configurations
-		aux = GC[a].lattice_copy;
-		GC[a].lattice_copy = GC[b].lattice_copy;
-		GC[b].lattice_copy = aux;
-
-		aux_Z = GC[a].Z_copy;
-		GC[a].Z_copy = GC[b].Z_copy;
-		GC[b].Z_copy = aux_Z;
-
-		// swap of multicanonic utils
-		#ifdef MULTICANONICAL_MODE
-		double aux_charge;
-
-		aux_charge = GC[a].stored_topcharge;
-		GC[a].stored_topcharge = GC[b].stored_topcharge;
-		GC[b].stored_topcharge = aux_charge;
-
-		aux = GC[a].lattice_cold;
-		GC[a].lattice_cold = GC[b].lattice_cold;
-		GC[b].lattice_cold = aux;
-
-		aux = GC[a].lattice_copy_cold;
-		GC[a].lattice_copy_cold = GC[b].lattice_copy_cold;
-		GC[b].lattice_copy_cold = aux;
-		#endif
-
-		// swap of labels
-		int const aux_label = GC[a].conf_label;
-		GC[a].conf_label = GC[b].conf_label;
-		GC[b].conf_label = aux_label;
-
-		// swap of translation tracking
-		for(int i = 0; i < STDIM; i++)
-			{
-			long const aux_translation = GC[a].translation[i];
-			GC[a].translation[i] = GC[b].translation[i];
-			GC[b].translation[i] = aux_translation;
-			}
+		GC[gc_a].replica_index = b;
+		GC[gc_b].replica_index = a;
+		acc_counters->replica_to_gc[a] = gc_b;
+		acc_counters->replica_to_gc[b] = gc_a;
 
 		// increase counter of successful swaps for replicas (a, a+1)
 		acc_counters->num_accepted_swap[a]++;
@@ -360,6 +255,11 @@ void init_swap_track_file(FILE **swaptrackfilep, GParam const *const param)
 
 void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 	{
+	// map replica index -> position in GC, initially the identity (GC[i].replica_index = i)
+	allocate_array_int(&(acc_counters->replica_to_gc), param->d_N_replica_pt, __FILE__, __LINE__);
+	for(int a = 0; a < param->d_N_replica_pt; a++)
+		acc_counters->replica_to_gc[a] = a;
+
 	if(param->d_N_replica_pt == 1)
 		{
 		acc_counters->num_accepted_swap = NULL;
@@ -390,6 +290,8 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 
 void free_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 	{
+	free(acc_counters->replica_to_gc);
+
 	if(param->d_N_replica_pt > 1)
 		{
 		free(acc_counters->num_accepted_swap);
@@ -464,13 +366,15 @@ void print_conf_labels(Gauge_Conf const *const GC, GParam const *const param, Ac
 		(void) acc_counters;
 		return;
 		}
+	// for every replica index, label of the configuration currently at that index
+	// (= its position in GC because configurations never move)
 	FILE *fp = acc_counters->swaptrackfilep;
 	fprintf(fp, "%9ld ", GC[0].update_index);
-	for(int r = 0; r < param->d_N_replica_pt; r++)
+	for(int a = 0; a < param->d_N_replica_pt; a++)
 		{
-		fprintf(fp, "%4d ", GC[r].conf_label);
+		fprintf(fp, "%4d ", acc_counters->replica_to_gc[a]);
 		#ifdef MULTICANONICAL_MODE
-		fprintf(fp, "% 9.6f ", GC[r].stored_topcharge);
+		fprintf(fp, "% 9.6f ", GC[acc_counters->replica_to_gc[a]].stored_topcharge);
 		#endif
 		}
 	fprintf(fp, "\n");

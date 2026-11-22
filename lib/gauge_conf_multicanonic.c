@@ -298,14 +298,15 @@ static inline void update_topo_grid_weights(GParam *const param, Acc_Utils *cons
 	}
 
 
-void tune_topo_potential_unconstrained(Gauge_Conf const *const GC, GParam *const param, Tune_Utils *const tune_utils)
+void tune_topo_potential_unconstrained(Gauge_Conf const *const GC, GParam *const param, Tune_Utils *const tune_utils,
+                                       Acc_Utils const *const acc_counters)
 	{
 	int const n_replica = param->d_N_replica_pt;
 
 	for(int a = 0; a < n_replica; a++)
 		{
-		// get stored topcharge x
-		double x = GC[a].stored_topcharge;
+		// get stored topcharge x of the configuration with replica index a
+		double x = GC[acc_counters->replica_to_gc[a]].stored_topcharge;
 		if(param->d_topo_alpha > MIN_VALUE)
 			x = round(param->d_topo_alpha * x);
 
@@ -345,13 +346,13 @@ void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_U
 	int const n_replica = param->d_N_replica_pt;
 	if(n_replica < 3)
 		{
-		tune_topo_potential_unconstrained(GC, param, tune_utils);
+		tune_topo_potential_unconstrained(GC, param, tune_utils, acc_counters);
 		return;
 		}
 
-	// get stored topcharge x
-	double x_coarse = GC[0].stored_topcharge;
-	double x_fine = GC[n_replica - 1].stored_topcharge;
+	// get stored topcharge x of the configurations with replica index 0 and n_replica - 1
+	double x_coarse = GC[acc_counters->replica_to_gc[0]].stored_topcharge;
+	double x_fine = GC[acc_counters->replica_to_gc[n_replica - 1]].stored_topcharge;
 	if(param->d_topo_alpha > MIN_VALUE)
 		{
 		x_coarse = round(param->d_topo_alpha * x_coarse);
@@ -395,8 +396,8 @@ void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_U
 
 	for(int a = 0; a < n_replica; a++)
 		{
-		// get stored topcharge x
-		double x = GC[a].stored_topcharge;
+		// get stored topcharge x of the configuration with replica index a
+		double x = GC[acc_counters->replica_to_gc[a]].stored_topcharge;
 		if(param->d_topo_alpha > MIN_VALUE)
 			x = round(param->d_topo_alpha * x);
 
@@ -726,12 +727,14 @@ double metropolis_prob_multicanonic(int const a, double const Q_new, double cons
 	}
 
 
-// compute variation of topo potential swapping two replicas
+// compute variation of topo potential swapping the replica indices a and b of the configurations GC_a and GC_b
 ACC_ROUTINE_SEQ
-double delta_topo_potential_swap(Gauge_Conf const *const GC, int const a, int const b, GParam const *const param)
+double delta_topo_potential_swap(Gauge_Conf const *const GC_a, Gauge_Conf const *const GC_b, GParam const *const param)
 	{
-	double const Q_a = GC[a].stored_topcharge;
-	double const Q_b = GC[b].stored_topcharge;
+	int const a = GC_a->replica_index;
+	int const b = GC_b->replica_index;
+	double const Q_a = GC_a->stored_topcharge;
+	double const Q_b = GC_b->stored_topcharge;
 
 	// before swap V_a(Q_a) + V_b(Q_b) , after swap V_a(Q_b) + V_b(Q_a)
 	double const V_noswap = compute_topo_potential(a, Q_a, param) + compute_topo_potential(b, Q_b, param);
@@ -1043,7 +1046,7 @@ void multicanonic_parallel_tempering_with_hierarchical_update(Gauge_Conf *const 
 	if(param->d_N_replica_pt > 1)
 		{
 		swap(GC, geo, param, swap_rectangle, acc_counters); // swap all replicas
-		conf_translation(&(GC[0]), geo, param);             // translation of periodic replica (GC[0])
+		conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);             // translation of periodic replica (GC[0])
 		if(param->d_N_hierarc_levels > 0)
 			multicanonic_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle,
 			                                                       swap_rectangle, acc_counters); // hierarchic update
@@ -1076,7 +1079,7 @@ void multicanonic_agf_parallel_tempering_with_hierarchical_update(Gauge_Conf *co
 	if(param->d_N_replica_pt > 1)
 		{
 		swap(GC, geo, param, swap_rectangle, acc_counters); // swap all replicas
-		conf_translation(&(GC[0]), geo, param);             // translation of periodic replica (GC[0])
+		conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);             // translation of periodic replica (GC[0])
 		if(param->d_N_hierarc_levels > 0)
 			multicanonic_agf_hierarchical_update_rectangle_with_defect(GC, geo, param, start_hierarc, most_update, clover_rectangle,
 			                                                           swap_rectangle, acc_counters); // hierarchic update
@@ -1211,11 +1214,11 @@ void multicanonic_update_with_defect(Gauge_Conf *const GC, Geometry const *const
 			}
 		}
 
-	// add number of accepted and number of proposed Metropolis multicanonic tests
+	// add number of accepted and number of proposed Metropolis multicanonic tests (counters by replica index)
 	for(int j = 0; j < Nr; j++)
 		{
-		acc_counters->num_accepted_metro_multicanonic[j] += sum_acc[j];
-		acc_counters->num_metro_multicanonic[j] += count_metro[j];
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += sum_acc[j];
+		acc_counters->num_metro_multicanonic[GC[j].replica_index] += count_metro[j];
 		}
 
 	// free aux arrays
@@ -1333,12 +1336,12 @@ void multicanonic_agf_update_with_defect(Gauge_Conf *const GC, Geometry const *c
 			}
 		}
 
-	// multicanonic Metropolis tests and add number of accepted and number of proposed ones
+	// multicanonic Metropolis tests and add number of accepted and number of proposed ones (counters by replica index)
 	for(j = 0; j < param->d_N_replica_pt; j++)
 		{
 		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
-		acc_counters->num_accepted_metro_multicanonic[j] += acc;
-		acc_counters->num_metro_multicanonic[j] += 1;
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc;
+		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
 		}
 	}
 
@@ -1481,11 +1484,11 @@ void multicanonic_update_rectangle_with_defect(Gauge_Conf *const GC, Geometry co
 			}
 		}
 
-	// add number of accepted and number of proposed Metropolis multicanonic tests
+	// add number of accepted and number of proposed Metropolis multicanonic tests (counters by replica index)
 	for(int i = 0; i < param->d_N_replica_pt; i++)
 		{
-		acc_counters->num_accepted_metro_multicanonic[i] += sum_acc[i];
-		acc_counters->num_metro_multicanonic[i] += count_metro[i];
+		acc_counters->num_accepted_metro_multicanonic[GC[i].replica_index] += sum_acc[i];
+		acc_counters->num_metro_multicanonic[GC[i].replica_index] += count_metro[i];
 		}
 
 	// free aux arrays
@@ -1524,7 +1527,7 @@ void multicanonic_hierarchical_update_rectangle_with_defect(Gauge_Conf *const GC
 			{
 			multicanonic_update_rectangle_with_defect(GC, geo, param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt > 1) swap(GC, geo, param, swap_rectangle, acc_counters);
-			conf_translation(&(GC[0]), geo, param);
+			conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 			}
 		}
 	else
@@ -1533,7 +1536,7 @@ void multicanonic_hierarchical_update_rectangle_with_defect(Gauge_Conf *const GC
 			{
 			multicanonic_update_rectangle_with_defect(GC, geo, param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt > 1) swap(GC, geo, param, swap_rectangle, acc_counters);
-			conf_translation(&(GC[0]), geo, param);
+			conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 			multicanonic_hierarchical_update_rectangle_with_defect(GC, geo, param, (hierarc_level + 1), most_update, clover_rectangle, swap_rectangle, acc_counters);
 			}
 		}
@@ -1654,8 +1657,8 @@ void multicanonic_agf_update_rectangle_with_defect(Gauge_Conf *const GC, Geometr
 		//   extend to the first neighbors. delta_Q is non-zero only for those clovers intersecting
 		//   the final rectangle
 		acc = multicanonic_metropolis_step_all_links(&(GC[j]), geo, param);
-		acc_counters->num_accepted_metro_multicanonic[j] += acc;
-		acc_counters->num_metro_multicanonic[j] += 1;
+		acc_counters->num_accepted_metro_multicanonic[GC[j].replica_index] += acc;
+		acc_counters->num_metro_multicanonic[GC[j].replica_index] += 1;
 		}
 	}
 
@@ -1674,7 +1677,7 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf *cons
 			{
 			multicanonic_agf_update_rectangle_with_defect(GC, geo, param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt > 1) swap(GC, geo, param, swap_rectangle, acc_counters);
-			conf_translation(&(GC[0]), geo, param);
+			conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 			}
 		} // end if
 	else
@@ -1683,7 +1686,7 @@ void multicanonic_agf_hierarchical_update_rectangle_with_defect(Gauge_Conf *cons
 			{
 			multicanonic_agf_update_rectangle_with_defect(GC, geo, param, &(most_update[hierarc_level]), &(clover_rectangle[hierarc_level]), acc_counters);
 			if(param->d_N_replica_pt > 1) swap(GC, geo, param, swap_rectangle, acc_counters);
-			conf_translation(&(GC[0]), geo, param);
+			conf_translation(&(GC[acc_counters->replica_to_gc[0]]), geo, param);
 			multicanonic_agf_hierarchical_update_rectangle_with_defect(GC, geo, param, (hierarc_level + 1), most_update, clover_rectangle, swap_rectangle, acc_counters);
 			}
 		} // end else

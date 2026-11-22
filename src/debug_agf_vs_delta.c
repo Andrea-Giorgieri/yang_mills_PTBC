@@ -107,23 +107,23 @@ void real_main(char const *in_file)
 			{
 			param.d_agf_delta = delta0;
 			time(&time1);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux0));
-			//perform_measures_localobs_debug(&(GC[0]), &geo, &param, &meas_aux0, step_filep0);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux0));
+			//perform_measures_localobs_debug(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux0, step_filep0);
 
 			param.d_agf_delta = delta1;
 			time(&time2);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux1));
-			//perform_measures_localobs_debug2(&(GC[0]), &geo, &param, &meas_aux1, step_filep1);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux1));
+			//perform_measures_localobs_debug2(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux1, step_filep1);
 
 			param.d_agf_delta = delta2;
 			time(&time3);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux2));
-			//perform_measures_localobs_debug(&(GC[0]), &geo, &param, &meas_aux2, step_filep2);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux2));
+			//perform_measures_localobs_debug(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux2, step_filep2);
 
 			param.d_agf_delta = delta3;
 			time(&time4);
-			perform_measures_localobs(&(GC[0]), &geo, &param, &(meas_aux3));
-			//perform_measures_localobs_debug(&(GC[0]), &geo, &param, &meas_aux3, step_filep3);
+			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux3));
+			//perform_measures_localobs_debug(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &meas_aux3, step_filep3);
 
 			time(&time5);
 			time_agf0 += time2 - time1;
@@ -153,12 +153,12 @@ void real_main(char const *in_file)
 				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC[0].update_index);
 				strcat(name, aux);
-				write_conf_on_file_with_name(&(GC[0]), &param, name);
+				write_conf_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 
 				strcpy(name, param.d_twist_file);
 				strcat(name, "_step_");
 				strcat(name, aux);
-				write_twist_on_file_with_name(&(GC[0]), &param, name);
+				write_twist_on_file_with_name(&(GC[acc_counters.replica_to_gc[0]]), &param, name);
 				}
 			}
 		}

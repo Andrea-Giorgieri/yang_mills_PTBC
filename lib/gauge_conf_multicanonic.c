@@ -18,13 +18,7 @@
 // initialize stored topcharge and lattice_copy_cold
 void init_multicanonic_gauge_conf(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
-	for(long s = 0; s < (param->d_volume); s++)
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[s]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[s]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_lattice_cold_with_copy(GC, param);
 
 	// TODO: debug cold topcharge multicanonic
 	// initialize lattice_cold = lattice_copy_cold = lattice
@@ -383,7 +377,7 @@ void tune_topo_potential(Gauge_Conf const *const GC, GParam *const param, Tune_U
 	if(acc_counters->num_swap[0] > param->d_topo_tuning_weights_every)
 		{
 		update_topo_grid_weights(param, acc_counters);
-		for(int a = 0; a < n_replica; a++)
+		for(int a = 0; a < n_replica - 1; a++) // swap counters: one per pair (a, a+1)
 			{
 			acc_counters->num_swap[a] = 0;
 			acc_counters->num_accepted_swap[a] = 0;

@@ -115,14 +115,7 @@ void init_gauge_conf_from_txt(char const *const conf_file_in, Gauge_Conf *const 
 	FILE *fp = fopen(conf_file_in, "r");
 	REQUIRE(fp != NULL, "failed to open file %s", conf_file_in);
 
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_array_GAUGE_GROUP_2d(&(GC->lattice), param->d_volume, STDIM, __FILE__, __LINE__);
 
 	long num_lines = 0;
 
@@ -156,13 +149,12 @@ void init_gauge_conf_from_txt(char const *const conf_file_in, Gauge_Conf *const 
 
 void init_twist_cond_from_txt(Gauge_Conf *const GC, GParam const *const param)
 	{
-	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
+	allocate_array_double_complex_2d(&(GC->Z), param->d_volume, param->d_n_planes + 1, __FILE__, __LINE__);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	for(long r = 0; r < (param->d_volume); r++)
 		{
-		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes + 1, __FILE__, __LINE__);
 		for(int j = 0; j < param->d_n_planes + 1; j++) GC->Z[r][j] = 1.0 + 0.0 * I;
 		}
 
@@ -188,16 +180,9 @@ void init_twist_cond_from_txt(Gauge_Conf *const GC, GParam const *const param)
 
 void free_gauge_conf_from_txt(Gauge_Conf *GC, GParam const *const param)
 	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < param->d_volume; r++)
-		{
-		free(GC->lattice[r]);
-		free(GC->Z[r]);
-		}
-	free(GC->lattice);
-	free(GC->Z);
+	free_array_GAUGE_GROUP_2d(GC->lattice);
+	free_array_double_complex_2d(GC->Z);
+	(void) param;
 	}
 
 

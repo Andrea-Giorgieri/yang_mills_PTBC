@@ -49,6 +49,9 @@ void real_main(char const *in_file)
 	// initialize gauge configuration
 	init_gauge_conf(&GC, &geo, &param);
 
+	// initialize multicanonic Metropolis acceptance arrays, open multicanonic acceptance file
+	init_acc_utils(&acc_counters, &param);
+
 	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
@@ -73,6 +76,11 @@ void real_main(char const *in_file)
 		start_timer(&(timers.update_timer));
 		update(&GC, &geo, &param, &acc_counters);
 		stop_timer(&(timers.update_timer));
+
+		// print mean multicanonic acceptance
+		#ifdef MULTICANONICAL_MODE
+		print_multicanonic_acceptance(&GC, &param, &acc_counters);
+		#endif
 
 		// perform measures
 		if(GC.update_index % param.d_measevery == 0 && GC.update_index >= param.d_thermal)
@@ -134,6 +142,9 @@ void real_main(char const *in_file)
 	// free gauge configuration
 	free_gauge_conf(&GC, &param);
 
+	// free acceptance counters, close multicanonic acceptance file
+	free_acc_utils(&acc_counters, &param);
+
 	// free geometry
 	free_geometry(&geo, &param);
 	}
@@ -146,6 +157,9 @@ void print_template_input(void)
 
 	print_template_volume_parameters(fp);
 	print_template_twist_parameters(fp);
+	#ifdef MULTICANONICAL_MODE
+	print_template_multicanonic_parameters(fp);
+	#endif
 	print_template_simul_parameters(fp);
 	print_template_adaptive_gradflow_parameters(fp);
 	print_template_gradflow_parameters(fp);

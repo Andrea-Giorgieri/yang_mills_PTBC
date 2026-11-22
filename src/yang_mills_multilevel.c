@@ -181,6 +181,9 @@ int main(int argc, char **argv)
 		}
 
 	REQUIRE(strlen(argv[1]) < STD_STRING_LENGTH, "input filename too long, increase STD_STRING_LENGTH in macro.h");
+	#ifdef MULTICANONICAL_MODE
+	REQUIRE(0, "multilevel can not be used with the multicanonical algorithm (compile without --enable-use-multicanonical)");
+	#endif
 
 	real_main(argv[1]);
 

@@ -22,52 +22,35 @@
 #include "../include/tens_prod.h"
 
 
+// lattice[volume][STDIM] and its copy, each one a contiguous block
 void allocate_lattice_with_copy(Gauge_Conf *GC, GParam const *const param)
 	{
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy[r]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_array_GAUGE_GROUP_2d(&(GC->lattice), param->d_volume, STDIM, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_2d(&(GC->lattice_copy), param->d_volume, STDIM, __FILE__, __LINE__);
 	}
 
 
+// lattice_cold[volume][STDIM] and its copy, each one a contiguous block
 void allocate_lattice_cold_with_copy(Gauge_Conf *GC, GParam const *const param)
 	{
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_cold), param->d_volume, __FILE__, __LINE__);
-	allocate_array_GAUGE_GROUP_pointer(&(GC->lattice_copy_cold), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_GAUGE_GROUP(&(GC->lattice_cold[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_GAUGE_GROUP(&(GC->lattice_copy_cold[r]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_array_GAUGE_GROUP_2d(&(GC->lattice_cold), param->d_volume, STDIM, __FILE__, __LINE__);
+	allocate_array_GAUGE_GROUP_2d(&(GC->lattice_copy_cold), param->d_volume, STDIM, __FILE__, __LINE__);
 	}
 
 
+// Z[volume][n_planes+1] and its copy, each one a contiguous block
 void allocate_Z_with_copy(Gauge_Conf *GC, GParam const *const param)
 	{
-	allocate_array_double_complex_pointer(&(GC->Z), param->d_volume, __FILE__, __LINE__);
-	allocate_array_double_complex_pointer(&(GC->Z_copy), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_double_complex(&(GC->Z[r]), param->d_n_planes + 1, __FILE__, __LINE__);
-		allocate_array_double_complex(&(GC->Z_copy[r]), param->d_n_planes + 1, __FILE__, __LINE__);
-		}
+	allocate_array_double_complex_2d(&(GC->Z), param->d_volume, param->d_n_planes + 1, __FILE__, __LINE__);
+	allocate_array_double_complex_2d(&(GC->Z_copy), param->d_volume, param->d_n_planes + 1, __FILE__, __LINE__);
 	}
 
 
-// allocate the clovers arrays
+// clover_array[volume][STDIM][STDIM] in a contiguous block
 void allocate_clover_array(Gauge_Conf *GC,
                            GParam const *const param)
 	{
-	allocate_array_GAUGE_GROUP_pointer_pointer(&(GC->clover_array), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < param->d_volume; r++)
-		{
-		allocate_array_GAUGE_GROUP_pointer(&(GC->clover_array[r]), STDIM, __FILE__, __LINE__);
-		for(int i = 0; i < STDIM; i++) allocate_array_GAUGE_GROUP(&(GC->clover_array[r][i]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_array_GAUGE_GROUP_3d(&(GC->clover_array), param->d_volume, STDIM, STDIM, __FILE__, __LINE__);
 	}
 
 
@@ -580,38 +563,19 @@ void free_gauge_conf(Gauge_Conf *GC, GParam const *const param)
 	{
 	free_rng_gauge_conf(GC);
 
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long r = 0; r < param->d_volume; r++)
-		{
-		free(GC->lattice[r]);
-		free(GC->lattice_copy[r]);
-		#ifdef MULTICANONICAL_MODE
-		free(GC->lattice_cold[r]);
-		free(GC->lattice_copy_cold[r]);
-		#endif
-		free(GC->Z[r]);
-		free(GC->Z_copy[r]);
-		#ifdef THETA_MODE
-		for(int i = 0; i < STDIM; i++)
-			{
-			free(GC->clover_array[r][i]);
-			}
-		free(GC->clover_array[r]);
-		#endif
-		}
-	free(GC->lattice);
-	free(GC->lattice_copy);
+	free_array_GAUGE_GROUP_2d(GC->lattice);
+	free_array_GAUGE_GROUP_2d(GC->lattice_copy);
 	#ifdef MULTICANONICAL_MODE
-	free(GC->lattice_cold);
-	free(GC->lattice_copy_cold);
+	free_array_GAUGE_GROUP_2d(GC->lattice_cold);
+	free_array_GAUGE_GROUP_2d(GC->lattice_copy_cold);
 	#endif
-	free(GC->Z);
-	free(GC->Z_copy);
+	free_array_double_complex_2d(GC->Z);
+	free_array_double_complex_2d(GC->Z_copy);
 	#ifdef THETA_MODE
-	free(GC->clover_array);
+	free_array_GAUGE_GROUP_3d(GC->clover_array);
 	#endif
+
+	(void) param;
 	}
 
 

@@ -1201,14 +1201,7 @@ void init_meas_utils(Meas_Utils *meas_aux, GParam const *const param, int const 
 		// allocate auxiliary lattices
 		for(int i = 0; i < 4; i++)
 			{
-			allocate_array_GAUGE_GROUP_pointer(&(meas_aux->lattice_aux[i]), param->d_volume, __FILE__, __LINE__);
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				allocate_array_GAUGE_GROUP(&(meas_aux->lattice_aux[i][r]), STDIM, __FILE__, __LINE__);
-				}
+			allocate_array_GAUGE_GROUP_2d(&(meas_aux->lattice_aux[i]), param->d_volume, STDIM, __FILE__, __LINE__);
 			}
 		}
 
@@ -1293,14 +1286,7 @@ void free_meas_utils(Meas_Utils meas_aux, GParam const *const param, int const r
 		// free auxiliary lattices
 		for(int i = 0; i < 4; i++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				free(meas_aux.lattice_aux[i][r]);
-				}
-			free(meas_aux.lattice_aux[i]);
+			free_array_GAUGE_GROUP_2d(meas_aux.lattice_aux[i]);
 			}
 		}
 
@@ -1819,14 +1805,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const G
 		allocate_array_GAUGE_GROUP_pointer_pointer(&helper_confs, param->d_agf_num_meas, __FILE__, __LINE__);
 		for(int i = 0; i < param->d_agf_num_meas; i++)
 			{
-			allocate_array_GAUGE_GROUP_pointer(&(helper_confs[i]), param->d_volume, __FILE__, __LINE__);
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				allocate_array_GAUGE_GROUP(&(helper_confs[i][r]), STDIM, __FILE__, __LINE__);
-				}
+			allocate_array_GAUGE_GROUP_2d(&(helper_confs[i]), param->d_volume, STDIM, __FILE__, __LINE__);
 			}
 
 		// adaptive step integration
@@ -1896,14 +1875,7 @@ void perform_measures_localobs_with_adaptive_gradflow_debug4(Gauge_Conf *const G
 		// free memory
 		for(int i = 0; i < param->d_agf_num_meas; i++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long r = 0; r < (param->d_volume); r++)
-				{
-				free(helper_confs[i][r]);
-				}
-			free(helper_confs[i]);
+			free_array_GAUGE_GROUP_2d(helper_confs[i]);
 			}
 		free(helper_confs);
 		}

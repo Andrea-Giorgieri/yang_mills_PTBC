@@ -55,25 +55,31 @@ const int g_indep_perm_dir[4][3] = {
 void init_geometry(Geometry *geo, GParam const *const param)
 	{
 	// allocate memory
+	// allocate memory (contiguous blocks, see memalign.h)
 	allocate_array_long(&(geo->d_sip_to_si), param->d_volume, __FILE__, __LINE__);
-	allocate_array_long_pointer(&(geo->d_nnp), param->d_volume, __FILE__, __LINE__);
-	allocate_array_long_pointer(&(geo->d_nnm), param->d_volume, __FILE__, __LINE__);
-	for(long r = 0; r < (param->d_volume); r++)
-		{
-		allocate_array_long(&(geo->d_nnp[r]), STDIM, __FILE__, __LINE__);
-		allocate_array_long(&(geo->d_nnm[r]), STDIM, __FILE__, __LINE__);
-		}
+	allocate_array_long_2d(&(geo->d_nnp), param->d_volume, STDIM, __FILE__, __LINE__);
+	allocate_array_long_2d(&(geo->d_nnm), param->d_volume, STDIM, __FILE__, __LINE__);
 
-	allocate_array_int_pointer(&(geo->d_mucomp), STDIM, __FILE__, __LINE__);
-	allocate_array_long_pointer(&(geo->d_muorth), STDIM, __FILE__, __LINE__);
+	allocate_array_int_2d(&(geo->d_mucomp), STDIM, param->d_volume, __FILE__, __LINE__);
+	allocate_array_long_2d(&(geo->d_muorth), STDIM, param->d_volume, __FILE__, __LINE__);
+
+	// d_mutimespace[mu][t][rsp]: d_size[mu] rows of volume/d_size[mu] sites for every mu, STDIM*volume sites in one block
+	long *mutimespace_block;
+	long **mutimespace_rows;
+	long n_rows = 0;
+	for(int i = 0; i < STDIM; i++)
+		n_rows += param->d_size[i];
+	allocate_array_long(&mutimespace_block, STDIM * param->d_volume, __FILE__, __LINE__);
+	allocate_array_long_pointer(&mutimespace_rows, n_rows, __FILE__, __LINE__);
 	allocate_array_long_pointer_pointer(&(geo->d_mutimespace), STDIM, __FILE__, __LINE__);
+	long row = 0;
 	for(int i = 0; i < STDIM; i++)
 		{
-		allocate_array_int(&(geo->d_mucomp[i]), param->d_volume, __FILE__, __LINE__);
-		allocate_array_long(&(geo->d_muorth[i]), param->d_volume, __FILE__, __LINE__);
-		allocate_array_long_pointer(&(geo->d_mutimespace[i]), param->d_size[i], __FILE__, __LINE__);
-		for(long r = 0; r < param->d_size[i]; r++)
-			allocate_array_long(&(geo->d_mutimespace[i][r]), (param->d_volume) / (param->d_size[i]), __FILE__, __LINE__);
+		long const row_length = (param->d_volume) / (param->d_size[i]);
+		geo->d_mutimespace[i] = mutimespace_rows + row;
+		for(long t = 0; t < param->d_size[i]; t++)
+			geo->d_mutimespace[i][t] = mutimespace_block + i * param->d_volume + t * row_length;
+		row += param->d_size[i];
 		}
 
 	// initialize sip_to_si and nearest neighbors
@@ -140,29 +146,20 @@ void init_geometry(Geometry *geo, GParam const *const param)
 // free geometry struc
 void free_geometry(Geometry *geo, GParam const *const param)
 	{
-	for(long r = 0; r < param->d_volume; r++)
-		{
-		free(geo->d_nnp[r]);
-		free(geo->d_nnm[r]);
-		}
-	free(geo->d_nnp);
-	free(geo->d_nnm);
+	free_array_long_2d(geo->d_nnp);
+	free_array_long_2d(geo->d_nnm);
 
-	for(int i = 0; i < STDIM; i++)
-		{
-		for(long r = 0; r < param->d_size[i]; r++)
-			{
-			free(geo->d_mutimespace[i][r]);
-			}
-		free(geo->d_mutimespace[i]);
-		free(geo->d_muorth[i]);
-		free(geo->d_mucomp[i]);
-		}
+	free_array_int_2d(geo->d_mucomp);
+	free_array_long_2d(geo->d_muorth);
+
+	free(geo->d_mutimespace[0][0]); // block
+	free(geo->d_mutimespace[0]);    // rows
 	free(geo->d_mutimespace);
-	free(geo->d_muorth);
-	free(geo->d_mucomp);
 
+	free(geo->d_sip_to_si);
 	free(geo->d_defect_mask);
+
+	(void) param;
 	}
 
 

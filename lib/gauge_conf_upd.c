@@ -10,6 +10,7 @@
 #endif
 #include <stdlib.h>
 
+#include "../include/device.h"
 #include "../include/memalign.h"
 #include "../include/gauge_group.h"
 #include "../include/gparam.h"
@@ -355,29 +356,35 @@ void compute_clovers_replica(Gauge_Conf const *const GC,
                              GParam const *const param,
                              int const dir)
 	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long s = 0; s < ((param->d_N_replica_pt) * param->d_volume); s++)
+	long const volume = param->d_volume;
+
+	// slots of device d: device_slot_begin(d) <= i_r < device_slot_end(d)
+	FOR_EACH_DEVICE(d)
 		{
-		GAUGE_GROUP aux;
-		// s = i_r * volume + r
-		long const r = s % (param->d_volume);                // space-time index
-		int const i_r = (int) ((s - r) / (param->d_volume)); // replica index
-
-		for(int i = 0; i < STDIM; i++)
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = device_slot_begin(d) * volume; s < device_slot_end(d) * volume; s++)
 			{
-			for(int j = i + 1; j < STDIM; j++)
+			GAUGE_GROUP aux;
+			// s = i_r * volume + r
+			long const r = s % volume;                // space-time index
+			int const i_r = (int) ((s - r) / volume); // replica index
+
+			for(int i = 0; i < STDIM; i++)
 				{
-				if(i != dir && j != dir)
+				for(int j = i + 1; j < STDIM; j++)
 					{
-					clover(&(GC[i_r]), geo, param, r, i, j, &aux);
+					if(i != dir && j != dir)
+						{
+						clover(&(GC[i_r]), geo, param, r, i, j, &aux);
 
-					equal(&(GC[i_r].clover_array[r][i][j]), &aux);
-					minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux); // clover_array[r][i][j] = aux - aux^{dag}
+						equal(&(GC[i_r].clover_array[r][i][j]), &aux);
+						minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux); // clover_array[r][i][j] = aux - aux^{dag}
 
-					equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
-					times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i] = -clover_array[r][i][j]
+						equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
+						times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i] = -clover_array[r][i][j]
+						}
 					}
 				}
 			}
@@ -389,34 +396,40 @@ void compute_clovers_replica(Gauge_Conf const *const GC,
 void compute_clovers_replica_rect(Gauge_Conf const *const GC,
                                   Geometry const *const geo,
                                   GParam const *const param,
-                                  int dir,
+                                  int const dir,
                                   Rectangle const *const clover_rectangle)
 	{
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	for(long s = 0; s < ((param->d_N_replica_pt) * (clover_rectangle->d_vol_rect)); s++)
+	long const vol_rect = clover_rectangle->d_vol_rect;
+
+	// slots of device d: device_slot_begin(d) <= i_r < device_slot_end(d)
+	FOR_EACH_DEVICE(d)
 		{
-		GAUGE_GROUP aux;
-
-		// s = i_r * volume_rect + n
-		long const n = s % (clover_rectangle->d_vol_rect);                // space-time index on the rectangle
-		long const r = clover_rectangle->rect_sites[n];                   // space-time index on the lattice
-		int const i_r = (int) ((s - n) / (clover_rectangle->d_vol_rect)); // replica index
-
-		for(int i = 0; i < STDIM; i++)
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS)
+		#endif
+		for(long s = device_slot_begin(d) * vol_rect; s < device_slot_end(d) * vol_rect; s++)
 			{
-			for(int j = i + 1; j < STDIM; j++)
+			GAUGE_GROUP aux;
+
+			// s = i_r * volume_rect + n
+			long const n = s % vol_rect;                // space-time index on the rectangle
+			long const r = clover_rectangle->rect_sites[n]; // space-time index on the lattice
+			int const i_r = (int) ((s - n) / vol_rect); // replica index
+
+			for(int i = 0; i < STDIM; i++)
 				{
-				if(i != dir && j != dir)
+				for(int j = i + 1; j < STDIM; j++)
 					{
-					clover(&(GC[i_r]), geo, param, r, i, j, &aux);
+					if(i != dir && j != dir)
+						{
+						clover(&(GC[i_r]), geo, param, r, i, j, &aux);
 
-					equal(&(GC[i_r].clover_array[r][i][j]), &aux);
-					minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux); // clover_array[r][i][j] = aux - aux^{dag}
+						equal(&(GC[i_r].clover_array[r][i][j]), &aux);
+						minus_equal_dag(&(GC[i_r].clover_array[r][i][j]), &aux); // clover_array[r][i][j] = aux - aux^{dag}
 
-					equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
-					times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i] = -clover_array[r][i][j]
+						equal(&(GC[i_r].clover_array[r][j][i]), &(GC[i_r].clover_array[r][i][j]));
+						times_equal_real(&(GC[i_r].clover_array[r][j][i]), -1.0); // clover_array[r][j][i] = -clover_array[r][i][j]
+						}
 					}
 				}
 			}
@@ -1217,6 +1230,9 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 	long const num_border = param->d_n_border;     // number of sites outside the largest even sublattice
 	int const Nr = param->d_N_replica_pt;          // number of PTBC replicas
 
+	// loops over (slot i, site r) with s = i * num_even + r are split among the devices:
+	// the slots of device d are device_slot_begin(d) <= i < device_slot_end(d)
+
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
 		{
@@ -1224,39 +1240,48 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 		compute_clovers_replica(GC, geo, param, dir);
 		#endif
 
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = 0; s < Nr * num_even; s++)
-			{
-			// s = i * num_even + r
-			long const r = s % num_even;
-			int const i = (int) ((s - r) / num_even);
-			heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
-			}
-
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = 0; s < Nr * num_even; s++)
-			{
-			// s = i * num_even + aux; aux = r - num_even
-			long const aux = s % num_even;
-			long const r = num_even + aux;
-			int const i = (int) ((s - aux) / num_even);
-			heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
-			}
-
-		if(num_border > 0)
+		FOR_EACH_DEVICE(d)
 			{
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(int i = 0; i < Nr; i++)
+			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
 				{
-				for(long r = even_volume; r < volume; r++)
+				// s = i * num_even + r
+				long const r = s % num_even;
+				int const i = (int) ((s - r) / num_even);
+				heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+				}
+			}
+
+		FOR_EACH_DEVICE(d)
+			{
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+				{
+				// s = i * num_even + aux; aux = r - num_even
+				long const aux = s % num_even;
+				long const r = num_even + aux;
+				int const i = (int) ((s - aux) / num_even);
+				heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+				}
+			}
+
+		if(num_border > 0)
+			{
+			FOR_EACH_DEVICE(d)
+				{
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS)
+				#endif
+				for(long i = device_slot_begin(d); i < device_slot_end(d); i++)
 					{
-					heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+					for(long r = even_volume; r < volume; r++)
+						{
+						heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+						}
 					}
 				}
 			}
@@ -1271,39 +1296,48 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 
 		for(int j = 0; j < param->d_overrelax; j++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = 0; s < Nr * num_even; s++)
+			FOR_EACH_DEVICE(d)
 				{
-				// s = i * num_even + r
-				long const r = s % num_even;
-				int const i = (int) ((s - r) / num_even);
-				overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS)
+				#endif
+				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+					{
+					// s = i * num_even + r
+					long const r = s % num_even;
+					int const i = (int) ((s - r) / num_even);
+					overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+					}
 				}
 
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = 0; s < Nr * num_even; s++)
+			FOR_EACH_DEVICE(d)
 				{
-				// s = i * num_odd + aux ; aux = r - num_even
-				long const aux = s % num_even;
-				long const r = num_even + aux;
-				int const i = (int) ((s - aux) / num_even);
-				overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS)
+				#endif
+				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+					{
+					// s = i * num_odd + aux ; aux = r - num_even
+					long const aux = s % num_even;
+					long const r = num_even + aux;
+					int const i = (int) ((s - aux) / num_even);
+					overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+					}
 				}
 
 			if(num_border > 0)
 				{
-				#ifdef OPENMP_MODE
-				#pragma omp parallel for if(Nr > 1) num_threads(NTHREADS)
-				#endif
-				for(int i = 0; i < Nr; i++)
+				FOR_EACH_DEVICE(d)
 					{
-					for(long r = even_volume; r < volume; r++)
+					#ifdef OPENMP_MODE
+					#pragma omp parallel for if(device_slot_end(d) - device_slot_begin(d) > 1) num_threads(NTHREADS)
+					#endif
+					for(long i = device_slot_begin(d); i < device_slot_end(d); i++)
 						{
-						overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+						for(long r = even_volume; r < volume; r++)
+							{
+							overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
+							}
 						}
 					}
 				}
@@ -1345,6 +1379,9 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 	long const num_odd = (rect_volume - is_even) / 2;  // number of odd sites
 	int const Nr = param->d_N_replica_pt;              // number of PTBC replicas
 
+	// loops over (slot i, site n) are split among the devices: the slots of device d are
+	// device_slot_begin(d) <= i < device_slot_end(d)
+
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
 		{
@@ -1352,29 +1389,35 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 		compute_clovers_replica_rect(GC, geo, param, dir, &(rect_aux->clover_rect[hierarc_level]));
 		#endif
 
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = 0; s < Nr * num_even; s++)
+		FOR_EACH_DEVICE(d)
 			{
-			// s = i * num_even + n
-			long const n = s % num_even;                                         // site index on rectangle
-			long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
-			int const i = (int) ((s - n) / num_even);                            // replica index
-			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+				{
+				// s = i * num_even + n
+				long const n = s % num_even;                                         // site index on rectangle
+				long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
+				int const i = (int) ((s - n) / num_even);                            // replica index
+				heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+				}
 			}
 
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = 0; s < Nr * num_odd; s++)
+		FOR_EACH_DEVICE(d)
 			{
-			// s = i * num_odd + aux; aux = n - num_even
-			long const aux = s % num_odd;
-			long const n = aux + num_even;                                       // site index on rectangle
-			long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
-			int const i = (int) ((s - aux) / num_odd);                           // replica index
-			heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+			#ifdef OPENMP_MODE
+			#pragma omp parallel for num_threads(NTHREADS)
+			#endif
+			for(long s = device_slot_begin(d) * num_odd; s < device_slot_end(d) * num_odd; s++)
+				{
+				// s = i * num_odd + aux; aux = n - num_even
+				long const aux = s % num_odd;
+				long const n = aux + num_even;                                       // site index on rectangle
+				long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
+				int const i = (int) ((s - aux) / num_odd);                           // replica index
+				heatbath_with_defect(&(GC[i]), geo, param, r, dir);
+				}
 			}
 		}
 
@@ -1387,29 +1430,35 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 
 		for(int j = 0; j < param->d_overrelax; j++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = 0; s < Nr * num_even; s++)
+			FOR_EACH_DEVICE(d)
 				{
-				// s = i * num_even + n
-				long const n = s % num_even;                                         // site index on rectangle
-				long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
-				int const i = (int) ((s - n) / num_even);                            // replica index
-				overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS)
+				#endif
+				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+					{
+					// s = i * num_even + n
+					long const n = s % num_even;                                         // site index on rectangle
+					long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
+					int const i = (int) ((s - n) / num_even);                            // replica index
+					overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+					}
 				}
 
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = 0; s < Nr * num_odd; s++)
+			FOR_EACH_DEVICE(d)
 				{
-				// s = i * num_odd + aux; aux = n - num_even
-				long const aux = s % num_odd;
-				long const n = aux + num_even;                                       // site index on rectangle
-				long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
-				int const i = (int) ((s - aux) / num_odd);                           // replica index
-				overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+				#ifdef OPENMP_MODE
+				#pragma omp parallel for num_threads(NTHREADS)
+				#endif
+				for(long s = device_slot_begin(d) * num_odd; s < device_slot_end(d) * num_odd; s++)
+					{
+					// s = i * num_odd + aux; aux = n - num_even
+					long const aux = s % num_odd;
+					long const n = aux + num_even;                                       // site index on rectangle
+					long const r = (rect_aux->update_rect[hierarc_level]).rect_sites[n]; // site index on lattice
+					int const i = (int) ((s - aux) / num_odd);                           // replica index
+					overrelaxation_with_defect(&(GC[i]), geo, param, r, dir);
+					}
 				}
 			}
 		}

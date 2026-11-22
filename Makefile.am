@@ -7,6 +7,8 @@ bin_PROGRAMS = conf_check \
             debug_twist \
             debug_agf_vs_gf \
             debug_agf_vs_delta \
+            debug_device \
+            yang_mills_gpu_plan \
             yang_mills_local_agf \
             yang_mills_local_pt_agf \
             yang_mills_conf_analysis \
@@ -58,7 +60,9 @@ geometry = ./include/geometry.h \
            ./lib/geometry.c
 
 gparam = ./include/accel.h \
+         ./include/device.h \
          ./include/gparam.h \
+         ./lib/device.c \
          ./lib/gparam.c
 
 random = ./include/myrngparam.h \
@@ -155,6 +159,38 @@ debug_u1_SOURCES=./src/debug_u1.c \
                   ./include/macro.h \
                   $(random) \
                   $(u1)
+
+debug_device_SOURCES=./src/debug_device.c \
+                          $(timing) \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(gauge_group) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
+
+yang_mills_gpu_plan_SOURCES=./src/yang_mills_gpu_plan.c \
+                          $(timing) \
+                          $(align) \
+                          $(dSFMT)  \
+                          $(endian) \
+                          $(gauge_group) \
+                          $(gauge_conf) \
+                          $(geometry) \
+                          $(gparam) \
+                          ./include/macro.h \
+                          $(random) \
+                          $(su2) \
+                          $(sun) \
+                          $(tens_prod) \
+                          $(u1)
 
 debug_twist_SOURCES=./src/debug_twist.c \
                           $(timing) \

@@ -10,6 +10,7 @@
 #include <omp.h>
 #endif
 
+#include "../include/device.h"
 #include "../include/gauge_conf.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -55,6 +56,9 @@ void real_main(char const *in_file)
 
 	// initialize auxiliary arrays and lattices for measurements, open data files
 	init_meas_utils_replica(&meas_aux, &param);
+
+	// choose the devices holding the replicas
+	init_device_utils(&param);
 
 	// initialize gauge configuration of all replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);

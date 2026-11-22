@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "../include/device.h"
 #include "../include/endianness.h"
 #include "../include/memalign.h"
 #include "../include/timing.h"
@@ -283,6 +284,7 @@ void set_defaults(GParam *const param)
 	param->d_N_replica_pt = 1;
 	allocate_array_double(&(param->d_pt_bound_cond_coeff), 1, __FILE__, __LINE__);
 	param->d_pt_bound_cond_coeff[0] = 1.0;
+	param->d_num_gpus = 0;
 
 	// hierarchical update
 	param->d_N_hierarc_levels = 0;
@@ -421,6 +423,7 @@ void readinput(char const *const in_file, GParam *const param)
 			// parallel tempering
 			INT_PARAM("defect_dir", d_defect_dir, param_nonnegative_int),
 			INT_ARRAY_PARAM("defect_size", d_L_defect, STDIM - 1, param_any_int),
+			INT_PARAM("num_gpus", d_num_gpus, param_nonnegative_int),
 
 			// simulation
 			INT_PARAM("sample", d_sample, param_nonnegative_int),
@@ -1038,6 +1041,9 @@ void print_pt_parameters(FILE *fp, GParam const *const param)
 		fprintf(fp, "\n");
 		}
 	fprintf(fp, "\n");
+
+	// distribution of the replicas among the devices (if chosen)
+	if(g_dev.n_used > 0) print_device_utils(fp, &g_dev);
 	}
 
 

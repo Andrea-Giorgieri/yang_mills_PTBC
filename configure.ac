@@ -176,6 +176,8 @@ AC_ARG_VAR(Num_levels, the number of levels in multilevel (default 1))
 
 AC_ARG_VAR(Num_threads, number of threads to be used in OpenMP (default 1))
 
+AC_ARG_VAR(Num_devices, maximum number of GPUs per node that can be used with OpenACC (default 4))
+
 AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
 AC_ARG_VAR(OPENACC_CFLAGS, flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc otherwise))
@@ -256,6 +258,13 @@ if test x${use_openmp} = xyes; then
   fi
 else
   AC_DEFINE_UNQUOTED(NTHREADS, 1, [Number of threads to be used in OpenMP])
+fi
+
+# maximum number of devices (also used on CPU to simulate the splitting of the replicas among devices)
+if test x${Num_devices} = x; then
+  AC_DEFINE_UNQUOTED(MAX_DEVICES, 4, [Maximum number of GPUs per node])
+else
+  AC_DEFINE_UNQUOTED(MAX_DEVICES, ${Num_devices}, [Maximum number of GPUs per node])
 fi
 
 if test x${ST_dim} = x; then

@@ -10,6 +10,7 @@ NCOLORS=3     # Number of colors
 STDIM=4       # Spacetime dimension
 
 NTHREADS=112  # Number of OpenMP threads (if OpenMP is enabled)
+NDEVICES=4    # Maximum number of GPUs per node (OpenACC)
 NLEVELS=1     # Number of levels in multilevel algorithm
 
 # 1=yes, 0=no
@@ -106,6 +107,7 @@ echo "========================================"
 echo "N_c:            ${NCOLORS}"
 echo "ST_dim:         ${STDIM}"
 echo "Num_threads:    ${NTHREADS}"
+echo "Num_devices:    ${NDEVICES}"
 echo "Num_levels:     ${NLEVELS}"
 echo "OpenMP:         ${ENABLE_OPENMP}"
 echo "OpenACC:        ${ENABLE_OPENACC}"
@@ -146,6 +148,7 @@ CONFIGURE_ARGS=(
     "ST_dim=${STDIM}"
     "Num_levels=${NLEVELS}"
     "Num_threads=${NTHREADS}"
+    "Num_devices=${NDEVICES}"
     "CC=${CC}"
     "CFLAGS=${CFLAGS}"
     "LIBS=${LIBS}"

@@ -19,6 +19,7 @@ typedef struct Gauge_Conf
 	{
 	long update_index;
 	int replica_index; // index of the parallel tempering replica (defect coefficient), exchanged by the swaps
+	int device;        // device (index in g_dev) holding this configuration, fixed for the whole run
 
 	GAUGE_GROUP **lattice;       // [volume] [STDIM]
 	GAUGE_GROUP ***clover_array; // [volume] [STDIM] [STDIM]
@@ -725,7 +726,7 @@ void compute_clovers_replica(Gauge_Conf const *const GC,
 void compute_clovers_replica_rect(Gauge_Conf const *const GC,
                                   Geometry const *const geo,
                                   GParam const *const param,
-                                  int dir,
+                                  int const dir,
                                   Rectangle const *const clover_rectangle);
 
 ACC_ROUTINE_SEQ

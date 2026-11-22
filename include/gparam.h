@@ -85,6 +85,7 @@ typedef struct GParam
 	int d_L_defect[STDIM - 1];     // defect sizes
 	int d_N_replica_pt;            // numbers of replica used in parallel tempering
 	double *d_pt_bound_cond_coeff; // boundary conditions coefficients
+	int d_num_gpus;                // devices used for the replicas: 0 = minimal number, > 0 = forced (simulated on CPU)
 
 	// twist parameters and open boundary conditions
 	int d_k_twist[STDIM * (STDIM - 1) / 2]; // twist parameter for each plane

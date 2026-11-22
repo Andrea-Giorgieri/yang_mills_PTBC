@@ -10,6 +10,7 @@
 
 #include "../include/gauge_group.h"
 #include "../include/gauge_conf.h"
+#include "../include/device.h"
 #include "../include/gparam.h"
 #include "../include/random.h"
 #include "../include/sun.h"
@@ -51,6 +52,7 @@ void real_main(char const *in_file)
 
 	initrand(param.d_randseed);
 	init_geometry(&geo, &param);
+	init_device_utils(&param);
 	init_gauge_conf_replica(&GC, &geo, &param);
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
 	init_rect(&swap_rectangle, L_R_swap, &param);

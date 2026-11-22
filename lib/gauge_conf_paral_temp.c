@@ -11,6 +11,7 @@
 #include <omp.h>
 #endif
 
+#include "../include/device.h"
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -32,34 +33,41 @@ static void swap_group(Gauge_Conf *const GC, Geometry const *const geo, GParam c
 	int const Nr = param->d_N_replica_pt;
 	int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
 	long const vol_rect = swap_rectangle->d_vol_rect;
+	#ifdef MULTICANONICAL_MODE
 	int const *const replica_to_gc = acc_counters->replica_to_gc;
+	#endif
 	double *const aux_p = acc_counters->metro_swap_prob; // alias for the Metropolis probabilities of the pairs
 
 	for(int a = 0; a < Nr; a++)
 		D[a] = 0.0;
 
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+:D[:Nr])
-	#endif
-	for(long s = 0; s < 2 * n_pairs * vol_rect; s++)
+	// D[x] for every configuration whose replica index x belongs to a pair of this group; every device sums over its
+	// own slots g (device_slot_begin(d) <= g < device_slot_end(d)), each sum involves a single configuration
+	FOR_EACH_DEVICE(d)
 		{
-		// s = (2 * k + side) * vol_rect + n
-		long const n = s % vol_rect;
-		long const t = (s - n) / vol_rect;
-		int const k = (int) (t / 2);                   // index of the pair in the group
-		int const a = 2 * k + first;                   // index of the first replica in the pair
-		int const b = a + 1;                           // index of the second replica in the pair
-		int const x = (t % 2 == 0) ? a : b;            // replica index of the configuration summed
-		long const r = swap_rectangle->rect_sites[n];  // site index of the configuration summed
-
-		double const c_a = param->d_pt_bound_cond_coeff[a];
-		double const c_b = param->d_pt_bound_cond_coeff[b];
-		Gauge_Conf const *const GC_x = &(GC[replica_to_gc[x]]);
-
-		for(int i = 0; i < STDIM - 1; i++)
+		#ifdef OPENMP_MODE
+		#pragma omp parallel for num_threads(NTHREADS) reduction(+:D[:Nr])
+		#endif
+		for(long s = device_slot_begin(d) * vol_rect; s < device_slot_end(d) * vol_rect; s++)
 			{
-			int const j = geo->d_orth_dir[mu][i];
-			D[x] += swap_action_site(GC_x, geo, param, r, mu, j, c_a, c_b);
+			// s = g * vol_rect + n
+			long const n = s % vol_rect;
+			int const g = (int) ((s - n) / vol_rect); // slot of the configuration summed
+			int const x = GC[g].replica_index;        // replica index of the configuration summed
+			if(x < first || x >= first + 2 * n_pairs) continue; // not swapped in this group
+
+			int const a = x - (x - first) % 2;            // index of the first replica in the pair
+			int const b = a + 1;                          // index of the second replica in the pair
+			long const r = swap_rectangle->rect_sites[n]; // site index of the configuration summed
+
+			double const c_a = param->d_pt_bound_cond_coeff[a];
+			double const c_b = param->d_pt_bound_cond_coeff[b];
+
+			for(int i = 0; i < STDIM - 1; i++)
+				{
+				int const j = geo->d_orth_dir[mu][i];
+				D[x] += swap_action_site(&(GC[g]), geo, param, r, mu, j, c_a, c_b);
+				}
 			}
 		}
 

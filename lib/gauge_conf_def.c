@@ -15,6 +15,7 @@
 #include <openssl/md5.h>
 #endif
 
+#include "../include/device.h"
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -547,6 +548,7 @@ void init_twist_cond_from_file_with_name(Gauge_Conf *GC, GParam const *const par
 void init_gauge_conf(Gauge_Conf *GC, Geometry const *const geo, GParam const *const param)
 	{
 	GC->replica_index = 0;
+	GC->device = 0;
 
 	init_gauge_conf_from_file_with_name(GC, param, param->d_conf_file);
 	init_rng_gauge_conf(GC, param, 0);
@@ -690,6 +692,7 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 	{
 	GC->update_index = GC2->update_index;
 	GC->replica_index = GC2->replica_index;
+	GC->device = GC2->device;
 
 	#ifdef RNG_PHILOX_MODE
 	GC->rng_site = NULL; // auxiliary configuration: never updated with heatbath/overrelaxation/metropolis
@@ -739,6 +742,9 @@ void init_gauge_conf_from_gauge_conf(Gauge_Conf *GC, Gauge_Conf const *const GC2
 // used to allocate all replicas in the parallel tempering
 void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam const *const param)
 	{
+	// the devices holding the replicas must have been chosen (init_device_utils)
+	REQUIRE(g_dev.n_used > 0, "init_device_utils must be called before init_gauge_conf_replica");
+
 	// allocate the vector to store replicas
 	allocate_array_Gauge_Conf(GC, param->d_N_replica_pt, __FILE__, __LINE__);
 
@@ -762,6 +768,11 @@ void init_gauge_conf_replica(Gauge_Conf **GC, Geometry const *const geo, GParam 
 		init_twist_cond_from_file_with_name(&((*GC)[i]), param, filename);
 
 		((*GC)[i]).replica_index = i; // GC[i] has initial replica index i (replica_to_gc = identity)
+		((*GC)[i]).device = 0;        // device holding slot i
+		FOR_EACH_DEVICE(d)
+			{
+			if(i >= device_slot_begin(d) && i < device_slot_end(d)) ((*GC)[i]).device = d;
+			}
 
 		#ifdef MULTICANONICAL_MODE
 		init_multicanonic_gauge_conf(&((*GC)[i]), geo, param);

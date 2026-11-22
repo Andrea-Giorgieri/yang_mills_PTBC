@@ -175,6 +175,7 @@ static int set_parameter(FILE *input, ParamDef const *param)
 static int set_n_replica_pt(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_N_replica_pt, "N_replica_pt", &param_positive_int);
+	free(param->d_pt_bound_cond_coeff); // free default or previous values in case the parameter is repeated
 	allocate_array_double(&param->d_pt_bound_cond_coeff, param->d_N_replica_pt, __FILE__, __LINE__);
 	for(int i = 0; i < param->d_N_replica_pt; ++i)
 		{
@@ -187,6 +188,10 @@ static int set_n_replica_pt(FILE *input, GParam *param)
 static int set_hierarc_upd(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_N_hierarc_levels, "hierarc_upd", &param_nonnegative_int);
+	free(param->d_L_rect); // free default or previous values in case the parameter is repeated
+	free(param->d_N_sweep_rect);
+	param->d_L_rect = NULL;
+	param->d_N_sweep_rect = NULL;
 	if(param->d_N_hierarc_levels == 0)
 		return 1;
 	allocate_array_int(&param->d_L_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
@@ -206,6 +211,8 @@ static int set_hierarc_upd(FILE *input, GParam *param)
 static int set_multipolyakov_order(FILE *input, GParam *param)
 	{
 	set_int_param(input, &param->d_multipolyakov_order, "multipolyakov_order", &param_nonnegative_int);
+	free(param->d_multipolyakov_dirs); // free default or previous values in case the parameter is repeated
+	param->d_multipolyakov_dirs = NULL;
 	if(param->d_multipolyakov_order == 0)
 		return 1;
 	allocate_array_int(&param->d_multipolyakov_dirs, param->d_multipolyakov_order, __FILE__, __LINE__);
@@ -263,6 +270,7 @@ void set_defaults(GParam *const param)
 	for(i = 0; i < NCOLOR / 2; i++) param->d_h[i] = 0.0;
 	param->d_theta = 0.0;
 	param->d_theta_profile_dir = -1;
+	param->d_theta_profile = NULL;
 
 	// twist and open boundary conditions
 	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) param->d_k_twist[i] = 0;
@@ -280,6 +288,10 @@ void set_defaults(GParam *const param)
 	param->d_N_hierarc_levels = 0;
 	param->d_L_rect = NULL;
 	param->d_N_sweep_rect = NULL;
+
+	// multicanonic potential
+	param->d_grid = NULL;
+	param->d_grid_weight = NULL;
 
 	// gradient flow
 	param->d_ngfsteps = 0;
@@ -334,6 +346,7 @@ void set_defaults(GParam *const param)
 	param->d_action_meas = 0;
 
 	param->d_multipolyakov_order = 0;
+	param->d_multipolyakov_dirs = NULL;
 	param->d_meas_effective_charge = 0;
 
 	// filenames
@@ -961,18 +974,29 @@ void edit_params_meas_only(GParam *const param)
 	}
 
 
-// free allocated memory for hierarc update parameters
-void free_hierarc_params(GParam *const param)
+// free the arrays allocated by readinput
+void free_gparam(GParam *const param)
 	{
-	if(param->d_N_hierarc_levels == 0)
+	free(param->d_pt_bound_cond_coeff);
+	free(param->d_L_rect);
+	free(param->d_N_sweep_rect);
+	free(param->d_multipolyakov_dirs);
+	free(param->d_theta_profile);
+	if(param->d_grid != NULL)
 		{
-		(void) param; // to avoid compiler warning about unused variable
+		for(int a = 0; a < param->d_N_replica_pt; a++)
+			free(param->d_grid[a]);
+		free(param->d_grid);
 		}
-	else
-		{
-		free(param->d_L_rect);
-		free(param->d_N_sweep_rect);
-		}
+	free(param->d_grid_weight);
+
+	param->d_pt_bound_cond_coeff = NULL;
+	param->d_L_rect = NULL;
+	param->d_N_sweep_rect = NULL;
+	param->d_multipolyakov_dirs = NULL;
+	param->d_theta_profile = NULL;
+	param->d_grid = NULL;
+	param->d_grid_weight = NULL;
 	}
 
 // print simulation parameters aux

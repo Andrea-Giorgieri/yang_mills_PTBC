@@ -249,7 +249,7 @@ void init_derived_constants(GParam *const param);
 
 void edit_params_meas_only(GParam *const param);
 
-void free_hierarc_params(GParam *const param);
+void free_gparam(GParam *const param);
 
 // print simulation parameters aux
 void print_configuration_parameters(FILE *fp);

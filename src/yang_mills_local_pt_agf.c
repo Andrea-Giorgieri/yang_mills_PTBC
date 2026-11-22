@@ -159,8 +159,8 @@ void real_main(char const *in_file)
 	// free auxiliary arrays and lattices for measurements, close data files
 	free_meas_utils_replica(meas_aux, &param);
 
-	// free hierarchical update parameters
-	free_hierarc_params(&param);
+	// free input parameters
+	free_gparam(&param);
 	}
 
 

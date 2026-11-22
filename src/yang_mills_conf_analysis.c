@@ -84,6 +84,9 @@ void real_main(char *in_file, long step, long stop_index)
 
 	// print simulation details
 	print_parameters_conf_analysis(&param, &timers);
+
+	// free input parameters
+	free_gparam(&param);
 	}
 
 void print_template_input(void)

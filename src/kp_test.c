@@ -101,8 +101,8 @@ void real_main(char const *in_file)
 	// close data file
 	fclose(datafilep);
 
-	// free hierarchical update parameters
-	free_hierarc_params(&param);
+	// free input parameters
+	free_gparam(&param);
 	}
 
 

@@ -141,6 +141,9 @@ void real_main(char const *in_file)
 
 	// free geometry
 	free_geometry(&geo, &param);
+
+	// free input parameters
+	free_gparam(&param);
 	}
 
 

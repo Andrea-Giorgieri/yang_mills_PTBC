@@ -40,7 +40,7 @@ void real_main(char const *in_file)
 	int L_R_swap = 1;
 
 	readinput(in_file, &param);
-	if(param.d_N_replica_pt < 2) param.d_N_replica_pt = 2;
+	REQUIRE(param.d_N_replica_pt >= 2, "debug_twist needs at least 2 replicas (N_replica_pt)");
 	param.d_plaquette_meas = 1;
 	param.d_clover_energy_meas = 1;
 	param.d_charge_meas = 1;
@@ -81,6 +81,7 @@ void real_main(char const *in_file)
 
 	param.d_start = 3;
 	int err = 0;
+	free_gauge_conf_replica(GC, &param);
 	init_gauge_conf_replica(&GC, &geo, &param);
 	for(long r = 0; r < param.d_volume; r++)
 		{
@@ -311,7 +312,7 @@ void real_main(char const *in_file)
 	free_rect_hierarc(most_update, clover_rectangle, &param);
 	free_rect(&swap_rectangle);
 	free_acc_utils(&acc_counters, &param);
-	free_hierarc_params(&param);
+	free_gparam(&param);
 
 	printf("\nALL TESTS ENDED\n\n");
 	}

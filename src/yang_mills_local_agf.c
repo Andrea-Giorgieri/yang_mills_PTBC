@@ -63,7 +63,7 @@ void real_main(char const *in_file)
 		start_timer(&(timers.step_timer));
 		start_timer(&(timers.meas_timer));
 		perform_measures_localobs(&GC, &geo, &param, &meas_aux);
-		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
 		}
 

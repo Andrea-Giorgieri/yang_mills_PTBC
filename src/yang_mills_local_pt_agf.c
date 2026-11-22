@@ -83,7 +83,7 @@ void real_main(char const *in_file)
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
 			}
 		#endif
-		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
 		}
 

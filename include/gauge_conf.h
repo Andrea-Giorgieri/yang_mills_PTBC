@@ -97,6 +97,17 @@ static inline double plaquette_defect_coeff(Geometry const *const geo, GParam co
 	}
 
 
+// number n of links of the plaquette (s, i, j) on the defect, with spi = s+i and spj = s+j: K_ij(s) = c^n
+// (same links as plaquette_defect_coeff; n <= 2 because only one of the directions i != j is the defect direction)
+ACC_ROUTINE_SEQ
+static inline int plaquette_defect_links(Geometry const *const geo, GParam const *const param,
+                                         long const s, long const spi, long const spj, int const i, int const j)
+	{
+	int const mu = param->d_defect_dir;
+	return (i == mu && geo->d_defect_mask[s] == 1) + (j == mu && geo->d_defect_mask[spi] == 1) + (i == mu && geo->d_defect_mask[spj] == 1) + (j == mu && geo->d_defect_mask[s] == 1);
+	}
+
+
 // to compute swap and multicanonic acceptances during parallel tempering evolution
 typedef struct Acc_Utils
 	{
@@ -939,6 +950,13 @@ void swap(Gauge_Conf *const GC,
           GParam const *const param,
           Rectangle const *const swap_rectangle,
           Acc_Utils *acc_counters);
+
+void swap_plaquette_sums(Gauge_Conf const *const GC,
+                         Geometry const *const geo,
+                         GParam const *const param,
+                         Rectangle const *const swap_rectangle,
+                         double *const P1,
+                         double *const P2);
 
 ACC_ROUTINE_SEQ
 double swap_action_site(Gauge_Conf const *const GC,

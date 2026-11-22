@@ -20,57 +20,63 @@
 #include "../include/random.h"
 
 
+// sums P1 and P2 of the configuration GC entering the swap action differences (see swap_group), on the device of GC:
+//   P_n = sum_{r in swap_rect, j != mu, n links of the plaquette (r,mu,j) on the defect} ReTr(Z plaq(r,mu,j))/N_c
+// The defect coefficient of a plaquette with n links on the defect is K_c = c^n (n = 0, 1, 2), so
+//   sum_{r in swap_rect, j != mu} [K_{c_a}(r,mu,j) - K_{c_b}(r,mu,j)] ReTr(Z plaq(r,mu,j))/N_c = (c_a - c_b) P1 + (c_a^2 - c_b^2) P2
+// for every pair of coefficients: P1 and P2 depend only on the configuration, not on its replica index
+void swap_plaquette_sums(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param,
+                         Rectangle const *const swap_rectangle, double *const P1, double *const P2)
+	{
+	int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
+	long const vol_rect = swap_rectangle->d_vol_rect;
+	double p1 = 0.0, p2 = 0.0;
+
+	select_device(GC->device);
+	// reduction on the host scalars: queue of the device (after the update), then wait in this function
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop reduction(+:p1, p2) present(GC[0:1], geo[0:1], param[0:1], swap_rectangle[0:1]) async(QUEUE_DEVICE)
+	#endif
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS) reduction(+:p1, p2)
+	#endif
+	for(long n = 0; n < vol_rect; n++)
+		{
+		long const r = swap_rectangle->rect_sites[n];
+		long const rpmu = nnp(geo, r, mu);
+		for(int i = 0; i < STDIM - 1; i++)
+			{
+			int const j = geo->d_orth_dir[mu][i];
+			int const n_def = plaquette_defect_links(geo, param, r, rpmu, nnp(geo, r, j), mu, j);
+			if(n_def == 1)
+				p1 += plaquettep(GC, geo, param, r, mu, j);
+			else if(n_def == 2)
+				p2 += plaquettep(GC, geo, param, r, mu, j);
+			}
+		}
+	#ifdef OPENACC_MODE
+	#pragma acc wait(QUEUE_DEVICE)
+	#endif
+
+	*P1 = p1;
+	*P2 = p2;
+	}
+
+
 // one group of n_pairs swaps: pairs (a, a+1) with a = first, first + 2, ...
 //
 // Swapping replicas a and b = a+1 exchanges the replica indices of A = GC[replica_to_gc[a]] and B = GC[replica_to_gc[b]]
 // The action difference
 //   swapped - unswapped = beta * (D_A - D_B),
-//   D_X = sum_{r in swap_rect, j != mu} [K_{c_a}(r,mu,j) - K_{c_b}(r,mu,j)] ReTr(Z plaq_X(r,mu,j))/N_c,
-// is computed as two independent sums, each one on a single configuration.
-static void swap_group(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
-                       Rectangle const *const swap_rectangle, Acc_Utils *acc_counters,
-                       int const first, int const n_pairs, double *const D)
+//   D_X = sum_{r in swap_rect, j != mu} [K_{c_a}(r,mu,j) - K_{c_b}(r,mu,j)] ReTr(Z plaq_X(r,mu,j))/N_c
+//       = (c_a - c_b) P1_X + (c_a^2 - c_b^2) P2_X,
+// with P1[g], P2[g] the sums of the configuration in slot g (swap_plaquette_sums): the configurations do not change
+// during the swaps, so the same sums serve both groups
+static void swap_group(Gauge_Conf *const GC, GParam const *const param, Acc_Utils *acc_counters,
+                       int const first, int const n_pairs, double const *const P1, double const *const P2)
 	{
-	int const Nr = param->d_N_replica_pt;
-	int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
-	long const vol_rect = swap_rectangle->d_vol_rect;
-	#ifdef MULTICANONICAL_MODE
 	int const *const replica_to_gc = acc_counters->replica_to_gc;
-	#endif
 	double *const aux_p = acc_counters->metro_swap_prob; // alias for the Metropolis probabilities of the pairs
-
-	for(int a = 0; a < Nr; a++)
-		D[a] = 0.0;
-
-	// D[x] for every configuration whose replica index x belongs to a pair of this group; every device sums over its
-	// own slots g (device_slot_begin(d) <= g < device_slot_end(d)), each sum involves a single configuration
-	FOR_EACH_DEVICE(d)
-		{
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS) reduction(+:D[:Nr])
-		#endif
-		for(long s = device_slot_begin(d) * vol_rect; s < device_slot_end(d) * vol_rect; s++)
-			{
-			// s = g * vol_rect + n
-			long const n = s % vol_rect;
-			int const g = (int) ((s - n) / vol_rect); // slot of the configuration summed
-			int const x = GC[g].replica_index;        // replica index of the configuration summed
-			if(x < first || x >= first + 2 * n_pairs) continue; // not swapped in this group
-
-			int const a = x - (x - first) % 2;            // index of the first replica in the pair
-			int const b = a + 1;                          // index of the second replica in the pair
-			long const r = swap_rectangle->rect_sites[n]; // site index of the configuration summed
-
-			double const c_a = param->d_pt_bound_cond_coeff[a];
-			double const c_b = param->d_pt_bound_cond_coeff[b];
-
-			for(int i = 0; i < STDIM - 1; i++)
-				{
-				int const j = geo->d_orth_dir[mu][i];
-				D[x] += swap_action_site(&(GC[g]), geo, param, r, mu, j, c_a, c_b);
-				}
-			}
-		}
 
 	// Metropolis tests and swaps (serial with Philox: the Metropolis tests use the single host generator)
 	#if defined(OPENMP_MODE) && !defined(RNG_PHILOX_MODE)
@@ -80,10 +86,16 @@ static void swap_group(Gauge_Conf *const GC, Geometry const *const geo, GParam c
 		{
 		int const a = 2 * k + first;
 		int const b = a + 1;
+		int const gc_a = replica_to_gc[a]; // configuration A, with replica index a
+		int const gc_b = replica_to_gc[b]; // configuration B, with replica index b
 
-		aux_p[a] = param->d_beta * (D[a] - D[b]); // swapped action - unswapped action
+		double const c_a = param->d_pt_bound_cond_coeff[a];
+		double const c_b = param->d_pt_bound_cond_coeff[b];
+
+		// swapped action - unswapped action = beta * (D_A - D_B)
+		aux_p[a] = param->d_beta * ((c_a - c_b) * (P1[gc_a] - P1[gc_b]) + (c_a * c_a - c_b * c_b) * (P2[gc_a] - P2[gc_b]));
 		#ifdef MULTICANONICAL_MODE
-		aux_p[a] += delta_topo_potential_swap(&(GC[replica_to_gc[a]]), &(GC[replica_to_gc[b]]), param);
+		aux_p[a] += delta_topo_potential_swap(&(GC[gc_a]), &(GC[gc_b]), param);
 		#endif
 		aux_p[a] = exp(-aux_p[a]);                                // Metropolis swap probability
 		metropolis_single_swap(GC, a, b, aux_p[a], acc_counters); // Metropolis step
@@ -102,9 +114,6 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 	int const num_even = (num_swaps + is_even) / 2; // number of swaps for even replica
 	int const num_odd = (num_swaps - is_even) / 2;  // number of swaps for odd replica
 
-	// PHASE7_BRIDGE: the swaps still run on the host (the update ends on the devices)
-	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
-
 	// to be sure detailed balance is satisfied, choose randomly whether to swap first odd or even copies
 	int is_even_first, num_swaps_1, num_swaps_2;
 	if(casuale(rng_host()) < 0.5) // first swap all even copies, then all odd copies
@@ -120,14 +129,21 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 		num_swaps_2 = num_even;
 		}
 
-	// local sums of the action differences, one per replica index
-	double *D;
-	allocate_array_double(&D, param->d_N_replica_pt, __FILE__, __LINE__);
+	if(num_swaps > 0)
+		{
+		// sums of the swap action differences, one pair per configuration (slot), on the device of the slot
+		double *P1, *P2;
+		allocate_array_double(&P1, param->d_N_replica_pt, __FILE__, __LINE__);
+		allocate_array_double(&P2, param->d_N_replica_pt, __FILE__, __LINE__);
+		for(int g = 0; g < param->d_N_replica_pt; g++)
+			swap_plaquette_sums(&(GC[g]), geo, param, swap_rectangle, &(P1[g]), &(P2[g]));
 
-	swap_group(GC, geo, param, swap_rectangle, acc_counters, is_even_first, num_swaps_1, D);     // first group
-	swap_group(GC, geo, param, swap_rectangle, acc_counters, 1 - is_even_first, num_swaps_2, D); // second group: reverse parity
+		swap_group(GC, param, acc_counters, is_even_first, num_swaps_1, P1, P2);     // first group
+		swap_group(GC, param, acc_counters, 1 - is_even_first, num_swaps_2, P1, P2); // second group: reverse parity
 
-	free(D);
+		free(P1);
+		free(P2);
+		}
 
 	// the defect coefficients read on the devices depend on replica_index
 	copy_replica_index_to_device(GC, param);
@@ -177,16 +193,20 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 
 // translation of one lattice spacing of the configuration, including the Z factors
 // direction is chosen randomly, verse is always positive
+// on the device of GC (kernels in its queue); the translation counters stay on the host
 void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
-	// PHASE7_BRIDGE: the translation still runs on the host and reads the auxiliary copies (accepted on the devices)
-	copy_gauge_conf_to_host(GC, param, GC_COPY | GC_COLD);
-
 	// extract random direction
 	int const dir = (int) (STDIM * casuale(rng_host()));
 	GC->translation[dir] += 1;
 
-	// translation in direction +dir, including the Z factors and cold lattice
+	select_device(GC->device);
+
+	// translation in direction +dir, including the Z factors and cold lattice (read from the auxiliary copies, equal
+	// to the accepted configuration)
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
@@ -211,6 +231,9 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 	#endif
 
 	// update the auxiliary confs
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
@@ -225,8 +248,6 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 			}
 		GC->Z_copy[r][j] = GC->Z[r][j];
 		}
-
-	copy_gauge_conf_to_device(GC, param, GC_ALL_BUT_RNG); // PHASE7_BRIDGE: the translation still runs on the host
 	}
 
 

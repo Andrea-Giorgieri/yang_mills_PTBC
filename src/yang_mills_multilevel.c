@@ -67,7 +67,7 @@ void real_main(char const *in_file)
 		start_timer(&(timers.step_timer));
 		start_timer(&(timers.meas_timer));
 		perform_multilevel_update_and_measures(&GC, &geo, &param, &meas_aux, param.d_ml_obs);
-		start_timer(&(timers.meas_timer));
+		stop_timer(&(timers.meas_timer));
 		stop_timer(&(timers.step_timer));
 		}
 

@@ -470,6 +470,43 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 	}
 
 
+// sums of the swaps on the device (swap_plaquette_sums, random links): (c_a - c_b) P1 + (c_a^2 - c_b^2) P2 against the
+// host sum of swap_action_site over the swap rectangle, for the coefficients of replicas 0, 1 and for an arbitrary pair
+static void test_swap_sums(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *rect_aux)
+	{
+	char what[STD_STRING_LENGTH];
+	int const mu = param->d_defect_dir;
+	Rectangle const *const rect = &(rect_aux->swap_rect);
+	int const n_c = (param->d_N_replica_pt > 1) ? 2 : 1;
+	double const c_pairs[2][2] = {{0.3, 1.7}, {param->d_pt_bound_cond_coeff[0], param->d_pt_bound_cond_coeff[n_c - 1]}};
+
+	for(int g = 0; g < param->d_N_replica_pt; g++)
+		{
+		Gauge_Conf *gc = &(GC[g]);
+		for(long r = 0; r < param->d_volume; r++)
+			for(int i = 0; i < STDIM; i++)
+				rand_matrix(&(gc->lattice[r][i]), rng_host());
+		copy_gauge_conf_to_device(gc, param, GC_LATTICE);
+
+		double p1, p2;
+		swap_plaquette_sums(gc, geo, param, rect, &p1, &p2);
+
+		for(int k = 0; k < n_c; k++)
+			{
+			double const c_a = c_pairs[k][0];
+			double const c_b = c_pairs[k][1];
+			double d_host = 0.0;
+			for(long n = 0; n < rect->d_vol_rect; n++)
+				for(int i = 0; i < STDIM - 1; i++)
+					d_host += swap_action_site(gc, geo, param, rect->rect_sites[n], mu, geo->d_orth_dir[mu][i], c_a, c_b);
+			double const d_dev = (c_a - c_b) * p1 + (c_a * c_a - c_b * c_b) * p2;
+			sprintf(what, "slot %d (device %d): swap D(%.3f, %.3f)", g, gc->device, c_a, c_b);
+			check(close_enough(d_dev, d_host), what, d_dev, d_host);
+			}
+		}
+	}
+
+
 void real_main(char *in_file)
 	{
 	Gauge_Conf *GC;
@@ -494,6 +531,7 @@ void real_main(char *in_file)
 	test_rect_data(&rect_aux, &param);
 	test_param_data(GC, &param);
 	test_gauge_conf_data(GC, &param, meas_aux);
+	test_swap_sums(GC, &geo, &param, &rect_aux); // changes the links
 
 	free_device_data(GC, &geo, &param, &rect_aux, meas_aux, n_meas);
 

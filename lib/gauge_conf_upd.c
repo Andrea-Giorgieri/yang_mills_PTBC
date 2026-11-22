@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/memalign.h"
 #include "../include/gauge_group.h"
 #include "../include/gparam.h"
@@ -361,10 +362,16 @@ void compute_clovers_replica(Gauge_Conf const *const GC,
 	// slots of device d: device_slot_begin(d) <= i_r < device_slot_end(d)
 	FOR_EACH_DEVICE(d)
 		{
+		select_device(d);
+		long const first = device_slot_begin(d);
+		long const n_sl = device_slot_end(d) - first;
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = device_slot_begin(d) * volume; s < device_slot_end(d) * volume; s++)
+		#ifdef OPENACC_MODE
+		#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#endif
+		for(long s = first * volume; s < (first + n_sl) * volume; s++)
 			{
 			GAUGE_GROUP aux;
 			// s = i_r * volume + r
@@ -404,10 +411,16 @@ void compute_clovers_replica_rect(Gauge_Conf const *const GC,
 	// slots of device d: device_slot_begin(d) <= i_r < device_slot_end(d)
 	FOR_EACH_DEVICE(d)
 		{
+		select_device(d);
+		long const first = device_slot_begin(d);
+		long const n_sl = device_slot_end(d) - first;
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
-		for(long s = device_slot_begin(d) * vol_rect; s < device_slot_end(d) * vol_rect; s++)
+		#ifdef OPENACC_MODE
+		#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], clover_rectangle[0:1]) async(QUEUE_DEVICE)
+		#endif
+		for(long s = first * vol_rect; s < (first + n_sl) * vol_rect; s++)
 			{
 			GAUGE_GROUP aux;
 
@@ -1242,10 +1255,16 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 
 		FOR_EACH_DEVICE(d)
 			{
+			select_device(d);
+			long const first = device_slot_begin(d);
+			long const n_sl = device_slot_end(d) - first;
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+			#ifdef OPENACC_MODE
+			#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+			#endif
+			for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 				{
 				// s = i * num_even + r
 				long const r = s % num_even;
@@ -1256,10 +1275,16 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 
 		FOR_EACH_DEVICE(d)
 			{
+			select_device(d);
+			long const first = device_slot_begin(d);
+			long const n_sl = device_slot_end(d) - first;
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+			#ifdef OPENACC_MODE
+			#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+			#endif
+			for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 				{
 				// s = i * num_even + aux; aux = r - num_even
 				long const aux = s % num_even;
@@ -1273,11 +1298,21 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 			{
 			FOR_EACH_DEVICE(d)
 				{
+				// border sites: sequential in r (odd sides only); on the GPU one gang per slot
+				select_device(d);
+				long const first = device_slot_begin(d);
+				long const n_sl = device_slot_end(d) - first;
 				#ifdef OPENMP_MODE
 				#pragma omp parallel for num_threads(NTHREADS)
 				#endif
-				for(long i = device_slot_begin(d); i < device_slot_end(d); i++)
+				#ifdef OPENACC_MODE
+				#pragma acc parallel loop gang present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+				#endif
+				for(long i = first; i < first + n_sl; i++)
 					{
+					#ifdef OPENACC_MODE
+					#pragma acc loop seq
+					#endif
 					for(long r = even_volume; r < volume; r++)
 						{
 						heatbath_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
@@ -1298,10 +1333,16 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 			{
 			FOR_EACH_DEVICE(d)
 				{
+				select_device(d);
+				long const first = device_slot_begin(d);
+				long const n_sl = device_slot_end(d) - first;
 				#ifdef OPENMP_MODE
 				#pragma omp parallel for num_threads(NTHREADS)
 				#endif
-				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+				#ifdef OPENACC_MODE
+				#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+				#endif
+				for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 					{
 					// s = i * num_even + r
 					long const r = s % num_even;
@@ -1312,10 +1353,16 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 
 			FOR_EACH_DEVICE(d)
 				{
+				select_device(d);
+				long const first = device_slot_begin(d);
+				long const n_sl = device_slot_end(d) - first;
 				#ifdef OPENMP_MODE
 				#pragma omp parallel for num_threads(NTHREADS)
 				#endif
-				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+				#ifdef OPENACC_MODE
+				#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+				#endif
+				for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 					{
 					// s = i * num_odd + aux ; aux = r - num_even
 					long const aux = s % num_even;
@@ -1329,11 +1376,21 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 				{
 				FOR_EACH_DEVICE(d)
 					{
+					// border sites: sequential in r (odd sides only); on the GPU one gang per slot
+					select_device(d);
+					long const first = device_slot_begin(d);
+					long const n_sl = device_slot_end(d) - first;
 					#ifdef OPENMP_MODE
-					#pragma omp parallel for if(device_slot_end(d) - device_slot_begin(d) > 1) num_threads(NTHREADS)
+					#pragma omp parallel for if(n_sl > 1) num_threads(NTHREADS)
 					#endif
-					for(long i = device_slot_begin(d); i < device_slot_end(d); i++)
+					#ifdef OPENACC_MODE
+					#pragma acc parallel loop gang present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+					#endif
+					for(long i = first; i < first + n_sl; i++)
 						{
+						#ifdef OPENACC_MODE
+						#pragma acc loop seq
+						#endif
 						for(long r = even_volume; r < volume; r++)
 							{
 							overrelaxation_with_defect(&(GC[i]), geo, param, geo->d_sip_to_si[r], dir);
@@ -1343,6 +1400,9 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 				}
 			}
 		}
+
+	// PHASE7_BRIDGE: Metropolis test, accept and restore still on the host
+	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
 
 	// Metropolis test if using multicanonical
 	for(int j = 0; j < Nr; j++)
@@ -1358,6 +1418,8 @@ void update_with_defect(Gauge_Conf *const GC, Geometry const *const geo, GParam 
 		if(acc == 1) accept_gauge_conf(&(GC[j]), param);
 		else restore_gauge_conf(&(GC[j]), param);
 		}
+
+	copy_gauge_conf_replica_to_device(GC, param, GC_LATTICE | GC_COPY | GC_COLD); // PHASE7_BRIDGE
 	}
 
 
@@ -1391,10 +1453,16 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 
 		FOR_EACH_DEVICE(d)
 			{
+			select_device(d);
+			long const first = device_slot_begin(d);
+			long const n_sl = device_slot_end(d) - first;
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+			#ifdef OPENACC_MODE
+			#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+			#endif
+			for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 				{
 				// s = i * num_even + n
 				long const n = s % num_even;                                         // site index on rectangle
@@ -1406,10 +1474,16 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 
 		FOR_EACH_DEVICE(d)
 			{
+			select_device(d);
+			long const first = device_slot_begin(d);
+			long const n_sl = device_slot_end(d) - first;
 			#ifdef OPENMP_MODE
 			#pragma omp parallel for num_threads(NTHREADS)
 			#endif
-			for(long s = device_slot_begin(d) * num_odd; s < device_slot_end(d) * num_odd; s++)
+			#ifdef OPENACC_MODE
+			#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+			#endif
+			for(long s = first * num_odd; s < (first + n_sl) * num_odd; s++)
 				{
 				// s = i * num_odd + aux; aux = n - num_even
 				long const aux = s % num_odd;
@@ -1432,10 +1506,16 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 			{
 			FOR_EACH_DEVICE(d)
 				{
+				select_device(d);
+				long const first = device_slot_begin(d);
+				long const n_sl = device_slot_end(d) - first;
 				#ifdef OPENMP_MODE
 				#pragma omp parallel for num_threads(NTHREADS)
 				#endif
-				for(long s = device_slot_begin(d) * num_even; s < device_slot_end(d) * num_even; s++)
+				#ifdef OPENACC_MODE
+				#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+				#endif
+				for(long s = first * num_even; s < (first + n_sl) * num_even; s++)
 					{
 					// s = i * num_even + n
 					long const n = s % num_even;                                         // site index on rectangle
@@ -1447,10 +1527,16 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 
 			FOR_EACH_DEVICE(d)
 				{
+				select_device(d);
+				long const first = device_slot_begin(d);
+				long const n_sl = device_slot_end(d) - first;
 				#ifdef OPENMP_MODE
 				#pragma omp parallel for num_threads(NTHREADS)
 				#endif
-				for(long s = device_slot_begin(d) * num_odd; s < device_slot_end(d) * num_odd; s++)
+				#ifdef OPENACC_MODE
+				#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+				#endif
+				for(long s = first * num_odd; s < (first + n_sl) * num_odd; s++)
 					{
 					// s = i * num_odd + aux; aux = n - num_even
 					long const aux = s % num_odd;
@@ -1462,6 +1548,9 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 				}
 			}
 		}
+
+	// PHASE7_BRIDGE: Metropolis test, accept and restore still on the host
+	copy_gauge_conf_replica_to_host(GC, param, GC_LATTICE);
 
 	// Metropolis test if using multicanonical
 	// TODO: check rectangle version (seems ok)
@@ -1481,6 +1570,8 @@ void update_rectangle_with_defect(Gauge_Conf *const GC, Geometry const *const ge
 		//if (acc == 1) accept_gauge_conf(&(GC[j]), param);
 		//else restore_gauge_conf(&(GC[j]), param);
 		}
+
+	copy_gauge_conf_replica_to_device(GC, param, GC_LATTICE | GC_COPY | GC_COLD); // PHASE7_BRIDGE
 	}
 
 

@@ -219,6 +219,8 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 			}
 		GC->Z_copy[r][j] = GC->Z[r][j];
 		}
+
+	copy_gauge_conf_to_device(GC, param, GC_ALL_BUT_RNG); // PHASE7_BRIDGE: the translation still runs on the host
 	}
 
 

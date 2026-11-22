@@ -384,6 +384,18 @@ void init_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *
 	}
 
 
+void wait_devices(void)
+	{
+	#ifdef OPENACC_MODE
+	FOR_EACH_DEVICE(d)
+		{
+		select_device(d);
+		acc_wait_all();
+		}
+	#endif
+	}
+
+
 void free_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *rect_aux, Meas_Utils *meas_aux, int const n_meas)
 	{
 	#ifdef OPENACC_MODE
@@ -415,6 +427,7 @@ void copy_gauge_conf_to_host(Gauge_Conf *GC, GParam const *param, int const fiel
 	{
 	#ifdef OPENACC_MODE
 	select_device(GC->device);
+	acc_wait_all(); // the copy is synchronous: wait for the kernels in the asynchronous queues
 	update_gauge_conf(GC, param, fields, 0);
 	#else
 	(void) GC;
@@ -428,6 +441,7 @@ void copy_gauge_conf_to_device(Gauge_Conf *GC, GParam const *param, int const fi
 	{
 	#ifdef OPENACC_MODE
 	select_device(GC->device);
+	acc_wait_all();
 	update_gauge_conf(GC, param, fields, 1);
 	#else
 	(void) GC;
@@ -457,6 +471,7 @@ void copy_replica_index_to_device(Gauge_Conf *GC, GParam const *param)
 	for(int g = 0; g < param->d_N_replica_pt; g++)
 		{
 		select_device(GC[g].device);
+		acc_wait_all();
 		acc_update_device(&(GC[g].replica_index), sizeof(int));
 		}
 	#else
@@ -472,6 +487,7 @@ void copy_topo_grid_to_device(GParam *param)
 	FOR_EACH_DEVICE(d)
 		{
 		select_device(d);
+		acc_wait_all();
 		update_2d((void **) param->d_grid, (size_t) param->d_N_replica_pt * (size_t) param->d_n_grid * sizeof(double), 1);
 		}
 	#else
@@ -494,7 +510,8 @@ void swap_lattice_cold(Gauge_Conf *GC)
 		select_device(GC->device);
 		if(acc_is_present(GC, sizeof(Gauge_Conf)))
 			{
-			#pragma acc serial present(GC[0:1])
+			// in the queue of the device: ordered with the kernels using the cold lattices
+			#pragma acc serial present(GC[0:1]) async(QUEUE_DEVICE)
 				{
 				GAUGE_GROUP **tmp = GC->lattice_cold;
 				GC->lattice_cold = GC->lattice_copy_cold;

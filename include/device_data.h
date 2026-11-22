@@ -26,11 +26,24 @@ enum
 	GC_Z = 1 << 2,       // Z
 	GC_COLD = 1 << 3,    // lattice_cold, lattice_copy_cold (multicanonical)
 	GC_RNG = 1 << 4,     // rng_site (Philox)
-	GC_ALL = GC_LATTICE | GC_COPY | GC_Z | GC_COLD | GC_RNG
+	GC_ALL = GC_LATTICE | GC_COPY | GC_Z | GC_COLD | GC_RNG,
+	GC_ALL_BUT_RNG = GC_LATTICE | GC_COPY | GC_Z | GC_COLD // the generators are updated only on the device (heatbath)
 	};
+
+// asynchronous queues: QUEUE_DEVICE for the kernels over all the slots of a device, queue_slot(g) for the kernels of a
+// single slot g (reductions); the copy functions wait for all the queues of the device before copying
+#define QUEUE_DEVICE 1
+
+static inline int queue_slot(long const g)
+	{
+	return 2 + (int) g;
+	}
 
 // make d (index in g_dev) the current device
 void select_device(int d);
+
+// wait for all the queues of all the used devices
+void wait_devices(void);
 
 // copy the shared data to every used device and the configurations to the device of their slot
 // (after init_gauge_conf_replica and the other initializations); meas_aux[0 : n_meas] share the auxiliary lattices of

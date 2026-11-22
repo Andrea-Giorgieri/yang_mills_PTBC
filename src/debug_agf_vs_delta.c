@@ -108,7 +108,6 @@ void real_main(char const *in_file)
 		{
 		// perform a single step of parallel tempering wth hierarchical update and print state of replica swaps
 		parallel_tempering_with_hierarchical_update(GC, &geo, &param, &rect_aux, &acc_counters);
-		copy_gauge_conf_replica_to_device(GC, &param, GC_ALL); // PHASE7_BRIDGE: the update still runs on the host
 		print_conf_labels(GC, &param, &acc_counters);
 
 		// perform measures only on homogeneous configuration

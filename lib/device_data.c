@@ -351,6 +351,8 @@ static void update_gauge_conf(Gauge_Conf *GC, GParam const *const param, int con
 static Gauge_Conf const *s_gc_base = NULL; // array of configurations given to init_device_data
 static long s_n_slots = 0;                 // its number of elements
 static Gauge_Conf *s_view[NUM_VIEWS];      // [kind][slot]
+static Meas_Utils *s_meas = NULL;          // meas_aux given to init_device_data (auxiliary lattices on the devices)
+static int s_force_host = 0;               // force_host_compute
 
 
 static void init_views(Gauge_Conf const *GC, GParam const *const param)
@@ -424,14 +426,29 @@ Gauge_Conf *gauge_conf_view(Gauge_Conf const *GC, View_Kind const kind)
 			v->lattice = GC->lattice_copy_cold;
 			v->Z = GC->Z_copy;
 			break;
+		case VIEW_FLOW:
+			REQUIRE(s_meas != NULL && s_meas->lattice_aux[0] != NULL, "no auxiliary lattices of the measurements for the gradient flow");
+			v->lattice = s_meas->lattice_aux[0];
+			v->Z = GC->Z;
+			break;
 		default:
 			REQUIRE(0, "unknown view kind %d", (int) kind);
 		}
 
 	#ifdef OPENACC_MODE
-	// the same assignment on the device, with the device pointers of GC
+	// the same assignment on the device, with the device pointers of GC (and of the auxiliary lattices of the device)
 	select_device(GC->device);
 	int const k = (int) kind;
+	Meas_Utils const *const ma = s_meas;
+	if(k == VIEW_FLOW)
+		{
+		#pragma acc serial present(GC[0:1], v[0:1], ma[0:1]) async(QUEUE_DEVICE)
+			{
+			v->lattice = ma->lattice_aux[0];
+			v->Z = GC->Z;
+			}
+		return v;
+		}
 	#pragma acc serial present(GC[0:1], v[0:1]) async(QUEUE_DEVICE)
 		{
 		if(k == VIEW_COLD)
@@ -491,11 +508,49 @@ void init_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *
 	#else
 	(void) geo;
 	(void) rect_aux;
-	(void) meas_aux;
 	(void) n_meas;
 	#endif
 
+	s_meas = meas_aux;
 	init_views(GC, param);
+	}
+
+
+int gc_on_device(Gauge_Conf const *GC)
+	{
+	#ifdef OPENACC_MODE
+	if(s_force_host || s_gc_base == NULL) return 0;
+	if(GC->device < 0 || GC->device >= g_dev.n_used) return 0; // configuration outside the slots (device not set)
+	select_device(GC->device);
+	return acc_is_present((void *) GC, sizeof(Gauge_Conf));
+	#else
+	(void) GC;
+	return 0;
+	#endif
+	}
+
+
+void wait_device_queue(int const dev)
+	{
+	#ifdef OPENACC_MODE
+	if(dev) acc_wait(QUEUE_DEVICE);
+	#else
+	(void) dev;
+	#endif
+	}
+
+
+int force_host_compute(int const on)
+	{
+	int const previous = s_force_host;
+	s_force_host = on;
+	return previous;
+	}
+
+
+Meas_Utils *device_meas_aux(void)
+	{
+	return s_meas;
 	}
 
 
@@ -515,6 +570,7 @@ void free_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *
 	{
 	wait_devices();
 	free_views();
+	s_meas = NULL;
 
 	#ifdef OPENACC_MODE
 	FOR_EACH_DEVICE(d)

@@ -74,12 +74,10 @@ void real_main(char const *in_file)
 		{
 		start_timer(&(timers.step_timer));
 		start_timer(&(timers.meas_timer));
-		copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_COPY | GC_Z); // the measures restore the lattice from lattice_copy
 		perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 		#ifdef REPLICA_MEAS_MODE
 		for(int i = 1; i < param.d_N_replica_pt; i++)
 			{
-			copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[i]]), &param, GC_LATTICE | GC_COPY | GC_Z); // the measures restore the lattice from lattice_copy
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
 			}
 		#endif
@@ -102,12 +100,10 @@ void real_main(char const *in_file)
 		if(GC[0].update_index % param.d_measevery == 0 && GC[0].update_index >= param.d_thermal)
 			{
 			start_timer(&(timers.meas_timer));
-			copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[0]]), &param, GC_LATTICE | GC_COPY | GC_Z); // the measures restore the lattice from lattice_copy
 			perform_measures_localobs(&(GC[acc_counters.replica_to_gc[0]]), &geo, &param, &(meas_aux[0]));
 			#ifdef REPLICA_MEAS_MODE
 			for(int i = 1; i < param.d_N_replica_pt; i++)
 				{
-				copy_gauge_conf_to_host(&(GC[acc_counters.replica_to_gc[i]]), &param, GC_LATTICE | GC_COPY | GC_Z); // the measures restore the lattice from lattice_copy
 				perform_measures_localobs(&(GC[acc_counters.replica_to_gc[i]]), &geo, &param, &(meas_aux[i]));
 				}
 			#endif

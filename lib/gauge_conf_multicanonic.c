@@ -812,16 +812,14 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const 
 /*********************************************************************************************************************/
 /* Metropolis tests of the replicas (update_with_defect, update_rectangle_with_defect): the charges are computed on
    the device holding each configuration (on the host without OPENACC_MODE), the tests use rng_host in slot order.
-   The loops are the same as cooling(..., LEX_DIR_LEXEO_SITE), topcharge and multicanonic_delta_topcharge_rectangle,
-   written for configurations on the devices (to be merged with them when the measures are ported). */
+   Cooling and charge with cooling() and topcharge() on the views of the configurations; the loop of
+   delta_topcharge_rectangle_device is the same as multicanonic_delta_topcharge_rectangle. */
 /*********************************************************************************************************************/
 
 // lattice_cold of GC = lattice of GC cooled with topo_coolsteps steps LEX_DIR_LEXEO_SITE (asynchronous, QUEUE_DEVICE)
 static void cool_lattice_cold(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
-	long const num_even = param->d_n_even;         // number of even sites
-	long const even_volume = param->d_even_volume; // volume of largest even sublattice
-	long const volume = param->d_volume;           // full lattice volume
+	long const volume = param->d_volume; // full lattice volume
 
 	Gauge_Conf *const cold = gauge_conf_view(GC, VIEW_COLD);
 	select_device(GC->device);
@@ -840,91 +838,8 @@ static void cool_lattice_cold(Gauge_Conf *const GC, Geometry const *const geo, G
 		equal(&(cold->lattice[r][i]), &(GC->lattice[r][i]));
 		}
 
-	for(int k = 0; k < param->d_topo_coolsteps; k++)
-		{
-		for(int dir = 0; dir < STDIM; dir++)
-			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			#ifdef OPENACC_MODE
-			#pragma acc parallel loop present(cold[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
-			#endif
-			for(long s = 0; s < num_even; s++)
-				{
-				long const r = geo->d_sip_to_si[s];
-				GAUGE_GROUP staple;
-				calcstaples_wilson(cold, geo, param, r, dir, &staple);
-				cool(&(cold->lattice[r][dir]), &staple);
-				}
-
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			#ifdef OPENACC_MODE
-			#pragma acc parallel loop present(cold[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
-			#endif
-			for(long s = num_even; s < even_volume; s++)
-				{
-				long const r = geo->d_sip_to_si[s];
-				GAUGE_GROUP staple;
-				calcstaples_wilson(cold, geo, param, r, dir, &staple);
-				cool(&(cold->lattice[r][dir]), &staple);
-				}
-
-			if(even_volume < volume)
-				{
-				// border sites: sequential (odd sides only)
-				#ifdef OPENACC_MODE
-				#pragma acc parallel num_gangs(1) vector_length(1) present(cold[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
-				#pragma acc loop seq
-				#endif
-				for(long s = even_volume; s < volume; s++)
-					{
-					long const r = geo->d_sip_to_si[s];
-					GAUGE_GROUP staple;
-					calcstaples_wilson(cold, geo, param, r, dir, &staple);
-					cool(&(cold->lattice[r][dir]), &staple);
-					}
-				}
-			}
-		}
-
-	// final unitarization
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS)
-	#endif
-	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(cold[0:1], param[0:1]) async(QUEUE_DEVICE)
-	#endif
-	for(long s = 0; s < STDIM * volume; s++)
-		{
-		long const r = s % volume;
-		int const dir = (int) ((s - r) / volume);
-		unitarize(&(cold->lattice[r][dir]));
-		}
-	}
-
-
-// topological charge of GC (a configuration or a view on a device), synchronous
-static double topcharge_device(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param)
-	{
-	long const volume = param->d_volume;
-	double res = 0.0;
-
-	select_device(GC->device);
-	#ifdef OPENMP_MODE
-	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
-	#endif
-	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(GC[0:1], geo[0:1], param[0:1]) reduction(+ : res) async(QUEUE_DEVICE)
-	#endif
-	for(long r = 0; r < volume; r++) res += loc_topcharge(GC, geo, param, r);
-	#ifdef OPENACC_MODE
-	#pragma acc wait(QUEUE_DEVICE)
-	#endif
-
-	return res;
+	// topo_coolsteps cooling steps LEX_DIR_LEXEO_SITE of the view (on the device holding GC)
+	cooling(cold, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
 	}
 
 
@@ -991,7 +906,7 @@ void multicanonic_metropolis_replica(Gauge_Conf *const GC, Geometry const *const
 	for(int g = 0; g < Nr; g++)
 		{
 		Gauge_Conf const *const Q_conf = cooled ? gauge_conf_view(&(GC[g]), VIEW_COLD) : &(GC[g]);
-		double const Q_new = topcharge_device(Q_conf, geo, param);
+		double const Q_new = topcharge(Q_conf, geo, param);
 		acc[g] = multicanonic_test(&(GC[g]), Q_new, param);
 		}
 	}

@@ -43,6 +43,21 @@ static inline int queue_slot(long const g)
 // make d (index in g_dev) the current device
 void select_device(int d);
 
+// 1 if the compute regions acting on GC run on the device holding it (OPENACC_MODE, init_device_data called, GC present
+// on its device and the host not forced), and that device becomes the current one; 0 if they run on the host.
+// The functions written for both use it in the clause if() of their compute regions.
+int gc_on_device(Gauge_Conf const *GC);
+
+// if dev (result of gc_on_device), wait for the queue QUEUE_DEVICE of the current device (results of reductions)
+void wait_device_queue(int dev);
+
+// 1: the compute regions of the functions using gc_on_device run on the host (data of the host), 0: default;
+// returns the previous value
+int force_host_compute(int on);
+
+// element of meas_aux given to init_device_data (its auxiliary lattices are on every device), NULL before
+Meas_Utils *device_meas_aux(void);
+
 // wait for all the queues of all the used devices
 void wait_devices(void);
 
@@ -78,6 +93,7 @@ typedef enum
 	VIEW_COLD,      // lattice = lattice_cold, Z = Z, lattice_copy = lattice_copy_cold, Z_copy = Z_copy
 	VIEW_COPY,      // lattice = lattice_copy, Z = Z_copy
 	VIEW_COLD_COPY, // lattice = lattice_copy_cold, Z = Z_copy
+	VIEW_FLOW,      // lattice = device_meas_aux()->lattice_aux[0] (on the device of the slot), Z = Z (gradient flow)
 	NUM_VIEWS
 	} View_Kind;
 

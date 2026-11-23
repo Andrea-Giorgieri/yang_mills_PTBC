@@ -836,8 +836,15 @@ void accept_gauge_conf(Gauge_Conf *const GC, GParam const *const param)
 	}
 
 
+// lattice = lattice_copy, on the device holding GC if gc_on_device (queue QUEUE_DEVICE)
 void restore_gauge_conf(Gauge_Conf *const GC, GParam const *const param)
 	{
+	int const dev = gc_on_device(GC);
+	(void) dev;
+
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif

@@ -152,7 +152,6 @@ typedef struct Meas_Utils
 
 	// for adaptive gradient flow
 	GAUGE_GROUP **lattice_aux[4]; // array of 4 lattices
-	double local_max_dist[NTHREADS];
 
 	// pointers to data files
 	FILE *datafilep;

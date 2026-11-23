@@ -14,6 +14,7 @@
 #include <omp.h>
 #endif
 
+#include "../include/device_data.h"
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -154,7 +155,11 @@ void plaquette(Gauge_Conf const *const GC,
                double *plaqt)
 	{
 	double ps = 0.0, pt = 0.0;
+	int const dev = gc_on_device(GC);
 
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) reduction(+ : pt, ps) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : pt) reduction(+ : ps)
 	#endif
@@ -173,6 +178,7 @@ void plaquette(Gauge_Conf const *const GC,
 				}
 			}
 		}
+	wait_device_queue(dev);
 
 	#if STDIM > 2
 	double const inv_ns = 2.0 / (((double) STDIM - 1) * (STDIM - 2));
@@ -332,11 +338,16 @@ void clover_disc_energy(Gauge_Conf const *const GC,
                         double *const energy)
 	{
 	double res = 0.0;
+	int const dev = gc_on_device(GC);
 
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
 	for(long r = 0; r < param->d_volume; r++) res += loc_clover_energy(GC, geo, param, r);
+	wait_device_queue(dev);
 	*energy = res * param->d_inv_vol;
 	}
 
@@ -420,7 +431,11 @@ void polyakov(Gauge_Conf const *const GC,
 	#endif
 
 	double rep = 0.0, imp = 0.0;
+	int const dev = gc_on_device(GC);
 
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) reduction(+ : rep, imp) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep) reduction(+ : imp)
 	#endif
@@ -445,6 +460,7 @@ void polyakov(Gauge_Conf const *const GC,
 		rep += retr(&matrix);
 		imp += imtr(&matrix);
 		}
+	wait_device_queue(dev);
 
 	*repoly = rep * (param->d_inv_space_vol[mu]);
 	*impoly = imp * (param->d_inv_space_vol[mu]);
@@ -670,11 +686,16 @@ double topcharge(Gauge_Conf const *const GC,
                  GParam const *const param)
 	{
 	double res = 0.0;
+	int const dev = gc_on_device(GC);
 
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
 	for(long r = 0; r < (param->d_volume); r++) res += loc_topcharge(GC, geo, param, r);
+	wait_device_queue(dev);
 
 	return res;
 	}
@@ -1363,12 +1384,33 @@ void free_meas_utils_replica(Meas_Utils *meas_aux, GParam const *const param)
 	}
 
 
+// 1 if some observable computed only on the host is measured (densities, slices, charge_prime, chi_prime,
+// multipolyakov, polyakov_powers, action)
+static int host_only_meas(GParam const *const param)
+	{
+	return param->d_energy_density_meas == 1 || param->d_charge_density_meas == 1 || param->d_polyakov_density_meas == 1 ||
+	       param->d_polyakov_powers_meas == 1 || param->d_multipolyakov_order >= 1 || param->d_chi_prime_meas == 1 ||
+	       param->d_charge_prime_meas == 1 || param->d_energy_slices_meas == 1 || param->d_charge_slices_meas == 1 ||
+	       param->d_charge_p_slices_meas == 1 || param->d_action_meas == 1;
+	}
+
+
+// before the observables computed only on the host (they only read the configuration): copy the lattice and Z of GC
+// to the host if GC is on a device
+static void sync_host_meas(Gauge_Conf *const GC, GParam const *const param)
+	{
+	if(host_only_meas(param) && gc_on_device(GC)) copy_gauge_conf_to_host(GC, param, GC_LATTICE | GC_Z);
+	}
+
+
 void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                    Meas_Utils *meas_aux)
 	{
+	sync_host_meas(GC, param);
+
 	int i;
 	double plaqs = 0.0, plaqt = 0.0, clover_energy = 0.0, charge = 0.0, chi_prime = 0.0, multipolyre = 0.0, multipolyim = 0.0; // =0.0 to suppress gcc warning
-	double polyre[STDIM] = {0}, polyim[STDIM] = {0}, charge_prime[STDIM] = {0}, polyre_pwrs[MAX_POLY_PWR], polyim_pwrs[MAX_POLY_PWR];
+	double polyre[STDIM] = {0}, polyim[STDIM] = {0}, charge_prime[STDIM] = {0}, polyre_pwrs[MAX_POLY_PWR] = {0}, polyim_pwrs[MAX_POLY_PWR] = {0};
 	double action1 = 0.0, action2 = 0.0, action3 = 0.0, potential = 0.0;
 
 	// perform meas
@@ -1414,6 +1456,8 @@ void perform_measures_localobs_hot(Gauge_Conf *const GC, Geometry const *const g
 void perform_measures_aux(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                           int const meas_count, Meas_Utils *meas_aux)
 	{
+	sync_host_meas(GC, param);
+
 	if(param->d_plaquette_meas == 1)
 		{
 		double plaqs, plaqt;

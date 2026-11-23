@@ -444,9 +444,10 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 			}
 
 		// views on the device (after the swap): lattice and Z of the view = the fields of the slot
-		char const *const view_name[NUM_VIEWS] = {"VIEW_COLD", "VIEW_COPY", "VIEW_COLD_COPY"};
-		int const view_lat[NUM_VIEWS] = {2, 1, 3}; // lattice_cold, lattice_copy, lattice_copy_cold
-		for(int k = 0; k < NUM_VIEWS; k++)
+		// (VIEW_FLOW: tested by the gradient flow in test_measures)
+		char const *const view_name[3] = {"VIEW_COLD", "VIEW_COPY", "VIEW_COLD_COPY"};
+		int const view_lat[3] = {2, 1, 3}; // lattice_cold, lattice_copy, lattice_copy_cold
+		for(int k = 0; k <= VIEW_COLD_COPY; k++)
 			{
 			Gauge_Conf *v = gauge_conf_view(gc, (View_Kind) k);
 			#ifdef OPENACC_MODE
@@ -507,6 +508,135 @@ static void test_swap_sums(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Ut
 	}
 
 
+// observables of the configuration: plaquettes, clover energy, charge, Polyakov loops (N_TEST_OBS values)
+#define N_TEST_OBS (4 + 2 * STDIM)
+static void test_observables(Gauge_Conf *gc, Geometry *geo, GParam *param, double *obs)
+	{
+	plaquette(gc, geo, param, &(obs[0]), &(obs[1]));
+	clover_disc_energy(gc, geo, param, &(obs[2]));
+	obs[3] = topcharge(gc, geo, param);
+	for(int mu = 0; mu < STDIM; mu++)
+		polyakov(gc, geo, param, mu, 1, &(obs[4 + 2 * mu]), &(obs[5 + 2 * mu]));
+	}
+
+
+// operation k of test_measures on gc; out[0], out[1]: scalars to compare besides the links
+#define N_TEST_OPS 8
+static void test_operation(int const k, Gauge_Conf *gc, Geometry *geo, GParam *param, Meas_Utils *maux, double *out)
+	{
+	Cooling_Type const types[5] = {LEX_DIR_LEXEO_SITE, LEXEO_SITE_LEX_DIR, RND_DIR_RNDEO_SITE, LEX_SITE_LEX_DIR, LEX_DIR_LEX_SITE};
+	out[0] = out[1] = 0.0;
+	if(k < 5)
+		{
+		cooling(gc, geo, param, 2, types[k]);
+		}
+	else if(k == 5)
+		{
+		for(int n = 0; n < 3; n++)
+			gradflow_RKstep(gc, geo, param, 0.02, maux);
+		}
+	else if(k == 6)
+		{
+		double t = 0.0, dt = 0.01;
+		int accepted, n_acc = 0;
+		for(int n = 0; n < 6; n++)
+			{
+			gradflow_RKstep_adaptive(gc, geo, param, &t, &dt, &accepted, maux);
+			n_acc += accepted;
+			}
+		out[0] = t;
+		out[1] = (double) n_acc;
+		}
+	else
+		{
+		cooling(gc, geo, param, 1, LEX_DIR_LEXEO_SITE);
+		restore_gauge_conf(gc, param);
+		}
+	}
+
+
+// measures on the device against the same functions on the host (force_host_compute, branch if() false of the
+// compute regions), for every slot on the same random configuration: observables, the five cooling types, gradient
+// flow with fixed and adaptive step (auxiliary lattices of the device, view VIEW_FLOW), restore_gauge_conf
+static void test_measures(Gauge_Conf *GC, Geometry *geo, GParam *param, Meas_Utils *meas_aux)
+	{
+	char what[STD_STRING_LENGTH];
+	long const V = param->d_volume;
+	int const have_aux = (meas_aux[0].lattice_aux[0] != NULL);
+	char const *const obs_name[4] = {"plaquette (spatial)", "plaquette (temporal)", "clover energy", "charge"};
+	char const *const op_name[N_TEST_OPS] = {"cooling LEX_DIR_LEXEO_SITE", "cooling LEXEO_SITE_LEX_DIR", "cooling RND_DIR_RNDEO_SITE",
+	                                         "cooling LEX_SITE_LEX_DIR", "cooling LEX_DIR_LEX_SITE", "gradient flow",
+	                                         "adaptive gradient flow", "restore after cooling"};
+
+	for(int g = 0; g < param->d_N_replica_pt; g++)
+		{
+		Gauge_Conf *gc = &(GC[g]);
+
+		// reference configuration: random links, lattice_copy = lattice, on the host and on the device
+		for(long r = 0; r < V; r++)
+			for(int i = 0; i < STDIM; i++)
+				{
+				rand_matrix(&(gc->lattice[r][i]), rng_host());
+				equal(&(gc->lattice_copy[r][i]), &(gc->lattice[r][i]));
+				}
+		copy_gauge_conf_to_device(gc, param, GC_LATTICE | GC_COPY);
+
+		double obs[2][N_TEST_OBS];
+		for(int side = 0; side < 2; side++) // 0: device, 1: host
+			{
+			int const previous = force_host_compute(side);
+			test_observables(gc, geo, param, obs[side]);
+			force_host_compute(previous);
+			}
+		for(int n = 0; n < N_TEST_OBS; n++)
+			{
+			if(n < 4) sprintf(what, "slot %d (device %d): %s", g, gc->device, obs_name[n]);
+			else sprintf(what, "slot %d (device %d): Polyakov %d %s", g, gc->device, (n - 4) / 2, ((n - 4) % 2 == 0) ? "re" : "im");
+			check(close_enough(obs[0][n], obs[1][n]), what, obs[0][n], obs[1][n]);
+			}
+
+		for(int k = 0; k < N_TEST_OPS; k++)
+			{
+			if((k == 5 || k == 6) && !have_aux) continue;
+
+			// same random choices (RND_DIR_RNDEO_SITE) on both sides
+			rng_t const rng_saved = *rng_host();
+			int stdim_saved[STDIM];
+			long parity_saved[2][2];
+			memcpy(stdim_saved, gc->stdim_shuffle, sizeof(stdim_saved));
+			memcpy(parity_saved, gc->parity_shuffle, sizeof(parity_saved));
+
+			double links[2], out[2][2];
+			for(int side = 0; side < 2; side++)
+				{
+				*rng_host() = rng_saved;
+				memcpy(gc->stdim_shuffle, stdim_saved, sizeof(stdim_saved));
+				memcpy(gc->parity_shuffle, parity_saved, sizeof(parity_saved));
+				for(long r = 0; r < V; r++)
+					for(int i = 0; i < STDIM; i++)
+						equal(&(gc->lattice[r][i]), &(gc->lattice_copy[r][i]));
+				copy_gauge_conf_to_device(gc, param, GC_LATTICE);
+
+				int const previous = force_host_compute(side);
+				test_operation(k, gc, geo, param, &(meas_aux[0]), out[side]);
+				force_host_compute(previous);
+				if(side == 0) copy_gauge_conf_to_host(gc, param, GC_LATTICE);
+				links[side] = lattice_sum_host(gc->lattice, V);
+				}
+			sprintf(what, "slot %d (device %d): %s", g, gc->device, op_name[k]);
+			check(close_enough(links[0], links[1]), what, links[0], links[1]);
+			if(k == 6)
+				{
+				sprintf(what, "slot %d (device %d): adaptive flow time", g, gc->device);
+				check(close_enough(out[0][0], out[1][0]), what, out[0][0], out[1][0]);
+				sprintf(what, "slot %d (device %d): adaptive accepted steps", g, gc->device);
+				check(out[0][1] == out[1][1], what, out[0][1], out[1][1]);
+				}
+			}
+		}
+	}
+
+
 void real_main(char *in_file)
 	{
 	Gauge_Conf *GC;
@@ -532,6 +662,7 @@ void real_main(char *in_file)
 	test_param_data(GC, &param);
 	test_gauge_conf_data(GC, &param, meas_aux);
 	test_swap_sums(GC, &geo, &param, &rect_aux); // changes the links
+	test_measures(GC, &geo, &param, meas_aux);   // changes the links
 
 	free_device_data(GC, &geo, &param, &rect_aux, meas_aux, n_meas);
 

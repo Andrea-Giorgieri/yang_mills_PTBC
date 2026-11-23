@@ -94,6 +94,7 @@ int assign_devices(Device_Utils *const dev, int const n_replica, int const n_ava
                    size_t const per_replica, size_t const shared, int const num_forced)
 	{
 	dev->n_used = 0;
+	dev->n_conf = 0;
 	dev->n_available = (n_available < MAX_DEVICES) ? n_available : MAX_DEVICES;
 	dev->bytes_per_replica = per_replica;
 	dev->bytes_shared = shared;
@@ -122,6 +123,7 @@ int assign_devices(Device_Utils *const dev, int const n_replica, int const n_ava
 		if(fits)
 			{
 			dev->n_used = n;
+			dev->n_conf = n_replica;
 			int first = 0;
 			for(int d = 0; d < n; d++)
 				{
@@ -137,7 +139,7 @@ int assign_devices(Device_Utils *const dev, int const n_replica, int const n_ava
 	}
 
 
-void init_device_utils(GParam const *const param)
+void init_device_utils(GParam const *const param, int const n_conf)
 	{
 	size_t free_mem[MAX_DEVICES];
 	int n_available;
@@ -155,12 +157,12 @@ void init_device_utils(GParam const *const param)
 		free_mem[d] = (size_t) -1;
 	#endif
 
-	int const err = assign_devices(&g_dev, param->d_N_replica_pt, n_available, free_mem,
+	int const err = assign_devices(&g_dev, n_conf, n_available, free_mem,
 	                               bytes_per_replica(param), bytes_shared(param), param->d_num_gpus);
-	REQUIRE(err != 2, "invalid num_gpus = %d: must be in [0, %d] and not larger than the number of replicas %d",
-	        param->d_num_gpus, (n_available < MAX_DEVICES) ? n_available : MAX_DEVICES, param->d_N_replica_pt);
-	REQUIRE(err != 1, "the %d replicas (%.3f GB each, plus %.3f GB per device) do not fit in the memory of %d device(s)",
-	        param->d_N_replica_pt, (double) bytes_per_replica(param) / 1e9, (double) bytes_shared(param) / 1e9, n_available);
+	REQUIRE(err != 2, "invalid num_gpus = %d: must be in [0, %d] and not larger than the number of configurations %d",
+	        param->d_num_gpus, (n_available < MAX_DEVICES) ? n_available : MAX_DEVICES, n_conf);
+	REQUIRE(err != 1, "the %d configurations (%.3f GB each, plus %.3f GB per device) do not fit in the memory of %d device(s)",
+	        n_conf, (double) bytes_per_replica(param) / 1e9, (double) bytes_shared(param) / 1e9, n_available);
 	}
 
 

@@ -10,6 +10,8 @@
 #include <omp.h>
 #endif
 
+#include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_conf.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -55,6 +57,10 @@ void real_main(char const *in_file)
 	// initialize meas utils
 	init_meas_utils(&meas_aux, &param, 0);
 
+	// copy the shared data and the configuration to the device (one configuration, no rectangles)
+	init_device_utils(&param, 1);
+	init_device_data(&GC, &geo, &param, NULL, &meas_aux, 1);
+
 	stop_timer(&(timers.init_timer));
 
 	// if number of MC updates is set to 0, perform measures on initialized configuration
@@ -95,6 +101,7 @@ void real_main(char const *in_file)
 			{
 			if(GC.update_index % param.d_saveconf_back_every == 0)
 				{
+				copy_gauge_conf_to_host(&GC, &param, GC_LATTICE | GC_Z);
 				// simple
 				write_conf_on_file(&GC, &param);
 				// backup copy
@@ -111,6 +118,7 @@ void real_main(char const *in_file)
 				strcat(name, "_step_");
 				sprintf(aux, "%ld", GC.update_index);
 				strcat(name, aux);
+				copy_gauge_conf_to_host(&GC, &param, GC_LATTICE | GC_Z);
 				write_conf_on_file_with_name(&GC, &param, name);
 
 				strcpy(name, param.d_twist_file);
@@ -126,6 +134,10 @@ void real_main(char const *in_file)
 
 	// Monte Carlo end
 	stop_timer(&(timers.prog_timer));
+
+	// configuration back to the host, free device copies
+	copy_gauge_conf_to_host(&GC, &param, GC_LATTICE | GC_Z);
+	free_device_data(&GC, &geo, &param, NULL, &meas_aux, 1);
 
 	// free meas utils
 	free_meas_utils(meas_aux, &param, 0);

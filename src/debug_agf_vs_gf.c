@@ -46,7 +46,7 @@ void real_main(char const *in_file)
 	init_geometry(&geo, &param);
 
 	// choose the devices holding the replicas
-	init_device_utils(&param);
+	init_device_utils(&param, param.d_N_replica_pt);
 
 	// initialize gauge configurations replica and volume defects
 	init_gauge_conf_replica(&GC, &geo, &param);

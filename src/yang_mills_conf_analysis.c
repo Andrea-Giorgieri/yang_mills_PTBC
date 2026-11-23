@@ -10,6 +10,8 @@
 #include <omp.h>
 #endif
 
+#include "../include/device.h"
+#include "../include/device_data.h"
 #include "../include/gauge_conf.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
@@ -52,6 +54,13 @@ void real_main(char *in_file, long step, long stop_index)
 		step++;
 
 	REQUIRE(step < stop_index, "no configuration found before update index %ld", stop_index);
+
+	// copy the shared data and the configuration to the device (one configuration, no rectangles)
+	init_device_utils(&param, 1);
+	init_device_data(&GC, &geo, &param, NULL, &meas_aux, 1);
+	#ifdef MULTICANONICAL_MODE
+	GC.stored_topcharge = multicanonic_charge_conf(&GC, &geo, &param); // charge of the multicanonic weight
+	#endif
 	stop_timer(&(timers.init_timer));
 
 	// perform measures and load next conf
@@ -67,13 +76,23 @@ void real_main(char *in_file, long step, long stop_index)
 			step++;
 		while(step < stop_index && read_gauge_conf_step(&GC, &param, step) == 0);
 
+		// new configuration (read on the host with its copies and twist factors) to the device
+		if(step < stop_index)
+			{
+			copy_gauge_conf_to_device(&GC, &param, GC_LATTICE | GC_COPY | GC_Z);
+			#ifdef MULTICANONICAL_MODE
+			GC.stored_topcharge = multicanonic_charge_conf(&GC, &geo, &param); // charge of the multicanonic weight
+			#endif
+			}
+
 		stop_timer(&(timers.step_timer));
 		if(wall_time_check(&timers) == 1) break;
 		}
 
 	stop_timer(&(timers.prog_timer));
 
-	// free gauge conf
+	// free device copies and gauge conf
+	free_device_data(&GC, &geo, &param, NULL, &meas_aux, 1);
 	free_gauge_conf(&GC, &param);
 
 	// free meas utils

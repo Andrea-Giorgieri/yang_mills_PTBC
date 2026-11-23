@@ -179,11 +179,14 @@ static void enter_shared(Geometry *geo, GParam *param, Rect_Utils *rect_aux, Mea
 	#pragma acc update device(g_signed_ord_orth_dir, g_indep_perm_dir)
 	#endif
 
-	// rectangles
-	acc_copyin(rect_aux, sizeof(Rect_Utils));
-	enter_1d((void **) &(rect_aux->swap_rect.rect_sites), (size_t) rect_aux->swap_rect.d_vol_rect * sizeof(long), 1);
+	// rectangles (NULL for the programs without parallel tempering)
 	int const L = param->d_N_hierarc_levels;
-	if(L > 0)
+	if(rect_aux != NULL)
+		{
+		acc_copyin(rect_aux, sizeof(Rect_Utils));
+		enter_1d((void **) &(rect_aux->swap_rect.rect_sites), (size_t) rect_aux->swap_rect.d_vol_rect * sizeof(long), 1);
+		}
+	if(rect_aux != NULL && L > 0)
 		{
 		enter_rect_array(&(rect_aux->update_rect), L);
 		#ifdef THETA_MODE
@@ -232,7 +235,7 @@ static void exit_shared(Geometry *geo, GParam *param, Rect_Utils *rect_aux, Meas
 	acc_delete(meas_aux, (size_t) n_meas * sizeof(Meas_Utils));
 
 	int const L = param->d_N_hierarc_levels;
-	if(L > 0)
+	if(rect_aux != NULL && L > 0)
 		{
 		#ifdef MULTICANONICAL_MODE
 		if(rect_aux->cooling_rect != NULL)
@@ -249,8 +252,11 @@ static void exit_shared(Geometry *geo, GParam *param, Rect_Utils *rect_aux, Meas
 		#endif
 		exit_rect_array(&(rect_aux->update_rect), L);
 		}
-	exit_1d((void **) &(rect_aux->swap_rect.rect_sites), (size_t) rect_aux->swap_rect.d_vol_rect * sizeof(long));
-	acc_delete(rect_aux, sizeof(Rect_Utils));
+	if(rect_aux != NULL)
+		{
+		exit_1d((void **) &(rect_aux->swap_rect.rect_sites), (size_t) rect_aux->swap_rect.d_vol_rect * sizeof(long));
+		acc_delete(rect_aux, sizeof(Rect_Utils));
+		}
 
 	exit_1d((void **) &(geo->d_defect_mask), (size_t) V * sizeof(int));
 	exit_3d((void ****) &(geo->d_mutimespace), STDIM, mutimespace_rows(param), (size_t) STDIM * (size_t) V * sizeof(long));
@@ -289,7 +295,7 @@ static void enter_gauge_conf_members(Gauge_Conf *GC, GParam const *const param)
 	enter_3d((void ****) &(GC->clover_array), V, V * STDIM, (size_t) V * STDIM * STDIM * sizeof(GAUGE_GROUP), 0);
 	#endif
 	#ifdef RNG_PHILOX_MODE
-	enter_1d((void **) &(GC->rng_site), (size_t) V * sizeof(rng_t), 1);
+	if(GC->rng_site != NULL) enter_1d((void **) &(GC->rng_site), (size_t) V * sizeof(rng_t), 1); // NULL: never updated
 	#endif
 	}
 
@@ -298,7 +304,7 @@ static void exit_gauge_conf_members(Gauge_Conf *GC, GParam const *const param)
 	{
 	long const V = param->d_volume;
 	#ifdef RNG_PHILOX_MODE
-	exit_1d((void **) &(GC->rng_site), (size_t) V * sizeof(rng_t));
+	if(GC->rng_site != NULL) exit_1d((void **) &(GC->rng_site), (size_t) V * sizeof(rng_t));
 	#endif
 	#ifdef THETA_MODE
 	exit_3d((void ****) &(GC->clover_array), V, V * STDIM, (size_t) V * STDIM * STDIM * sizeof(GAUGE_GROUP));
@@ -332,7 +338,7 @@ static void update_gauge_conf(Gauge_Conf *GC, GParam const *const param, int con
 		}
 	#endif
 	#ifdef RNG_PHILOX_MODE
-	if(fields & GC_RNG)
+	if((fields & GC_RNG) && GC->rng_site != NULL)
 		{
 		size_t const bytes = (size_t) param->d_volume * sizeof(rng_t);
 		if(to_device) acc_update_device(GC->rng_site, bytes);
@@ -357,8 +363,9 @@ static int s_force_host = 0;               // force_host_compute
 
 static void init_views(Gauge_Conf const *GC, GParam const *const param)
 	{
+	(void) param;
 	s_gc_base = GC;
-	s_n_slots = param->d_N_replica_pt;
+	s_n_slots = device_num_slots();
 	for(int k = 0; k < NUM_VIEWS; k++)
 		{
 		s_view[k] = (Gauge_Conf *) calloc((size_t) s_n_slots, sizeof(Gauge_Conf));

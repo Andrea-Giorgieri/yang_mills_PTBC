@@ -52,7 +52,7 @@ void real_main(char const *in_file)
 
 	initrand(param.d_randseed);
 	init_geometry(&geo, &param);
-	init_device_utils(&param);
+	init_device_utils(&param, param.d_N_replica_pt);
 	init_gauge_conf_replica(&GC, &geo, &param);
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
 	init_rect(&swap_rectangle, L_R_swap, &param);

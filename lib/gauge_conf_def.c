@@ -617,6 +617,10 @@ int init_gauge_conf_step(Gauge_Conf *GC, GParam const *const param, long step)
 	FILE *fp;
 
 	GC->replica_index = 0;
+	GC->device = 0;
+	#ifdef RNG_PHILOX_MODE
+	GC->rng_site = NULL; // configuration only measured, never updated
+	#endif
 
 	// gauge conf filename at step
 	strcpy(name, param->d_conf_file);
@@ -642,6 +646,15 @@ int init_gauge_conf_step(Gauge_Conf *GC, GParam const *const param, long step)
 		return 0;
 	fclose(fp);
 	init_twist_cond_from_file_with_name(GC, param, name);
+
+	#ifdef MULTICANONICAL_MODE
+	// cold lattices (used by multicanonic_charge_conf, freed by free_gauge_conf and copied to the device):
+	// lattice_cold = lattice_copy_cold = lattice; the multicanonic charge is computed by the caller
+	allocate_lattice_cold_with_copy(GC, param);
+	equal_lattice(GC->lattice_cold, (GAUGE_GROUP const * const *) GC->lattice, param);
+	equal_lattice(GC->lattice_copy_cold, (GAUGE_GROUP const * const *) GC->lattice, param);
+	GC->stored_topcharge = 0.0;
+	#endif
 
 	return 1;
 	}
@@ -923,12 +936,18 @@ void restore_gauge_conf_rectangle(Gauge_Conf *const GC, int const hierarc_level,
 	}
 
 
-// accept (acc = 1) or restore (acc = 0) a configuration of the replica array: with OPENACC_MODE on the device holding it
-// (in the queue QUEUE_DEVICE), otherwise accept_gauge_conf / restore_gauge_conf on the host
+// accept (acc = 1) or restore (acc = 0) a configuration: on the device holding it if gc_on_device (in the queue
+// QUEUE_DEVICE), otherwise accept_gauge_conf / restore_gauge_conf on the host
 void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *const param, int const acc)
 	{
+	if(!gc_on_device(GC))
+		{
+		if(acc == 1) accept_gauge_conf(GC, param);
+		else restore_gauge_conf(GC, param);
+		return;
+		}
+
 	#ifdef OPENACC_MODE
-	select_device(GC->device);
 	long const n = STDIM * param->d_volume;
 	if(acc == 1)
 		{
@@ -955,9 +974,6 @@ void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *con
 			equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
 			}
 		}
-	#else
-	if(acc == 1) accept_gauge_conf(GC, param);
-	else restore_gauge_conf(GC, param);
 	#endif
 	}
 
@@ -966,8 +982,14 @@ void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *con
 void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC, int const hierarc_level, Rect_Utils const *const rect_aux,
                                                    int const acc)
 	{
+	if(!gc_on_device(GC))
+		{
+		if(acc == 1) accept_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
+		else restore_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
+		return;
+		}
+
 	#ifdef OPENACC_MODE
-	select_device(GC->device);
 	long const vol_rect = (rect_aux->update_rect[hierarc_level]).d_vol_rect;
 	long const n = STDIM * vol_rect;
 	if(acc == 1)
@@ -997,9 +1019,6 @@ void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC, int con
 			equal(&(GC->lattice[r][i]), &(GC->lattice_copy[r][i]));
 			}
 		}
-	#else
-	if(acc == 1) accept_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
-	else restore_gauge_conf_rectangle(GC, hierarc_level, rect_aux);
 	#endif
 	}
 

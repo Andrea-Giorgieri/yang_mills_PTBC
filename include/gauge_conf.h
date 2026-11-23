@@ -1088,6 +1088,14 @@ void multicanonic_metropolis_replica(Gauge_Conf *const GC,
                                      GParam const *const param,
                                      int *const acc);
 
+double multicanonic_charge_conf(Gauge_Conf *const GC,
+                                Geometry const *const geo,
+                                GParam const *const param);
+
+int multicanonic_metropolis_conf(Gauge_Conf *const GC,
+                                 Geometry const *const geo,
+                                 GParam const *const param);
+
 void multicanonic_metropolis_rectangle_replica(Gauge_Conf *const GC,
                                                Geometry const *const geo,
                                                GParam const *const param,

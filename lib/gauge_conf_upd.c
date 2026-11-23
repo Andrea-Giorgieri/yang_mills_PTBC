@@ -318,12 +318,17 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 	}
 
 
-// compute all the clovers in directions orthogonal to "dir"
+// compute all the clovers in directions orthogonal to "dir" (on the device holding GC if gc_on_device)
 void compute_clovers(Gauge_Conf const *const GC,
                      Geometry const *const geo,
                      GParam const *const param,
                      int const dir)
 	{
+	int const dev = gc_on_device(GC);
+	(void) dev;
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
@@ -998,7 +1003,48 @@ void overrelaxation_with_defect(Gauge_Conf *const GC,
 	}
 
 
-// perform a complete update
+// heatbath (over = 0) or overrelaxation (over = 1) of the links in direction dir of the sites s in [begin, end) of the
+// even/odd ordering, in parallel (sites of one parity), on the device holding GC if dev (queue QUEUE_DEVICE)
+static void update_sites_parallel(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                                  int const dir, long const begin, long const end, int const over, int const dev)
+	{
+	(void) dev;
+	#ifdef OPENACC_MODE
+	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#endif
+	#ifdef OPENMP_MODE
+	#pragma omp parallel for num_threads(NTHREADS)
+	#endif
+	for(long s = begin; s < end; s++)
+		{
+		if(over) overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
+		else heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
+		}
+	}
+
+
+// the same on the border sites (s in [even_volume, volume), odd sides only), in order (on the device: one thread)
+static void update_border_sites(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
+                                int const dir, int const over, int const dev)
+	{
+	long const even_volume = param->d_even_volume;
+	long const volume = param->d_volume;
+	if(even_volume == volume) return;
+
+	(void) dev;
+	#ifdef OPENACC_MODE
+	#pragma acc parallel num_gangs(1) vector_length(1) if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc loop seq
+	#endif
+	for(long s = even_volume; s < volume; s++)
+		{
+		if(over) overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
+		else heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
+		}
+	}
+
+
+// perform a complete update (on the device holding GC if gc_on_device)
 void update(Gauge_Conf *const GC,
             Geometry const *const geo,
             GParam const *const param,
@@ -1014,7 +1060,7 @@ void update(Gauge_Conf *const GC,
 
 	long const num_even = param->d_n_even;         // number of even sites
 	long const even_volume = param->d_even_volume; // volume of largest even sublattice
-	long const volume = param->d_volume;           // full lattice volume
+	int const dev = gc_on_device(GC);
 
 	// heatbath
 	for(int dir = 0; dir < STDIM; dir++)
@@ -1023,26 +1069,9 @@ void update(Gauge_Conf *const GC,
 		compute_clovers(GC, geo, param, dir);
 		#endif
 
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = 0; s < num_even; s++)
-			{
-			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
-			}
-
-		#ifdef OPENMP_MODE
-		#pragma omp parallel for num_threads(NTHREADS)
-		#endif
-		for(long s = num_even; s < even_volume; s++)
-			{
-			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
-			}
-
-		for(long s = even_volume; s < volume; s++)
-			{
-			heatbath(GC, geo, param, geo->d_sip_to_si[s], dir);
-			}
+		update_sites_parallel(GC, geo, param, dir, 0, num_even, 0, dev);
+		update_sites_parallel(GC, geo, param, dir, num_even, even_volume, 0, dev);
+		update_border_sites(GC, geo, param, dir, 0, dev);
 		}
 
 	// overrelax
@@ -1054,39 +1083,21 @@ void update(Gauge_Conf *const GC,
 
 		for(int j = 0; j < param->d_overrelax; j++)
 			{
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = 0; s < num_even; s++)
-				{
-				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
-				}
-
-			#ifdef OPENMP_MODE
-			#pragma omp parallel for num_threads(NTHREADS)
-			#endif
-			for(long s = num_even; s < even_volume; s++)
-				{
-				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
-				}
-
-			for(long s = even_volume; s < volume; s++)
-				{
-				overrelaxation(GC, geo, param, geo->d_sip_to_si[s], dir);
-				}
+			update_sites_parallel(GC, geo, param, dir, 0, num_even, 1, dev);
+			update_sites_parallel(GC, geo, param, dir, num_even, even_volume, 1, dev);
+			update_border_sites(GC, geo, param, dir, 1, dev);
 			}
 		}
 
 	// Metropolis test if using multicanonical
 	int acc = 1;
 	#ifdef MULTICANONICAL_MODE
-	acc = multicanonic_metropolis_step_all_links(GC, geo, param);
+	acc = multicanonic_metropolis_conf(GC, geo, param);
 	acc_counters->num_accepted_metro_multicanonic[0] += acc;
 	acc_counters->num_metro_multicanonic[0] += 1;
 	#endif
 	// update or restore the lattice and auxiliary copies
-	if(acc == 1) accept_gauge_conf(GC, param);
-	else restore_gauge_conf(GC, param);
+	accept_or_restore_gauge_conf_device(GC, param, acc);
 
 	GC->update_index++;
 	}

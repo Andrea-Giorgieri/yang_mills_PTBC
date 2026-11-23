@@ -61,9 +61,11 @@ Meas_Utils *device_meas_aux(void);
 // wait for all the queues of all the used devices
 void wait_devices(void);
 
-// copy the shared data to every used device and the configurations to the device of their slot
-// (after init_gauge_conf_replica and the other initializations); meas_aux[0 : n_meas] share the auxiliary lattices of
-// meas_aux[0] (n_meas = num_meas_utils_replica(param) for the array of init_meas_utils_replica)
+// copy the shared data to every used device and the configurations GC[0 : device_num_slots()] to the device of their
+// slot (after init_device_utils, the initialization of the configurations and the other initializations);
+// meas_aux[0 : n_meas] share the auxiliary lattices of meas_aux[0] (n_meas = num_meas_utils_replica(param) for the array
+// of init_meas_utils_replica); rect_aux = NULL for the programs without parallel tempering; configurations with
+// rng_site = NULL (never updated) have no generators on the device
 void init_device_data(Gauge_Conf *GC, Geometry *geo, GParam *param, Rect_Utils *rect_aux, Meas_Utils *meas_aux, int n_meas);
 
 // release the device copies (before freeing the host data)

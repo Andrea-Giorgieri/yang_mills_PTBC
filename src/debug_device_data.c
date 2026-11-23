@@ -650,7 +650,7 @@ void real_main(char *in_file)
 	init_geometry(&geo, &param);
 	init_rect_utils(&rect_aux, &param);
 	init_meas_utils_replica(&meas_aux, &param);
-	init_device_utils(&param);
+	init_device_utils(&param, param.d_N_replica_pt);
 	init_gauge_conf_replica(&GC, &geo, &param);
 
 	int const n_meas = num_meas_utils_replica(&param);

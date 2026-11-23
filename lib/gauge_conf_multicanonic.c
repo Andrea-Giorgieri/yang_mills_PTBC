@@ -640,6 +640,7 @@ double multicanonic_topcharge_cooling(Gauge_Conf *const GC,
 
 		helper.lattice = GC->lattice_cold;
 		helper.Z = GC->Z;
+		helper.device = -1; // auxiliary configuration on the host (gc_on_device = 0)
 
 		cooling(&helper, geo, param, param->d_topo_coolsteps, LEX_DIR_LEXEO_SITE);
 		return topcharge(&helper, geo, param);
@@ -909,6 +910,31 @@ void multicanonic_metropolis_replica(Gauge_Conf *const GC, Geometry const *const
 		double const Q_new = topcharge(Q_conf, geo, param);
 		acc[g] = multicanonic_test(&(GC[g]), Q_new, param);
 		}
+	}
+
+
+// topological charge of a single configuration used by the multicanonic potential (cooled with topo_coolsteps steps if
+// topo_cooling = 1, in lattice_cold): on the host as multicanonic_metropolis_step_all_links, on the device holding GC
+// with the view VIEW_COLD
+double multicanonic_charge_conf(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
+	{
+	REQUIRE(param->d_topo_cooling == 0 || param->d_topo_cooling == 1, "unsupported cooling method %d", param->d_topo_cooling);
+	if(!gc_on_device(GC))
+		return (param->d_topo_cooling == 1) ? multicanonic_topcharge_cooling(GC, geo, param) : topcharge(GC, geo, param);
+
+	int const cooled = (param->d_topo_cooling == 1 && param->d_topo_coolsteps > 0);
+	if(cooled) cool_lattice_cold(GC, geo, param);
+	Gauge_Conf const *const Q_conf = cooled ? gauge_conf_view(GC, VIEW_COLD) : GC;
+	return topcharge(Q_conf, geo, param);
+	}
+
+
+// multicanonic Metropolis test of a single configuration after a full update (update), 1 if accepted: on the host
+// multicanonic_metropolis_step_all_links, on the device holding GC the same operations with the view VIEW_COLD
+int multicanonic_metropolis_conf(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
+	{
+	if(!gc_on_device(GC)) return multicanonic_metropolis_step_all_links(GC, geo, param);
+	return multicanonic_test(GC, multicanonic_charge_conf(GC, geo, param), param);
 	}
 
 

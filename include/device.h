@@ -8,9 +8,10 @@
 
 #include "gparam.h"
 
-// Distribution of the parallel tempering replicas among the devices (GPUs).
+// Distribution of the configurations (parallel tempering replicas, or the single configuration of the other programs)
+// among the devices (GPUs).
 //
-// The configurations GC[0..N_replica_pt-1] (slots) are split in contiguous blocks: device d holds the slots
+// The configurations GC[0..n_conf-1] (slots) are split in contiguous blocks: device d holds the slots
 // first[d], ..., first[d] + n_slots[d] - 1 for the whole run (configurations never move, the swaps exchange the
 // replica indices). The minimal number of devices able to host all the replicas is used, then the slots are
 // distributed in a balanced way (e.g. 10 replicas, at most 4 per device -> 3 devices with 4, 3, 3 slots).
@@ -28,6 +29,7 @@ typedef struct Device_Utils
 	int id[MAX_DEVICES];      // device number (for acc_set_device_num) of the d-th device used
 	int first[MAX_DEVICES];   // first slot of the d-th device used
 	int n_slots[MAX_DEVICES]; // number of slots of the d-th device used
+	int n_conf;               // total number of slots (configurations)
 	size_t bytes_per_replica; // estimated memory of a replica
 	size_t bytes_shared;      // estimated memory of the data needed on every device used
 	} Device_Utils;
@@ -47,8 +49,9 @@ size_t bytes_shared(GParam const *const param);
 int assign_devices(Device_Utils *const dev, int const n_replica, int const n_available, size_t const *const free_mem,
                    size_t const per_replica, size_t const shared, int const num_forced);
 
-// set g_dev for this run (queries the GPUs with OpenACC, simulated devices on CPU)
-void init_device_utils(GParam const *const param);
+// set g_dev for this run with n_conf configurations (N_replica_pt for the parallel tempering programs, 1 for the
+// programs with a single configuration); queries the GPUs with OpenACC, simulated devices on CPU
+void init_device_utils(GParam const *const param, int n_conf);
 
 void print_device_utils(FILE *fp, Device_Utils const *const dev);
 
@@ -64,6 +67,12 @@ static inline long device_slot_begin(int const d)
 static inline long device_slot_end(int const d)
 	{
 	return (long) (g_dev.first[d] + g_dev.n_slots[d]);
+	}
+
+// total number of slots (configurations on the devices)
+static inline long device_num_slots(void)
+	{
+	return (long) g_dev.n_conf;
 	}
 
 #endif

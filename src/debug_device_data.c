@@ -73,18 +73,35 @@ static double lattice_sum_device(Gauge_Conf *gc, int const which, long const V)
 	}
 
 
-// 1 if the two lattices have the same matrix elements (not memcmp: the padding of GAUGE_GROUP is not initialized)
+// 1 if the two lattices have the same matrix elements (not memcmp: the padding of GAUGE_GROUP is not initialized);
+// otherwise prints the number of different links and the first one (raw doubles of a and b, NaN flags)
 static int same_lattice(GAUGE_GROUP **a, GAUGE_GROUP **b, long const V)
 	{
+	long n_diff = 0, r_first = -1;
+	int i_first = -1;
 	for(long r = 0; r < V; r++)
 		for(int i = 0; i < STDIM; i++)
 			{
 			GAUGE_GROUP diff;
 			equal(&diff, &(a[r][i]));
 			minus_equal(&diff, &(b[r][i]));
-			if(norm(&diff) != 0.0) return 0;
+			if(norm(&diff) != 0.0)
+				{
+				if(n_diff == 0) { r_first = r; i_first = i; }
+				n_diff++;
+				}
 			}
-	return 1;
+	if(n_diff == 0) return 1;
+
+	int const nd = (int) (sizeof(GAUGE_GROUP) / sizeof(double));
+	double da[sizeof(GAUGE_GROUP) / sizeof(double)], db[sizeof(GAUGE_GROUP) / sizeof(double)];
+	memcpy(da, &(a[r_first][i_first]), sizeof(GAUGE_GROUP));
+	memcpy(db, &(b[r_first][i_first]), sizeof(GAUGE_GROUP));
+	printf("    %ld of %ld links different, first: site %ld, direction %d (raw doubles, first lattice | second lattice)\n",
+	       n_diff, V * STDIM, r_first, i_first);
+	for(int k = 0; k < nd; k++)
+		printf("      [%2d] % .17e%s | % .17e%s\n", k, da[k], isnan(da[k]) ? " NaN" : "", db[k], isnan(db[k]) ? " NaN" : "");
+	return 0;
 	}
 
 

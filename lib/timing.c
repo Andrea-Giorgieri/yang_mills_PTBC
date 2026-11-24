@@ -13,12 +13,15 @@
 #endif
 
 
+// wall-clock time in seconds
 double get_wtime(void)
 	{
 	#ifdef OPENMP_MODE
 	return omp_get_wtime();
 	#else
-	return (double) clock() / CLOCKS_PER_SEC;
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (double) ts.tv_sec + 1.0e-9 * (double) ts.tv_nsec;
 	#endif
 	}
 

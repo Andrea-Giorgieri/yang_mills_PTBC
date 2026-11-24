@@ -31,11 +31,11 @@ void swap_plaquette_sums(Gauge_Conf const *const GC, Geometry const *const geo, 
 	int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
 	long const vol_rect = swap_rectangle->d_vol_rect;
 	double p1 = 0.0, p2 = 0.0;
+	int const dev = gc_on_device(GC);
 
-	select_device(GC->device);
 	// reduction on the host scalars: queue of the device (after the update), then wait in this function
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop reduction(+:p1, p2) present(GC[0:1], geo[0:1], param[0:1], swap_rectangle[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop if(dev) reduction(+:p1, p2) present(GC[0:1], geo[0:1], param[0:1], swap_rectangle[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+:p1, p2)
@@ -54,9 +54,7 @@ void swap_plaquette_sums(Gauge_Conf const *const GC, Geometry const *const geo, 
 				p2 += plaquettep(GC, geo, param, r, mu, j);
 			}
 		}
-	#ifdef OPENACC_MODE
-	#pragma acc wait(QUEUE_DEVICE)
-	#endif
+	wait_device_queue(dev);
 
 	*P1 = p1;
 	*P2 = p2;
@@ -193,19 +191,20 @@ void metropolis_single_swap(Gauge_Conf *const GC, int const a, int const b, doub
 
 // translation of one lattice spacing of the configuration, including the Z factors
 // direction is chosen randomly, verse is always positive
-// on the device of GC (kernels in its queue); the translation counters stay on the host
+// on the device holding GC if gc_on_device (kernels in its queue); the translation counters stay on the host
 void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
 	// extract random direction
 	int const dir = (int) (STDIM * casuale(rng_host()));
 	GC->translation[dir] += 1;
 
-	select_device(GC->device);
+	int const dev = gc_on_device(GC);
+	(void) dev;
 
 	// translation in direction +dir, including the Z factors and cold lattice (read from the auxiliary copies, equal
 	// to the accepted configuration)
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -232,7 +231,7 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 
 	// update the auxiliary confs
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)

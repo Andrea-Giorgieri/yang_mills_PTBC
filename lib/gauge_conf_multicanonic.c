@@ -569,9 +569,6 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const *const GC1,
 
 	return angle;
 
-	#elif defined(OPENACC_MODE)
-	#error "unsupported configuration for topological charge (STDIM, NCOLOR)"
-
 	#else
 
 	(void) GC1;
@@ -579,7 +576,10 @@ double multicanonic_delta_loc_topcharge(Gauge_Conf const *const GC1,
 	(void) geo;
 	(void) param;
 	(void) r;
+	#ifndef OPENACC_MODE
 	REQUIRE(0, "unsupported configuration for topological charge: STDIM=%d, NCOLOR=%d", STDIM, NCOLOR);
+	#endif
+	// never reached, configuration refused by readinput (no REQUIRE in device code)
 	return 0.0;
 
 	#endif
@@ -817,20 +817,22 @@ int multicanonic_metropolis_step_rectangle(Gauge_Conf *const GC, Geometry const 
    delta_topcharge_rectangle_device is the same as multicanonic_delta_topcharge_rectangle. */
 /*********************************************************************************************************************/
 
-// lattice_cold of GC = lattice of GC cooled with topo_coolsteps steps LEX_DIR_LEXEO_SITE (asynchronous, QUEUE_DEVICE)
+// lattice_cold of GC = lattice of GC cooled with topo_coolsteps steps LEX_DIR_LEXEO_SITE (on the device holding GC if
+// gc_on_device: asynchronous, QUEUE_DEVICE)
 static void cool_lattice_cold(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param)
 	{
 	long const volume = param->d_volume; // full lattice volume
 
 	Gauge_Conf *const cold = gauge_conf_view(GC, VIEW_COLD);
-	select_device(GC->device);
+	int const dev = gc_on_device(GC);
+	(void) dev;
 
 	// lattice_cold = lattice
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(GC[0:1], cold[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop if(dev) present(GC[0:1], cold[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	for(long s = 0; s < STDIM * volume; s++)
 		{
@@ -845,29 +847,27 @@ static void cool_lattice_cold(Gauge_Conf *const GC, Geometry const *const geo, G
 
 
 // difference of the topological charges of GC1 and GC2 (configurations or views on the same device) on the rectangle
-// topcharge_rect[hierarc_level], synchronous
+// topcharge_rect[hierarc_level], synchronous (on the device holding GC1 if gc_on_device)
 static double delta_topcharge_rectangle_device(Gauge_Conf const *const GC1, Gauge_Conf const *const GC2,
                                                Geometry const *const geo, GParam const *const param,
                                                int const hierarc_level, Rect_Utils const *const rect_aux)
 	{
 	long const vol_rect = (rect_aux->topcharge_rect[hierarc_level]).d_vol_rect;
 	double res = 0.0;
+	int const dev = gc_on_device(GC1);
 
-	select_device(GC1->device);
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop present(GC1[0:1], GC2[0:1], geo[0:1], param[0:1], rect_aux[0:1]) reduction(+ : res) async(QUEUE_DEVICE)
+	#pragma acc parallel loop if(dev) present(GC1[0:1], GC2[0:1], geo[0:1], param[0:1], rect_aux[0:1]) reduction(+ : res) async(QUEUE_DEVICE)
 	#endif
 	for(long n = 0; n < vol_rect; n++)
 		{
 		long const r = (rect_aux->topcharge_rect[hierarc_level]).rect_sites[n];
 		res += multicanonic_delta_loc_topcharge(GC1, GC2, geo, param, r);
 		}
-	#ifdef OPENACC_MODE
-	#pragma acc wait(QUEUE_DEVICE)
-	#endif
+	wait_device_queue(dev);
 
 	return res;
 	}

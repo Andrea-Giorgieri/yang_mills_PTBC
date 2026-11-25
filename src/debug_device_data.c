@@ -73,19 +73,25 @@ static double lattice_sum_device(Gauge_Conf *gc, int const which, long const V)
 	}
 
 
-// 1 if the two lattices have the same matrix elements (not memcmp: the padding of GAUGE_GROUP is not initialized);
-// otherwise prints the number of different links and the first one (raw doubles of a and b, NaN flags)
+// 1 if the two lattices have the same matrix elements, compared double by double on comp (not memcmp: the padding of
+// GAUGE_GROUP is not initialized; NaN counts as different); otherwise prints the number of different links and the
+// first one (raw doubles of a and b, NaN flags).
+// Not with equal/minus_equal/norm on a temporary: in SU(2) nvc (25.11, 26.1, -O3 -acc) miscompiles that loop
+// once inlined in test_gauge_conf_data (the temporary is not recomputed per link, see PORTING_GPU.md, phase 9)
 static int same_lattice(GAUGE_GROUP **a, GAUGE_GROUP **b, long const V)
 	{
+	int const nc = (int) (sizeof(((GAUGE_GROUP *) 0)->comp) / sizeof(double));
 	long n_diff = 0, r_first = -1;
 	int i_first = -1;
 	for(long r = 0; r < V; r++)
 		for(int i = 0; i < STDIM; i++)
 			{
-			GAUGE_GROUP diff;
-			equal(&diff, &(a[r][i]));
-			minus_equal(&diff, &(b[r][i]));
-			if(norm(&diff) != 0.0)
+			double const *const pa = (double const *) &(a[r][i].comp);
+			double const *const pb = (double const *) &(b[r][i].comp);
+			int differ = 0;
+			for(int k = 0; k < nc; k++)
+				if(pa[k] != pb[k]) differ = 1;
+			if(differ)
 				{
 				if(n_diff == 0) { r_first = r; i_first = i; }
 				n_diff++;
@@ -93,13 +99,11 @@ static int same_lattice(GAUGE_GROUP **a, GAUGE_GROUP **b, long const V)
 			}
 	if(n_diff == 0) return 1;
 
-	int const nd = (int) (sizeof(GAUGE_GROUP) / sizeof(double));
-	double da[sizeof(GAUGE_GROUP) / sizeof(double)], db[sizeof(GAUGE_GROUP) / sizeof(double)];
-	memcpy(da, &(a[r_first][i_first]), sizeof(GAUGE_GROUP));
-	memcpy(db, &(b[r_first][i_first]), sizeof(GAUGE_GROUP));
+	double const *const da = (double const *) &(a[r_first][i_first].comp);
+	double const *const db = (double const *) &(b[r_first][i_first].comp);
 	printf("    %ld of %ld links different, first: site %ld, direction %d (raw doubles, first lattice | second lattice)\n",
 	       n_diff, V * STDIM, r_first, i_first);
-	for(int k = 0; k < nd; k++)
+	for(int k = 0; k < nc; k++)
 		printf("      [%2d] % .17e%s | % .17e%s\n", k, da[k], isnan(da[k]) ? " NaN" : "", db[k], isnan(db[k]) ? " NaN" : "");
 	return 0;
 	}

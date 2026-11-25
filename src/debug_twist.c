@@ -55,7 +55,7 @@ void real_main(char const *in_file)
 	init_device_utils(&param, param.d_N_replica_pt);
 	init_gauge_conf_replica(&GC, &geo, &param);
 	init_rect_hierarc(&most_update, &clover_rectangle, &param);
-	init_rect(&swap_rectangle, L_R_swap, &param);
+	init_rect(&swap_rectangle, L_R_swap, 0, &param);
 	init_acc_utils(&acc_counters, &param);
 
 	printf("\n***********************************\n");

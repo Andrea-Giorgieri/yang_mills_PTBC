@@ -60,20 +60,20 @@ size_t bytes_shared(GParam const *const param)
 	bytes += (size_t) V * sizeof(int);                    // d_defect_mask
 
 	// sites of the rectangles (same borders as init_rect_utils)
-	long rect_sites = rect_volume(1, param); // swap_rect
+	long rect_sites = rect_volume(1, 0, param);            // swap_rect
 	for(int i = 0; i < param->d_N_hierarc_levels; i++)
 		{
 		int const L_R = param->d_L_rect[i];
-		rect_sites += rect_volume(L_R, param); // update_rect
+		rect_sites += rect_volume(L_R, 1, param); // update_rect
 		#ifdef THETA_MODE
-		rect_sites += rect_volume(L_R + 2, param); // clover_rect
+		rect_sites += rect_volume(L_R + 2, 0, param); // clover_rect
 		#endif
 		#ifdef MULTICANONICAL_MODE
 		int const cool = (param->d_topo_cooling == 1) ? param->d_topo_coolsteps : 0;
-		rect_sites += rect_volume(L_R + 2 + 4 * cool, param); // topcharge_rect
+		rect_sites += rect_volume(L_R + 2 + 4 * cool, 0, param); // topcharge_rect
 		if(param->d_topo_cooling == 1)
 			for(int j = 0; j < param->d_topo_coolsteps; j++)
-				rect_sites += rect_volume(L_R + 2 + 8 * param->d_topo_coolsteps - 4 * (j + 1), param); // cooling_rect
+				rect_sites += rect_volume(L_R + 2 + 8 * param->d_topo_coolsteps - 4 * (j + 1), 1, param); // cooling_rect
 		#endif
 		}
 	bytes += (size_t) rect_sites * sizeof(long);
@@ -95,6 +95,7 @@ int assign_devices(Device_Utils *const dev, int const n_replica, int const n_ava
 	{
 	dev->n_used = 0;
 	dev->n_conf = 0;
+	dev->on_host = 0; // real devices by default, set by init_device_utils for the run
 	dev->n_available = (n_available < MAX_DEVICES) ? n_available : MAX_DEVICES;
 	dev->bytes_per_replica = per_replica;
 	dev->bytes_shared = shared;
@@ -117,7 +118,8 @@ int assign_devices(Device_Utils *const dev, int const n_replica, int const n_ava
 		int fits = 1;
 		for(int d = 0; d < n; d++)
 			{
-			long const slots = n_replica / n + ((d < n_replica % n) ? 1 : 0); // first devices take the remainder
+			// the remainder of n_replica / n is assigned to the first devices until it is exhausted
+			long const slots = n_replica / n + ((d < n_replica % n) ? 1 : 0);
 			if(slots > max_slots[d]) fits = 0;
 			}
 		if(fits)
@@ -144,35 +146,55 @@ void init_device_utils(GParam const *const param, int const n_conf)
 	size_t free_mem[MAX_DEVICES];
 	int n_available;
 
+	int on_host = 1;
+
 	#ifdef OPENACC_MODE
 	n_available = acc_get_num_devices(acc_device_nvidia);
-	REQUIRE(n_available > 0, "no NVIDIA GPU available");
-	if(n_available > MAX_DEVICES) n_available = MAX_DEVICES;
-	for(int d = 0; d < n_available; d++)
-		free_mem[d] = acc_get_property(d, acc_device_nvidia, acc_property_free_memory);
-	#else
-	// CPU: memory is not limited by the devices, num_gpus > 1 only simulates the splitting
-	n_available = MAX_DEVICES;
-	for(int d = 0; d < n_available; d++)
-		free_mem[d] = (size_t) -1;
+	if(n_available > 0)
+		{
+		on_host = 0;
+		if(n_available > MAX_DEVICES) n_available = MAX_DEVICES;
+		for(int d = 0; d < n_available; d++)
+			free_mem[d] = acc_get_property(d, acc_device_nvidia, acc_property_free_memory);
+		}
+	else
+		{
+		// no NVIDIA GPU: only valid if the code was compiled for the host (-acc=multicore)
+		acc_device_t const type = acc_get_device_type();
+		REQUIRE(type != acc_device_nvidia, "no NVIDIA GPU available (compile with -acc=multicore to run on the CPU)");
+		}
 	#endif
 
-	int const err = assign_devices(&g_dev, n_conf, n_available, free_mem,
-	                               bytes_per_replica(param), bytes_shared(param), param->d_num_gpus);
+	if(on_host)
+		{
+		// CPU: memory is not limited by the devices, num_gpus > 1 only simulates the splitting
+		n_available = MAX_DEVICES;
+		for(int d = 0; d < n_available; d++)
+			free_mem[d] = (size_t) -1;
+		}
+
+
+	size_t const per_replica = bytes_per_replica(param);
+	size_t const shared = bytes_shared(param);
+	int const err = assign_devices(&g_dev, n_conf, n_available, free_mem, per_replica, shared, param->d_num_gpus);
+	g_dev.on_host = on_host;
 	REQUIRE(err != 2, "invalid num_gpus = %d: must be in [0, %d] and not larger than the number of configurations %d",
 	        param->d_num_gpus, (n_available < MAX_DEVICES) ? n_available : MAX_DEVICES, n_conf);
 	REQUIRE(err != 1, "the %d configurations (%.3f GB each, plus %.3f GB per device) do not fit in the memory of %d device(s)",
-	        n_conf, (double) bytes_per_replica(param) / 1e9, (double) bytes_shared(param) / 1e9, n_available);
+	        n_conf, (double) per_replica / 1e9, (double) shared / 1e9, n_available);
 	}
 
 
 void print_device_utils(FILE *fp, Device_Utils const *const dev)
 	{
-	#ifdef OPENACC_MODE
-	fprintf(fp, "Devices (GPUs) used: %d of %d available\n", dev->n_used, dev->n_available);
-	#else
-	fprintf(fp, "Devices (simulated on CPU) used: %d\n", dev->n_used);
-	#endif
+	if(!dev->on_host)
+		fprintf(fp, "Devices (GPUs) used: %d of %d available\n", dev->n_used, dev->n_available);
+	else
+		#ifdef OPENACC_MODE
+		fprintf(fp, "Devices (simulated on CPU, OpenACC multicore) used: %d\n", dev->n_used);
+		#else
+		fprintf(fp, "Devices (simulated on CPU) used: %d\n", dev->n_used);
+		#endif
 	fprintf(fp, "estimated memory per replica: %.3f GB, per device (shared data): %.3f GB\n",
 	        (double) dev->bytes_per_replica / 1e9, (double) dev->bytes_shared / 1e9);
 	for(int d = 0; d < dev->n_used; d++)

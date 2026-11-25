@@ -586,14 +586,14 @@ void readinput(char const *const in_file, GParam *const param)
 
 	// Along odd sides L_mu, x_mu = 0 and x_mu = L_mu-1 are neighbors but even. This prevents naive even-odd parallelization of updates.
 	// This is dealt with only when sweeping the full lattice, not when sweeping the spatial lattice as required by trace deformation.
-	#ifdef OPENMP_MODE
+	#if defined(OPENMP_MODE) || defined(OPENACC_MODE)
 	for(i = 0; i < NCOLOR / 2; i++)
 		{
 		if(param->d_h[i] != 0.0)
 			{
 			for(int j = 1; j < STDIM; j++)
 				{
-				REQUIRE(param->d_size[j] % 2 == 0, "when using OpenMP and trace deformation, spatial lattice sizes must be even");
+				REQUIRE(param->d_size[j] % 2 == 0, "when using OpenMP or OpenACC and trace deformation, spatial lattice sizes must be even");
 				}
 			break;
 			}
@@ -960,7 +960,7 @@ void edit_params_meas_only(GParam *const param)
 	char *files[] = {
 			param->d_data_file,
 			param->d_energydensity_file,
-			param->d_energydensity_file,
+			param->d_chargedensity_file,
 			param->d_polyakovdensity_file,
 			param->d_chiprime_file,
 			param->d_energy_slices_file,
@@ -1688,12 +1688,23 @@ void print_compilation_details(void)
 	printf("\n");
 
 	#ifdef __INTEL_COMPILER
-	printf("\tcompiled with icc\n");
+	printf("\tcompiled with icc version: %d (update %d)\n",
+	       __INTEL_COMPILER, __INTEL_COMPILER_UPDATE);
+	#elif defined(__INTEL_LLVM_COMPILER)
+	printf("\tcompiled with icx version: %d.%d.%d\n",
+	       __INTEL_LLVM_COMPILER / 10000, (__INTEL_LLVM_COMPILER / 100) % 100,
+	       __INTEL_LLVM_COMPILER % 100);
 	#elif defined(__clang__)
-	printf("\tcompiled with clang\n");
+	printf("\tcompiled with clang version: %d.%d.%d\n",
+	       __clang_major__, __clang_minor__, __clang_patchlevel__);
+	#elif defined(__NVCOMPILER)
+	printf("\tcompiled with nvc version: %d.%d.%d\n",
+	       __NVCOMPILER_MAJOR__, __NVCOMPILER_MINOR__, __NVCOMPILER_PATCHLEVEL__);
 	#elif defined( __GNUC__ )
 	printf("\tcompiled with gcc version: %d.%d.%d\n",
 	       __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+	#else
+	printf("\tcompiled with unrecognized compiler\n");
 	#endif
 	printf("\n");
 	}

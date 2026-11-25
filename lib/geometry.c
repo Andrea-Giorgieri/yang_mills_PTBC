@@ -853,9 +853,9 @@ double square_distance(long const i, long const j, GParam const *const param)
 
 	for(int mu = 0; mu < STDIM; ++mu)
 		{
-		const double L = (double) param->d_size[mu];
-		const double half_L = 0.5 * L;
-		double d = (double) labs(x[mu] - y[mu]);
+		double const L = param->d_size[mu];
+		double const half_L = 0.5 * L;
+		double d = abs(x[mu] - y[mu]);
 
 		// periodic boundary conditions
 		if(d > half_L) d = L - d;
@@ -870,7 +870,9 @@ double square_distance(long const i, long const j, GParam const *const param)
 // geometry of rectangles used in the hierarchical update during parallel tempering
 
 // sizes and min of the coordinates of the rectangle with border L_R around the defect
-static void rect_sizes(int *rect_size, int *min_coord, int L_R, GParam const *const param)
+// parity_update = 1 for the rectangles whose sites are updated with the even/odd scheme (update_rect, cooling_rect),
+// 0 for the rectangles used only for sums or site-independent operations (swap_rect, clover_rect, topcharge_rect)
+static void rect_sizes(int *rect_size, int *min_coord, int L_R, int parity_update, GParam const *const param)
 	{
 	int defect_size[STDIM], defect_coord[STDIM];
 
@@ -885,12 +887,17 @@ static void rect_sizes(int *rect_size, int *min_coord, int L_R, GParam const *co
 		}
 
 	// rectangle sizes and min of rect coordinates along every direction
-	// d_size_rect[i] must not exceed d_size[i] (for periodicity) or d_even_size[i] if using OpenMP (for even/odd parallelization)
+	// d_size_rect[i] must not exceed d_size[i] (for periodicity); with parallel updates (OpenMP or OpenACC) the
+	// rectangles updated with the even/odd scheme must not exceed d_even_size[i]: along an odd side, a rectangle of size
+	// d_size[i] would contain the neighbors x_i = 0 and x_i = d_size[i]-1 with the same parity
 	// if so, the exceeding dimension of the rectangle is trimmed
+	#if !defined(OPENMP_MODE) && !defined(OPENACC_MODE)
+	(void) parity_update; // sequential updates: no limit from the even/odd ordering
+	#endif
 	for(int i = 0; i < STDIM; i++)
 		{
-		#ifdef OPENMP_MODE
-		int const max_size = param->d_even_size[i];
+		#if defined(OPENMP_MODE) || defined(OPENACC_MODE)
+		int const max_size = parity_update ? param->d_even_size[i] : param->d_size[i];
 		#else
 		int const max_size = param->d_size[i];
 		#endif
@@ -903,10 +910,10 @@ static void rect_sizes(int *rect_size, int *min_coord, int L_R, GParam const *co
 
 
 // number of sites of the rectangle with border L_R (used also for the memory estimate of the devices)
-long rect_volume(int L_R, GParam const *const param)
+long rect_volume(int L_R, int parity_update, GParam const *const param)
 	{
 	int rect_size[STDIM], min_coord[STDIM];
-	rect_sizes(rect_size, min_coord, L_R, param);
+	rect_sizes(rect_size, min_coord, L_R, parity_update, param);
 	long V = 1;
 	for(int i = 0; i < STDIM; i++)
 		V *= rect_size[i];
@@ -914,12 +921,12 @@ long rect_volume(int L_R, GParam const *const param)
 	}
 
 
-void init_rect(Rectangle *rect, int L_R, GParam const *const param)
+void init_rect(Rectangle *rect, int L_R, int parity_update, GParam const *const param)
 	{
 	// sizes of rectangle and ranges of rect coordinates
 	int rect_size[STDIM], min_coord[STDIM];
-	rect_sizes(rect_size, min_coord, L_R, param);
-	long const V = rect_volume(L_R, param);
+	rect_sizes(rect_size, min_coord, L_R, parity_update, param);
+	long const V = rect_volume(L_R, parity_update, param);
 
 	// allocate rectangle
 	allocate_array_long(&(rect->rect_sites), V, __FILE__, __LINE__);
@@ -991,12 +998,12 @@ void init_rect_hierarc(Rectangle **rect, Rectangle **clover_rect, GParam const *
 		int i;
 		allocate_array_Rectangle(rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 		for(i = 0; i < param->d_N_hierarc_levels; i++)
-			init_rect(&((*rect)[i]), param->d_L_rect[i], param);
+			init_rect(&((*rect)[i]), param->d_L_rect[i], 1, param);
 
 		#ifdef THETA_MODE
 		allocate_array_Rectangle(clover_rect, param->d_N_hierarc_levels, __FILE__, __LINE__);
 		for(i = 0; i < param->d_N_hierarc_levels; i++)
-			init_rect(&((*clover_rect)[i]), 2 + param->d_L_rect[i], param);
+			init_rect(&((*clover_rect)[i]), 2 + param->d_L_rect[i], 0, param);
 		#else
 		(void) clover_rect;
 		#endif
@@ -1034,7 +1041,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 	// border = n -> up to n-th neighbors added to the rectangle
 	// swap_rect: border = 1 (under swap, action changes only for plaquettes around the defect)
 	int border = 1;
-	init_rect(&(rect_aux->swap_rect), border, param);
+	init_rect(&(rect_aux->swap_rect), border, 0, param);
 
 	// rectangles not used in this build or with these parameters stay NULL
 	rect_aux->update_rect = NULL;
@@ -1049,7 +1056,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 		for(int i = 0; i < param->d_N_hierarc_levels; i++)
 			{
 			border = param->d_L_rect[i];
-			init_rect(&(rect_aux->update_rect[i]), border, param);
+			init_rect(&(rect_aux->update_rect[i]), border, 1, param);
 			}
 
 		#ifdef THETA_MODE
@@ -1058,7 +1065,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 		for(int i = 0; i < param->d_N_hierarc_levels; i++)
 			{
 			border = param->d_L_rect[i] + 2;
-			init_rect(&(rect_aux->clover_rect[i]), border, param);
+			init_rect(&(rect_aux->clover_rect[i]), border, 0, param);
 			}
 		#endif
 
@@ -1069,7 +1076,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 			{
 			if(param->d_topo_cooling == 0) border = param->d_L_rect[i] + 2;
 			if(param->d_topo_cooling == 1) border = param->d_L_rect[i] + 2 + 4 * param->d_topo_coolsteps;
-			init_rect(&(rect_aux->topcharge_rect[i]), border, param);
+			init_rect(&(rect_aux->topcharge_rect[i]), border, 0, param);
 			}
 
 		// cooling_rect: border = topcharge_rect + 4*(coolsteps - coolstep)
@@ -1082,7 +1089,7 @@ void init_rect_utils(Rect_Utils *rect_aux, GParam const *const param)
 				for(int j = 0; j < param->d_topo_coolsteps; j++)
 					{
 					border = param->d_L_rect[i] + 2 + 8 * param->d_topo_coolsteps - 4 * (j + 1);
-					init_rect(&(rect_aux->cooling_rect[i][j]), border, param);
+					init_rect(&(rect_aux->cooling_rect[i][j]), border, 1, param);
 					}
 				}
 			}

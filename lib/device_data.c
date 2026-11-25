@@ -31,6 +31,7 @@
 // of the block (which must be already present); the table must be copied only once per device
 static void table_to_device(void **h_table, long const n, void *h_target)
 	{
+	if(g_dev.on_host) return; // shared memory (-acc=multicore): the host table is already valid, nothing to translate
 	void **d_table = (void **) acc_copyin(h_table, (size_t) n * sizeof(void *));
 	uintptr_t const h_base = (uintptr_t) h_target;
 	uintptr_t const d_base = (uintptr_t) acc_deviceptr(h_target);
@@ -489,7 +490,10 @@ Gauge_Conf *gauge_conf_view(Gauge_Conf const *GC, View_Kind const kind)
 void select_device(int const d)
 	{
 	#ifdef OPENACC_MODE
-	acc_set_device_num(g_dev.id[d], acc_device_nvidia);
+	if(g_dev.on_host)
+		acc_set_device_num(0, acc_device_host); // for simulated splitting among devices
+	else
+		acc_set_device_num(g_dev.id[d], acc_device_nvidia);
 	#else
 	(void) d;
 	#endif

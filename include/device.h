@@ -16,8 +16,8 @@
 // replica indices). The minimal number of devices able to host all the replicas is used, then the slots are
 // distributed in a balanced way (e.g. 10 replicas, at most 4 per device -> 3 devices with 4, 3, 3 slots).
 //
-// CPU (no OpenACC): one device with all the slots, unless num_gpus > 1 in the input file, which simulates the
-// splitting among num_gpus devices (to test the per-device loops).
+// CPU (no OpenACC, or OpenACC on the host with -acc=multicore): one device with all the slots, unless num_gpus > 1 in
+// the input file, which simulates the splitting among num_gpus devices (to test the per-device loops).
 
 #define DEVICE_MEMORY_FRACTION 0.9                         // fraction of the free memory of a device that can be used
 #define DEVICE_MEMORY_OVERHEAD ((size_t) 512 * 1024 * 1024) // memory reserved for the runtime on every device (bytes)
@@ -26,6 +26,7 @@ typedef struct Device_Utils
 	{
 	int n_used;               // number of devices used
 	int n_available;          // number of devices available (at most MAX_DEVICES)
+	int on_host;              // 1 if OpenACC runs on the host (-acc=multicore, shared memory), 0 otherwise
 	int id[MAX_DEVICES];      // device number (for acc_set_device_num) of the d-th device used
 	int first[MAX_DEVICES];   // first slot of the d-th device used
 	int n_slots[MAX_DEVICES]; // number of slots of the d-th device used

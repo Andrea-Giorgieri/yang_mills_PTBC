@@ -981,6 +981,26 @@ static inline void get_datafile_header(char *const header, GParam const *const p
 
 	int j = sprintf(header, "# %d ", STDIM);
 	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
+
+	// multilevel programs: one line per multilevel measurement, without update index (see perform_measures_polycorr,
+	// perform_measures_polycorr_long, perform_measures_tube_disc, perform_measures_tube_conn(_long))
+	switch(param->d_ml_obs)
+		{
+		case POLYCORR:
+		case POLYCORR_LONG:
+			sprintf(header + j, "\n# polycorr\n");
+			return;
+		case TUBE_DISC:
+			sprintf(header + j, "\n# polycorr_re polycorr_im polyplaq_re polyplaq_im\n");
+			return;
+		case TUBE_CONN:
+		case TUBE_CONN_LONG:
+			sprintf(header + j, "\n# polycorr_re polycorr_im polyplaq_re polyplaq_im polyplaqconn_re polyplaqconn_im\n");
+			return;
+		default: // NONE: local observables
+			break;
+		}
+
 	j += sprintf(header + j, "\n# upd_index ");
 	if(param->d_plaquette_meas == 1) j += sprintf(header + j, "plaqs plaqt ");
 	if(param->d_clover_energy_meas == 1) j += sprintf(header + j, "clover_energy ");

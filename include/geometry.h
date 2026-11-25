@@ -142,9 +142,11 @@ double square_distance(long const i, long const j, GParam const *const param);
 
 // geometry of rectangles used in the hierarchical update during parallel tempering
 
-long rect_volume(int L_R, GParam const *const param);
+// parity_update = 1 for the rectangles updated with the even/odd scheme (trimmed to the even sides with OpenMP and
+// OpenACC), 0 for the rectangles used only for sums (trimmed to the lattice sides)
+long rect_volume(int L_R, int parity_update, GParam const *const param);
 
-void init_rect(Rectangle *rect, int L_R, GParam const *const param);
+void init_rect(Rectangle *rect, int L_R, int parity_update, GParam const *const param);
 
 void free_rect(Rectangle *rect);
 

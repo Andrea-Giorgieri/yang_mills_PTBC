@@ -187,8 +187,9 @@ void real_main(char const *in_file)
 
 void print_template_input(void)
 	{
-	FILE *fp = fopen("template_input.example", "w");
-	REQUIRE(fp != NULL, "failed to open template_input.example");
+	char const *const template_name = "template_input.example";
+	FILE *fp = fopen(template_name, "w");
+	REQUIRE(fp != NULL, "failed to open %s", template_name);
 
 	print_template_volume_parameters(fp);
 	print_template_pt_parameters(fp);
@@ -203,6 +204,8 @@ void print_template_input(void)
 	print_template_output_parameters(fp);
 
 	fclose(fp);
+
+	printf("Generated template input: %s\n\n", template_name);
 	}
 
 
@@ -210,14 +213,14 @@ int main(int argc, char **argv)
 	{
 	if(argc != 2)
 		{
-		int parallel_tempering = 1;
-		int twisted_bc = 1;
-		print_authors(parallel_tempering, twisted_bc);
+		print_program_details("simulation of 4D SU(N) Yang-Mills theory with PTBC algorithm",
+		              "Wilson action with topological defect, periodic/twisted/open BC; options: imaginary theta, V_a(Q)",
+		              "heatbath, overrelaxation, PTBC, Metropolis for V_a(Q)",
+		              "plaquette, energy, charge, Polyakov loops; gradient flow, cooling",
+		              argv[0], "input_file");
 
-		printf("Usage: %s input_file\n\n", argv[0]);
-
-		print_compilation_details();
 		print_template_input();
+		print_compilation_details();
 
 		return EXIT_SUCCESS;
 		}

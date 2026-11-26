@@ -1473,7 +1473,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "# Simulations parameters\n");
 	fprintf(fp, "beta   6.4881\n");
 	#ifdef THETA_MODE
-	fprintf(fp, "theta  0.5\n");
+	fprintf(fp, "theta  0.5  # coefficient of the topological charge in the action: S = S_Wilson - theta * Q\n");
 	#endif
 	fprintf(fp, "\n");
 	fprintf(fp, "sample     10 # total number of Monte Carlo steps\n");
@@ -1482,7 +1482,7 @@ void print_template_simul_parameters(FILE *fp)
 	fprintf(fp, "measevery   1 # number of MC steps between measurements\n");
 	fprintf(fp, "\n");
 
-	fprintf(fp, "start                    3  # 0=all links to identity  1=random  2=from saved configuration 3=ordered with twisted bc\n");
+	fprintf(fp, "start                    3  # 0=ordered (identity + small noise)  1=random  2=from saved configuration  3=ordered with twist on one plane\n");
 	fprintf(fp, "saveconf_back_every      5  # if 0, do not save; otherwise, save backup configurations every this many MC steps\n");
 	fprintf(fp, "saveconf_analysis_every  5  # if 0, do not save; otherwise, save configurations for analysis every this many MC steps\n");
 	fprintf(fp, "\n");
@@ -1514,7 +1514,7 @@ void print_template_pt_parameters(FILE *fp)
 	fprintf(fp, "# Parallel tempering parameters\n");
 	fprintf(fp, "defect_dir    0             # space-time direction orthogonal to the topological defect\n");
 	fprintf(fp, "defect_size   2 2 2         # sizes of the defect along its dimensions (skipping defect_dir)\n");
-	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replicas, followed by corresponding boundary conditions coefficients\n");
+	fprintf(fp, "N_replica_pt  2    1.0 0.0  # number of parallel tempering replicas, followed by their boundary conditions coefficients (1 = periodic, physical replica first)\n");
 	fprintf(fp, "\n");
 	fprintf(fp, "# Hierarchical update parameters\n");
 	fprintf(fp, "# number of hierarchical levels, extensions of rectangles, sweeps per rectangle\n");
@@ -1631,19 +1631,19 @@ void print_template_output_parameters(FILE *fp)
 
 // print program details
 
-void print_authors(int parallel_tempering, int twisted_bc)
+// short description of a program printed when it is called without arguments,
+// followed by its usage: "program_name arguments"
+void print_program_details(char const *const purpose, char const *const action, char const *const algorithm,
+                           char const *const measurements, char const *const program_name,
+                           char const *const arguments)
 	{
 	printf("\n");
-	if(parallel_tempering == 1)
-		printf("SU(N) Hasenbusch Parallel Tempering implemented by Claudio Bonanno (claudiobonanno93@gmail.com)\n");
-	if(twisted_bc == 1)
-		printf("Twisted Boundary Conditions implemented by Andrea Giorgieri (andrea.giorgieri.pi@gmail.com)\n");
-	if(parallel_tempering == 1 || twisted_bc == 1)
-		printf("within yang-mills package\n\n");
-
-	printf("Details about yang-mills package:\n");
-	printf("\tPackage %s version: %s\n", PACKAGE_NAME, PACKAGE_VERSION);
-	printf("\tAuthor: Claudio Bonati %s\n\n", PACKAGE_BUGREPORT);
+	printf("Purpose:    %s\n", purpose);
+	printf("Action:     %s\n", action);
+	printf("Algorithms: %s\n", algorithm);
+	printf("Measures:   %s\n", measurements);
+	printf("\n");
+	printf("Usage: %s %s\n\n", program_name, arguments);
 	}
 
 

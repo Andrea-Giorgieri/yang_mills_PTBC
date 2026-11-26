@@ -316,8 +316,9 @@ void print_template_multilevel_parameters(FILE *fp);
 
 void print_template_output_parameters(FILE *fp);
 
-// print program details
-void print_authors(int parallel_tempering, int twisted_bc);
+void print_program_details(char const *const purpose, char const *const action, char const *const algorithm,
+                           char const *const measurements, char const *const program_name,
+                           char const *const arguments);
 
 void print_compilation_details(void);
 

@@ -982,8 +982,7 @@ static inline void get_datafile_header(char *const header, GParam const *const p
 	int j = sprintf(header, "# %d ", STDIM);
 	for(int i = 0; i < STDIM; i++) j += sprintf(header + j, "%d ", param->d_size[i]);
 
-	// multilevel programs: one line per multilevel measurement, without update index (see perform_measures_polycorr,
-	// perform_measures_polycorr_long, perform_measures_tube_disc, perform_measures_tube_conn(_long))
+	// multilevel programs: one line per multilevel measurement, without update index
 	switch(param->d_ml_obs)
 		{
 		case POLYCORR:

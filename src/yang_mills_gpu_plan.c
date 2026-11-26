@@ -64,10 +64,13 @@ int main(int argc, char **argv)
 	{
 	if(argc != 2 && argc != 3)
 		{
-		printf("Usage: %s input_file [memory_per_gpu_GB (default %.0f)]\n\n", argv[0], default_gpu_memory_gb);
-		printf("Estimate the memory needed by the parallel tempering replicas and the number of GPUs required.\n");
-		printf("The input file is the one of yang_mills_local_pt_agf or yang_mills_tuning_pt_mc.\n");
-		printf("At most %d GPUs per node (Num_devices at configure time).\n", MAX_DEVICES);
+		char arguments[STD_STRING_LENGTH];
+		snprintf(arguments, sizeof(arguments), "input_file [GB_per_GPU (default %.0f)]", default_gpu_memory_gb);
+		print_program_details("determining GPU memory and number of GPUs needed by a PTBC input (no GPU is used by this program)",
+		                      "determined by the input file of yang_mills_local_pt_agf or yang_mills_tuning_pt_mc",
+		                      "balanced split on the minimum/available/selected number of GPUs",
+		                      "none: prints the number of GPUs needed and the replica distribution over the GPUs",
+		                      argv[0], arguments);
 		return EXIT_SUCCESS;
 		}
 

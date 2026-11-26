@@ -80,7 +80,9 @@ static double lattice_sum_device(Gauge_Conf *gc, int const which, long const V)
 // once inlined in test_gauge_conf_data (the temporary is not recomputed per link, see PORTING_GPU.md, phase 9)
 static int same_lattice(GAUGE_GROUP **a, GAUGE_GROUP **b, long const V)
 	{
-	int const nc = (int) (sizeof(((GAUGE_GROUP *) 0)->comp) / sizeof(double));
+	// number of doubles in comp (comp can be an array of double complex: bytes first, then doubles)
+	size_t const comp_bytes = sizeof(((GAUGE_GROUP *) 0)->comp);
+	int const nc = (int) (comp_bytes / sizeof(double));
 	long n_diff = 0, r_first = -1;
 	int i_first = -1;
 	for(long r = 0; r < V; r++)

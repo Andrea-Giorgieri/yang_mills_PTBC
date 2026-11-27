@@ -39,7 +39,7 @@ int main(void)
 	double *res = (double *) malloc((size_t) n * sizeof(double));
 	REQUIRE(res != NULL, "failed to allocate memory");
 
-	#pragma acc parallel loop copyin(param) copyout(res[0:n])
+	#pragma acc parallel loop gang vector copyin(param) copyout(res[0:n])
 	for(long s = 0; s < n; s++)
 		{
 		rng_t rng;

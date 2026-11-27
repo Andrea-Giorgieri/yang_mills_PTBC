@@ -832,7 +832,7 @@ static void cool_lattice_cold(Gauge_Conf *const GC, Geometry const *const geo, G
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], cold[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], cold[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	for(long s = 0; s < STDIM * volume; s++)
 		{
@@ -860,7 +860,7 @@ static double delta_topcharge_rectangle_device(Gauge_Conf const *const GC1, Gaug
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
 	#endif
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC1[0:1], GC2[0:1], geo[0:1], param[0:1], rect_aux[0:1]) reduction(+ : res) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_MEAS) if(dev) present(GC1[0:1], GC2[0:1], geo[0:1], param[0:1], rect_aux[0:1]) reduction(+ : res) async(QUEUE_DEVICE)
 	#endif
 	for(long n = 0; n < vol_rect; n++)
 		{

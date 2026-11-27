@@ -61,7 +61,7 @@ static double lattice_sum_device(Gauge_Conf *gc, int const which, long const V)
 	{
 	double s = 0.0;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop reduction(+:s) present(gc[0:1])
+	#pragma acc parallel loop gang vector reduction(+:s) present(gc[0:1])
 	#endif
 	for(long r = 0; r < V; r++)
 		{
@@ -132,7 +132,7 @@ static double Z_sum_device(Gauge_Conf *gc, int const which, long const V, int co
 	{
 	double s = 0.0;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop reduction(+:s) present(gc[0:1])
+	#pragma acc parallel loop gang vector reduction(+:s) present(gc[0:1])
 	#endif
 	for(long r = 0; r < V; r++)
 		{
@@ -158,7 +158,7 @@ static void test_geometry_data(Geometry *geo, GParam *param)
 		// nearest neighbours and mu-components through the 2d/3d tables, exact integer counts
 		long ok_dev = 0, sum_dev = 0, mask_dev = 0;
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop reduction(+:ok_dev, sum_dev, mask_dev) present(geo[0:1])
+		#pragma acc parallel loop gang vector reduction(+:ok_dev, sum_dev, mask_dev) present(geo[0:1])
 		#endif
 		for(long r = 0; r < V; r++)
 			{
@@ -400,7 +400,7 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 		#ifdef RNG_PHILOX_MODE
 		long r_dev = 0, r_host = 0;
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop reduction(+:r_dev) present(gc[0:1])
+		#pragma acc parallel loop gang vector reduction(+:r_dev) present(gc[0:1])
 		#endif
 		for(long r = 0; r < V; r++)
 			r_dev += (long) gc->rng_site[r].ctr[0] + (long) gc->rng_site[r].ctr[2] + 3L * (long) gc->rng_site[r].ctr[3] + (long) gc->rng_site[r].key[0];
@@ -416,7 +416,7 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 				zero(&(gc->lattice_copy[r][i]));
 		copy_gauge_conf_to_device(gc, param, GC_COPY);
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop collapse(2) present(gc[0:1])
+		#pragma acc parallel loop gang vector collapse(2) present(gc[0:1])
 		#endif
 		for(long r = 0; r < V; r++)
 			for(int i = 0; i < STDIM; i++)
@@ -434,7 +434,7 @@ static void test_gauge_conf_data(Gauge_Conf *GC, GParam *param, Meas_Utils *meas
 				for(int i = 0; i < STDIM; i++)
 					zero(&(maux->lattice_aux[3][r][i]));
 			#ifdef OPENACC_MODE
-			#pragma acc parallel loop collapse(2) present(gc[0:1], maux[0:1])
+			#pragma acc parallel loop gang vector collapse(2) present(gc[0:1], maux[0:1])
 			#endif
 			for(long r = 0; r < V; r++)
 				for(int i = 0; i < STDIM; i++)

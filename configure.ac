@@ -139,6 +139,17 @@ if test x${use_openacc} = xyes; then
     fi
   fi
 
+  # nvc: no automatic parallelization of the loops without an acc loop directive. With NCOLOR >= 4 nvc otherwise
+  # vectorizes the inner NCOLOR*NCOLOR loops of the inlined acc routine seq functions and leaves the site loops on gangs
+  # only (one active thread per warp). The site loops have explicit "gang vector" clauses (inner loops then sequential
+  # by the OpenACC rules); this is a second safeguard, added also to user flags unless they mention autopar.
+  if test x${is_nvc} = xyes; then
+    case "${OPENACC_CFLAGS}" in
+      *autopar*) ;;
+      *) OPENACC_CFLAGS="${OPENACC_CFLAGS} -acc=noautopar" ;;
+    esac
+  fi
+
   # check that the compiler accepts the OpenACC flags and provides openacc.h
   AC_MSG_CHECKING([whether ${CC} supports OpenACC with flags ${OPENACC_CFLAGS}])
   save_CFLAGS=${CFLAGS}
@@ -180,7 +191,7 @@ AC_ARG_VAR(Num_devices, maximum number of GPUs per node that can be used with Op
 
 AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
-AC_ARG_VAR(OPENACC_CFLAGS, flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc otherwise))
+AC_ARG_VAR(OPENACC_CFLAGS, flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc otherwise; nvc: -acc=noautopar appended))
 
 
 

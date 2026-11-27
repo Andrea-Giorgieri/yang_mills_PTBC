@@ -856,7 +856,7 @@ void restore_gauge_conf(Gauge_Conf *const GC, GParam const *const param)
 	(void) dev;
 
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -955,7 +955,7 @@ void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *con
 		swap_lattice_cold(GC);
 		#endif
 
-		#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
 		for(long s = 0; s < n; s++)
 			{
 			long const r = s % (param->d_volume);
@@ -966,7 +966,7 @@ void accept_or_restore_gauge_conf_device(Gauge_Conf *const GC, GParam const *con
 		}
 	else
 		{
-		#pragma acc parallel loop present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
 		for(long s = 0; s < n; s++)
 			{
 			long const r = s % (param->d_volume);
@@ -994,7 +994,7 @@ void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC, int con
 	long const n = STDIM * vol_rect;
 	if(acc == 1)
 		{
-		#pragma acc parallel loop present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
 		for(long s = 0; s < n; s++)
 			{
 			long const m = s % vol_rect;
@@ -1010,7 +1010,7 @@ void accept_or_restore_gauge_conf_rectangle_device(Gauge_Conf *const GC, int con
 		}
 	else
 		{
-		#pragma acc parallel loop present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector present(GC[0:1], rect_aux[0:1]) async(QUEUE_DEVICE)
 		for(long s = 0; s < n; s++)
 			{
 			long const m = s % vol_rect;

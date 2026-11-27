@@ -354,7 +354,7 @@ void compute_clovers(Gauge_Conf const *const GC,
 	int const dev = gc_on_device(GC);
 	(void) dev;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -382,7 +382,7 @@ void compute_clovers_replica(Gauge_Conf const *const GC,
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 		#endif
 		for(long s = first * volume; s < (first + n_sl) * volume; s++)
 			{
@@ -414,7 +414,7 @@ void compute_clovers_replica_rect(Gauge_Conf const *const GC,
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], clover_rectangle[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[first:n_sl], geo[0:1], param[0:1], clover_rectangle[0:1]) async(QUEUE_DEVICE)
 		#endif
 		for(long s = first * vol_rect; s < (first + n_sl) * vol_rect; s++)
 			{
@@ -983,7 +983,7 @@ static void update_sites_parallel(Gauge_Conf *const GC, Geometry const *const ge
 	{
 	(void) dev;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1228,7 +1228,7 @@ static void update_replica_sites(Gauge_Conf *const GC, Geometry const *const geo
 		#pragma omp parallel for num_threads(NTHREADS)
 		#endif
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop present(GC[first:n_sl], geo[0:1], param[0:1], sites[offset:count]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[first:n_sl], geo[0:1], param[0:1], sites[offset:count]) async(QUEUE_DEVICE)
 		#endif
 		for(long s = first * count; s < (first + n_sl) * count; s++)
 			{
@@ -1243,7 +1243,7 @@ static void update_replica_sites(Gauge_Conf *const GC, Geometry const *const geo
 
 
 // the same on the border sites (s in [even_volume, volume) of the even/odd ordering, odd sides only), in order for
-// every slot (on the GPU one gang per slot)
+// every slot (on the GPU one thread per slot)
 static void update_replica_border(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const param,
                                   int const dir, int const over)
 	{
@@ -1260,7 +1260,7 @@ static void update_replica_border(Gauge_Conf *const GC, Geometry const *const ge
 		#pragma omp parallel for if(n_sl > 1) num_threads(NTHREADS)
 		#endif
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop gang present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) present(GC[first:n_sl], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 		#endif
 		for(long i = first; i < first + n_sl; i++)
 			{
@@ -1455,7 +1455,7 @@ static void cooling_sites_parallel(Gauge_Conf *const GC, Geometry const *const g
 	{
 	(void) dev;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1673,7 +1673,7 @@ void cooling(Gauge_Conf *const GC,
 	int const dev = gc_on_device(GC);
 	(void) dev;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_UPD) if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1839,7 +1839,7 @@ void gradflow_RKstep(Gauge_Conf *const GC,
 
 	// initialize: lattice0 = GC
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1853,7 +1853,7 @@ void gradflow_RKstep(Gauge_Conf *const GC,
 
 	// now GC = lattice0 = W_0, lattice1 = uninitialized
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1875,7 +1875,7 @@ void gradflow_RKstep(Gauge_Conf *const GC,
 
 	// now GC = W_1, lattice0 = W_0, lattice1 = 1/4*Z_0
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1898,7 +1898,7 @@ void gradflow_RKstep(Gauge_Conf *const GC,
 
 	// now GC = W_1, lattice0 = W_2, lattice1 = 8/9*Z_1-17/36*Z_0
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1937,7 +1937,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
 
 	// initialize: lattice0 = lattice3 = GC
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1952,7 +1952,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
 
 	// now GC = lattice0 = lattice3 = W_0, lattice1 = lattice2 = uninitialized
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -1975,7 +1975,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
 
 	// now GC = W_1, lattice0 = lattice3 = W_0, lattice1 = Z_0, lattice2 = uninitialized
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -2006,7 +2006,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
 
 	// now GC = W_1, lattice0 = W_2, lattice1 = (8/9)Z_1-(17/36)Z_0, lattice2 = W'_2, lattice3 = W_0
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) present(GC[0:1], helper[0:1], ma[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
@@ -2030,7 +2030,7 @@ double gradflow_RKstep_adaptive_aux(Gauge_Conf *const GC,
 	// error calculation, dist(W_3, W'_2), and final unitarization (maximum: independent of the order)
 	double max_loc = 0.0;
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) reduction(max : max_loc) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_FLOW) if(dev) reduction(max : max_loc) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(max : max_loc)
@@ -2082,7 +2082,7 @@ void gradflow_RKstep_adaptive(Gauge_Conf *const GC,
 		Gauge_Conf helper_host, *helper;
 		Meas_Utils *const ma = gradflow_aux(GC, dev, meas_aux, &helper_host, &helper);
 		#ifdef OPENACC_MODE
-		#pragma acc parallel loop if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
+		#pragma acc parallel loop gang vector if(dev) present(GC[0:1], ma[0:1], param[0:1]) async(QUEUE_DEVICE)
 		#endif
 		#ifdef OPENMP_MODE
 		#pragma omp parallel for num_threads(NTHREADS)

@@ -158,7 +158,7 @@ void plaquette(Gauge_Conf const *const GC,
 	int const dev = gc_on_device(GC);
 
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) reduction(+ : pt, ps) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_MEAS) if(dev) reduction(+ : pt, ps) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : pt) reduction(+ : ps)
@@ -341,7 +341,7 @@ void clover_disc_energy(Gauge_Conf const *const GC,
 	int const dev = gc_on_device(GC);
 
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_MEAS) if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)
@@ -434,7 +434,7 @@ void polyakov(Gauge_Conf const *const GC,
 	int const dev = gc_on_device(GC);
 
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) reduction(+ : rep, imp) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_MEAS) if(dev) reduction(+ : rep, imp) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : rep) reduction(+ : imp)
@@ -689,7 +689,7 @@ double topcharge(Gauge_Conf const *const GC,
 	int const dev = gc_on_device(GC);
 
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector vector_length(ACC_VL_MEAS) if(dev) reduction(+ : res) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS) reduction(+ : res)

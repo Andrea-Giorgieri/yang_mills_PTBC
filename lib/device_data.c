@@ -35,7 +35,7 @@ static void table_to_device(void **h_table, long const n, void *h_target)
 	void **d_table = (void **) acc_copyin(h_table, (size_t) n * sizeof(void *));
 	uintptr_t const h_base = (uintptr_t) h_target;
 	uintptr_t const d_base = (uintptr_t) acc_deviceptr(h_target);
-	#pragma acc parallel loop deviceptr(d_table)
+	#pragma acc parallel loop gang vector deviceptr(d_table)
 	for(long i = 0; i < n; i++)
 		d_table[i] = (void *) ((uintptr_t) d_table[i] - h_base + d_base);
 	}

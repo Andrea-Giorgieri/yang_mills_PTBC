@@ -91,7 +91,6 @@ typedef struct GParam
 	int d_k_twist[STDIM * (STDIM - 1) / 2]; // twist parameter for each plane
 	int d_obc_dir;                          // direction of obc (-1 if pbc)
 	int d_obc_default_pos;                  // default starting position of obc
-	int d_obc_bulk;                         // size of the bulk along d_obc_dir
 
 	// hierarchical update (parallel tempering)
 	int d_N_hierarc_levels; // number of hierarchical levels

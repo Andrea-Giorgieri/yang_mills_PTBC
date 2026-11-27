@@ -12,6 +12,7 @@ STDIM=4       # Spacetime dimension
 NTHREADS=112  # Number of OpenMP threads (if OpenMP is enabled)
 NDEVICES=4    # Maximum number of GPUs per node (OpenACC)
 NLEVELS=1     # Number of levels in multilevel algorithm
+LINK_BLOCK=32 # Sites per block of the AoSoA link storage: power of 2 from 1 (AoS) to 256
 
 # 1=yes, 0=no
 ENABLE_THETA=0         # Add theta term to the action
@@ -109,6 +110,7 @@ echo "ST_dim:         ${STDIM}"
 echo "Num_threads:    ${NTHREADS}"
 echo "Num_devices:    ${NDEVICES}"
 echo "Num_levels:     ${NLEVELS}"
+echo "Link_block:     ${LINK_BLOCK}"
 echo "OpenMP:         ${ENABLE_OPENMP}"
 echo "OpenACC:        ${ENABLE_OPENACC}"
 echo "Theta:          ${ENABLE_THETA}"
@@ -149,6 +151,7 @@ CONFIGURE_ARGS=(
     "Num_levels=${NLEVELS}"
     "Num_threads=${NTHREADS}"
     "Num_devices=${NDEVICES}"
+    "Link_block=${LINK_BLOCK}"
     "CC=${CC}"
     "CFLAGS=${CFLAGS}"
     "LIBS=${LIBS}"

@@ -276,7 +276,6 @@ void set_defaults(GParam *const param)
 	// twist and open boundary conditions
 	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) param->d_k_twist[i] = 0;
 	param->d_obc_dir = -1;
-	param->d_obc_bulk = -1;
 
 	// parallel tempering
 	for(i = 0; i < STDIM - 1; i++) param->d_L_defect[i] = 0;
@@ -371,6 +370,13 @@ void set_defaults(GParam *const param)
 	}
 
 
+// blank characters between the entries of the input file: spaces, tabs and line ends (also the \r of CRLF line ends)
+static int is_blank_char(int const c)
+	{
+	return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+	}
+
+
 // remove white lines and comments starting with # from input file
 void remove_white_line_and_comments(FILE *input)
 	{
@@ -378,7 +384,7 @@ void remove_white_line_and_comments(FILE *input)
 
 	// skip empty line
 	{
-		do temp_i = getc(input); while(temp_i == '\n' || temp_i == ' ');
+		do temp_i = getc(input); while(is_blank_char(temp_i));
 	}
 
 	// skip comment, from \043 = ascii oct for # to first newline or EOF
@@ -387,7 +393,7 @@ void remove_white_line_and_comments(FILE *input)
 	// return if EOF reached or nothing else to remove, after pushing back last char
 	if(temp_i == EOF) return;
 	ungetc(temp_i, input);
-	if(temp_i != '\n' && temp_i != ' ' && temp_i != '\043') return;
+	if(!is_blank_char(temp_i) && temp_i != '\043') return;
 
 	// recursive call if another white line or comment
 	remove_white_line_and_comments(input);
@@ -418,7 +424,6 @@ void readinput(char const *const in_file, GParam *const param)
 			STRING_PARAM("theta_profile_file", d_theta_profile_file, param_any_string),
 			INT_ARRAY_PARAM("k_twist", d_k_twist, STDIM * (STDIM - 1) / 2, param_any_int),
 			INT_PARAM("obc_dir", d_obc_dir, param_any_int),
-			INT_PARAM("obc_bulk", d_obc_bulk, param_nonnegative_int),
 
 			// parallel tempering
 			INT_PARAM("defect_dir", d_defect_dir, param_nonnegative_int),
@@ -610,10 +615,6 @@ void readinput(char const *const in_file, GParam *const param)
 	REQUIRE(param->d_obc_dir >= -1 && param->d_obc_dir < STDIM,
 	        "direction of open boundary conditions must be -1 (PBC) or in [0, %d)",
 	        STDIM);
-	if(param->d_obc_dir != -1 && param->d_obc_bulk == -1)
-		{
-		param->d_obc_bulk = param->d_size[param->d_obc_dir];
-		}
 
 	// parallel tempering
 	REQUIRE(param->d_defect_dir >= 0 && param->d_defect_dir < STDIM,
@@ -643,6 +644,7 @@ void readinput(char const *const in_file, GParam *const param)
 
 	err = 0;
 	err += param->d_charge_meas;
+	err += param->d_charge_density_meas;
 	err += param->d_charge_prime_meas;
 	err += param->d_chi_prime_meas;
 	err += param->d_charge_slices_meas;
@@ -1074,7 +1076,6 @@ void print_simul_parameters(FILE *fp, GParam const *const param)
 	if(param->d_obc_dir != -1)
 		{
 		fprintf(fp, "obc_dir:  %d\n", param->d_obc_dir);
-		fprintf(fp, "obc_bulk: %d\n", param->d_obc_bulk);
 		}
 	fprintf(fp, "twist parameters: ");
 	for(i = 0; i < STDIM * (STDIM - 1) / 2; i++) fprintf(fp, "%d ", param->d_k_twist[i]);

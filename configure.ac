@@ -1,6 +1,6 @@
 AC_PREREQ([2.59])
 AC_INIT([yang_mills], [0.7.3], [claudio.bonati82@gmail.com])
-AM_INIT_AUTOMAKE(subdir-objects)
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR([./include/macro.h])
 AC_CONFIG_HEADERS([config.h])
 
@@ -191,6 +191,8 @@ AC_ARG_VAR(Num_devices, maximum number of GPUs per node that can be used with Op
 
 AC_ARG_VAR(ST_dim, spacetime dimensionality (default 4))
 
+AC_ARG_VAR(Link_block, sites per block of the AoSoA storage of the gauge links: a power of 2 from 1 to 256 (default 32; 1 = one site per block = AoS))
+
 AC_ARG_VAR(OPENACC_CFLAGS, flags to enable OpenACC (default -acc=gpu for nvc, -fopenacc otherwise; nvc: -acc=noautopar appended))
 
 
@@ -288,6 +290,17 @@ if test x${ST_dim} = x; then
 else
   AC_DEFINE_UNQUOTED(STDIM, ${ST_dim}, [Spacetime dimensionality])
 fi
+
+# block size B of the AoSoA storage of the links (docs/link_layout.md): B consecutive sites of the even/odd ordering
+# share a block, inside which the site index runs fastest. Powers of 2 only (index arithmetic with shifts and masks).
+if test x${Link_block} = x; then
+  Link_block=32
+fi
+case "${Link_block}" in
+  1|2|4|8|16|32|64|128|256) ;;
+  *) AC_MSG_ERROR([Link_block must be a power of 2 from 1 to 256 (got ${Link_block})]) ;;
+esac
+AC_DEFINE_UNQUOTED(LINK_BLOCK, ${Link_block}, [Sites per block of the AoSoA storage of the gauge links (1 = AoS)])
 
 
 ### CONDITIONALS

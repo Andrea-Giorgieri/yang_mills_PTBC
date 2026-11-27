@@ -999,10 +999,11 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 	ASSERT_DEV(STDIM == 4, "compute_topostaple_alone can be used only in 4 dimensions");
 	#endif
 
-	GAUGE_GROUP link1, link2, link3, link12, stap, aux, clover_insertion;
+	GAUGE_GROUP const *link1, *link2, *link3; // links read in place (no copies)
+	GAUGE_GROUP link12, stap, aux, clover_insertion;
 	const double coeff = 1.0 / (128.0 * PI * PI);
 	long k;
-	int j, l;
+	int j;
 	int i0, j0;
 	int sood1[4][4], sood2[4][4]; // Signed Ordered Orthogonal Directions (SOOD)
 
@@ -1043,7 +1044,7 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 	sood1[3][2] = 1;
 	sood2[3][2] = 0;
 
-	for(l = i + 1; l < i + STDIM; l++)
+	for(int l = i + 1; l < i + STDIM; l++)
 		{
 		j = (l % STDIM);
 
@@ -1064,12 +1065,12 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 		//
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, r, i)][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[nnp(geo, r, j)][i])); // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));              // link3 = (3)
+		link1 = &(GC->lattice[nnp(geo, r, i)][j]); // link1 = (1)
+		link2 = &(GC->lattice[nnp(geo, r, j)][i]); // link2 = (2)
+		link3 = &(GC->lattice[r][j]);              // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2); // link12=link1*link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap=link12*link3^{dag}
+		times_dag2(&link12, link1, link2); // link12=link1*link2^{dag}
+		times_dag2(&stap, &link12, link3);  // stap=link12*link3^{dag}
 
 		//twist (clockwise plaquette) modification
 		times_equal_complex(&stap, GC->Z[r][dirs_to_si(i, j)]); // Z_\mu\nu(x) * staple
@@ -1086,15 +1087,15 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 
 		// clover insertion in (c)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, nnp(geo, r, i), j), i0, j0);
-		times(&aux, &link1, &clover_insertion); // link1*clover
-		times_equal_dag(&aux, &link2);          // *=link2^{dag}
-		times_equal_dag(&aux, &link3);          // *=link3^{dag}
+		times(&aux, link1, &clover_insertion); // link1*clover
+		times_equal_dag(&aux, link2);          // *=link2^{dag}
+		times_equal_dag(&aux, link3);          // *=link3^{dag}
 		plus_equal(topo_stap, &aux);
 
 		// clover insertion in (d)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, r, j), i0, j0);
 		times(&aux, &link12, &clover_insertion); // link1*link2*quadri
-		times_equal_dag(&aux, &link3);           // *=link3^{dag}
+		times_equal_dag(&aux, link3);           // *=link3^{dag}
 		plus_equal(topo_stap, &aux);
 
 		//
@@ -1113,12 +1114,12 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 		k = nnm(geo, r, j); // k = r - j
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[nnp(geo, k, i)][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[k][i]));              // link2 = (2)
-		equal(&link3, &(GC->lattice[k][j]));              // link3 = (3)
+		link1 = &(GC->lattice[nnp(geo, k, i)][j]); // link1 = (1)
+		link2 = &(GC->lattice[k][i]);              // link2 = (2)
+		link3 = &(GC->lattice[k][j]);              // link3 = (3)
 
-		times_dag12(&link12, &link1, &link2); // link12=link1^{dag}*link2^{dag}
-		times(&stap, &link12, &link3);        // stap=link12*link3
+		times_dag12(&link12, link1, link2); // link12=link1^{dag}*link2^{dag}
+		times(&stap, &link12, link3);        // stap=link12*link3
 
 		//twist (anticlockwise plaquette) modification
 		times_equal_complex(&stap, GC->Z[k][dirs_to_si(j, i)]); // Z_\mu\nu(x-\nu) * staple
@@ -1136,14 +1137,14 @@ void compute_topostaple_alone(Gauge_Conf const *const GC,
 		// clover insertion in (c)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, k, i0, j0);
 		times(&aux, &link12, &clover_insertion); // link1^{dag}*link2^{dag}*clover
-		times_equal(&aux, &link3);               // *=link3
+		times_equal(&aux, link3);               // *=link3
 		minus_equal(topo_stap, &aux);
 
 		// clover insertion in (d)
 		compute_single_clover_insertion(&clover_insertion, GC, geo, param, nnp(geo, k, i), i0, j0);
-		times_dag1(&aux, &link1, &clover_insertion); // link1^{dag}*clover
-		times_equal_dag(&aux, &link2);               // *=link2^{dag}
-		times_equal(&aux, &link3);                   // *=link3
+		times_dag1(&aux, link1, &clover_insertion); // link1^{dag}*clover
+		times_equal_dag(&aux, link2);               // *=link2^{dag}
+		times_equal(&aux, link3);                   // *=link3
 		minus_equal(topo_stap, &aux);
 		}
 	times_equal_real(topo_stap, coeff); // topo_stap *= coeff

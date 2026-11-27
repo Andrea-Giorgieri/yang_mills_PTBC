@@ -77,7 +77,7 @@ static double lattice_sum_device(Gauge_Conf *gc, int const which, long const V)
 // GAUGE_GROUP is not initialized; NaN counts as different); otherwise prints the number of different links and the
 // first one (raw doubles of a and b, NaN flags).
 // Not with equal/minus_equal/norm on a temporary: in SU(2) nvc (25.11, 26.1, -O3 -acc) miscompiles that loop
-// once inlined in test_gauge_conf_data (the temporary is not recomputed per link, see PORTING_GPU.md, phase 9)
+// once inlined in test_gauge_conf_data (the temporary is not recomputed per link, see PORTING_GPU.md)
 static int same_lattice(GAUGE_GROUP **a, GAUGE_GROUP **b, long const V)
 	{
 	// number of doubles in comp (comp can be an array of double complex: bytes first, then doubles)

@@ -324,6 +324,32 @@ static inline void times_dag12_U1(U1 *restrict A,
 	}
 
 
+// fused products for the staples (generic interface of gauge_group.h; for U(1) just the sequence of functions)
+
+// A+=r*(B*C^{dag})
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_dag2_complex_U1(U1 *restrict A, U1 const *const restrict B,
+                                                    U1 const *const restrict C, double complex const r)
+	{
+	U1 aux;
+	times_dag2_U1(&aux, B, C);
+	times_equal_complex_U1(&aux, r);
+	plus_equal_U1(A, &aux);
+	}
+
+
+// A+=r*(B*C)
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_complex_U1(U1 *restrict A, U1 const *const restrict B,
+                                               U1 const *const restrict C, double complex const r)
+	{
+	U1 aux;
+	times_U1(&aux, B, C);
+	times_equal_complex_U1(&aux, r);
+	plus_equal_U1(A, &aux);
+	}
+
+
 // linear combinations
 
 // A=b*B+c*C

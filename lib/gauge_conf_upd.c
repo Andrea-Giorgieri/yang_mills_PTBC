@@ -34,8 +34,7 @@ void calcstaples_wilson(Gauge_Conf const *const GC,
 	(void) param;
 	#endif
 
-	double complex factor;
-	GAUGE_GROUP link1, link2, link3, link12, stap;
+	GAUGE_GROUP link12;
 
 	zero(M);
 
@@ -62,20 +61,9 @@ void calcstaples_wilson(Gauge_Conf const *const GC,
 		//      r    (3)
 		//
 
-		// staple
-		equal(&link1, &(GC->lattice[rpi][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rpj][i])); // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));   // link3 = (3)
-
-		times_dag2(&link12, &link1, &link2); // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap = link12 * link3^{dag}
-
-		// twist (clockwise plaquette) modification
-		factor = GC->Z[r][dirs_to_si(i, j)]; // Z_\mu\nu(x)
-		times_equal_complex(&stap, factor);  // Z_\mu\nu(x) * staple
-
-		// accumulate M
-		plus_equal(M, &stap);
+		// staple: link12 = (1) * (2)^{dag}, M += Z_\mu\nu(x) * link12 * (3)^{dag} (twist, clockwise plaquette)
+		times_dag2(&link12, &(GC->lattice[rpi][j]), &(GC->lattice[rpj][i]));
+		plus_equal_times_dag2_complex(M, &link12, &(GC->lattice[r][j]), GC->Z[r][dirs_to_si(i, j)]);
 
 		//
 		//    i ^
@@ -90,20 +78,9 @@ void calcstaples_wilson(Gauge_Conf const *const GC,
 		//           (3)    r
 		//
 
-		// staple
-		equal(&link1, &(GC->lattice[rpimj][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rmj][i]));   // link2 = (2)
-		equal(&link3, &(GC->lattice[rmj][j]));   // link3 = (3)
-
-		times_dag12(&link12, &link1, &link2); // link12 = link1^{dag} * link2^{dag}
-		times(&stap, &link12, &link3);        // stap = link12 * link3
-
-		// twist (anticlockwise plaquette) modification
-		factor = GC->Z[rmj][dirs_to_si(j, i)]; // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		times_equal_complex(&stap, factor);    // Z_\mu\nu(x-\nu) * staple
-
-		// accumulate M
-		plus_equal(M, &stap);
+		// staple: link12 = (1)^{dag} * (2)^{dag}, M += Z_\nu\mu(x-\nu) * link12 * (3) (twist, anticlockwise plaquette)
+		times_dag12(&link12, &(GC->lattice[rpimj][j]), &(GC->lattice[rmj][i]));
+		plus_equal_times_complex(M, &link12, &(GC->lattice[rmj][j]), GC->Z[rmj][dirs_to_si(j, i)]);
 		}
 	}
 
@@ -167,7 +144,8 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 	// Q_{\mu\nu} is the clover on the plane (\mu,\nu)
 	// GC->clover_array[r][mu][nu] = (Q - Q^{dag})_{\mu\nu}(r)
 
-	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
+	GAUGE_GROUP const *link1, *link2, *link3; // links read in place (no copies)
+	GAUGE_GROUP link12, stap, topo_stap, topo_M, aux;
 	double complex factor;
 
 	zero(M);
@@ -214,12 +192,12 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 		//
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[rpi][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rpj][i])); // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));   // link3 = (3)
+		link1 = &(GC->lattice[rpi][j]); // link1 = (1)
+		link2 = &(GC->lattice[rpj][i]); // link2 = (2)
+		link3 = &(GC->lattice[r][j]);   // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2); // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap = link12 * link3^{dag}
+		times_dag2(&link12, link1, link2); // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, link3);  // stap = link12 * link3^{dag}
 
 		// clover insertion in (a)
 		times(&aux, &stap, CAr);    // stap * clover
@@ -232,15 +210,15 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link1, CArpipj);   // link1 * clover
-		times_equal_dag(&aux, &link2);  // *= link2^{dag}
-		times_equal_dag(&aux, &link3);  // *= link3^{dag}
+		times(&aux, link1, CArpipj);   // link1 * clover
+		times_equal_dag(&aux, link2);  // *= link2^{dag}
+		times_equal_dag(&aux, link3);  // *= link3^{dag}
 		times_equal_real(&aux, Zrpipj); // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
 		times(&aux, &link12, CArpj);   // link1 * link2 * clover
-		times_equal_dag(&aux, &link3); // *= link3^{dag}
+		times_equal_dag(&aux, link3); // *= link3^{dag}
 		times_equal_real(&aux, Zrpj);  // bulk factor
 		plus_equal(&topo_stap, &aux);
 
@@ -267,12 +245,12 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 		//
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[rpimj][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rmj][i]));   // link2 = (2)
-		equal(&link3, &(GC->lattice[rmj][j]));   // link3 = (3)
+		link1 = &(GC->lattice[rpimj][j]); // link1 = (1)
+		link2 = &(GC->lattice[rmj][i]);   // link2 = (2)
+		link3 = &(GC->lattice[rmj][j]);   // link3 = (3)
 
-		times_dag12(&link12, &link1, &link2); // link12 = link1^{dag} * link2^{dag}
-		times(&stap, &link12, &link3);        // stap = link12 * link3
+		times_dag12(&link12, link1, link2); // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, link3);        // stap = link12 * link3
 
 		// clover insertion in (a)
 		times(&aux, CArpi, &stap);    // clover * stap
@@ -286,14 +264,14 @@ void calcstaples_with_topo(Gauge_Conf const *const GC,
 
 		// clover insertion in (c)
 		times(&aux, &link12, CArmj);  // link1^{dag} * link2^{dag} * clover
-		times_equal(&aux, &link3);    // *= link3
+		times_equal(&aux, link3);    // *= link3
 		times_equal_real(&aux, Zrmj); // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times_dag1(&aux, &link1, CArpimj); // link1^{dag} * clover
-		times_equal_dag(&aux, &link2);     // *= link2^{dag}
-		times_equal(&aux, &link3);         // *= link3
+		times_dag1(&aux, link1, CArpimj); // link1^{dag} * clover
+		times_equal_dag(&aux, link2);     // *= link2^{dag}
+		times_equal(&aux, link3);         // *= link3
 		times_equal_real(&aux, Zrpimj);    // bulk factor
 		plus_equal(&topo_stap, &aux);
 
@@ -442,14 +420,15 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 	ASSERT_DEV(i < STDIM, "i too large: %d >= %d", i, STDIM);
 	#endif
 
-	GAUGE_GROUP link1, link2, link3, link12, stap;
-	double complex factor;
+	GAUGE_GROUP link12;
 
 	zero(M);
 
 	long const rpi = nnp(geo, r, i);
 	double const c_def = replica_defect_coeff(GC, param); // boundary condition coefficient on the defect
 
+	// links read in place and staples accumulated with their factor without a temporary matrix (fewer temporaries
+	// per thread on the GPU)
 	for(int l = i + 1; l < i + STDIM; l++)
 		{
 		int const j = l % STDIM;
@@ -471,21 +450,10 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 		//      r    (3)
 		//
 
-		// staple
-		equal(&link1, &(GC->lattice[rpi][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rpj][i])); // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));   // link3 = (3)
-
-		times_dag2(&link12, &link1, &link2); // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap = link12 * link3^{dag}
-
-		// boundary condition and twist (clockwise plaquette) modification
-		factor = GC->Z[r][dirs_to_si(i, j)];                               // Z_\mu\nu(x)
-		factor *= plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_def); // *= K_\mu\nu(x)
-		times_equal_complex(&stap, factor);                                // K_\mu\nu(x) * Z_\mu\nu(x) * staple
-
-		// accumulate M
-		plus_equal(M, &stap);
+		// staple: link12 = (1) * (2)^{dag}, M += K_\mu\nu(x) * Z_\mu\nu(x) * link12 * (3)^{dag}
+		// (boundary condition and twist, clockwise plaquette)
+		times_dag2(&link12, &(GC->lattice[rpi][j]), &(GC->lattice[rpj][i]));
+		plus_equal_times_dag2_complex(M, &link12, &(GC->lattice[r][j]), plaquette_defect_coeff(geo, param, r, rpi, rpj, i, j, c_def) * GC->Z[r][dirs_to_si(i, j)]);
 
 		//
 		//    i ^
@@ -500,21 +468,10 @@ void calcstaples_wilson_with_defect(Gauge_Conf const *const GC,
 		//           (3)    r
 		//
 
-		// staple
-		equal(&link1, &(GC->lattice[rpimj][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rmj][i]));   // link2 = (2)
-		equal(&link3, &(GC->lattice[rmj][j]));   // link3 = (3)
-
-		times_dag12(&link12, &link1, &link2); // link12 = link1^{dag} * link2^{dag}
-		times(&stap, &link12, &link3);        // stap = link12 * link3
-
-		// boundary condition and twist (anticlockwise plaquette) modification
-		factor = GC->Z[rmj][dirs_to_si(j, i)];                                // Z_\nu\mu(x-\nu) = conj(Z_\mu\nu(x-\nu))
-		factor *= plaquette_defect_coeff(geo, param, rmj, rpimj, r, i, j, c_def); // *= K_\mu\nu(x-\nu)
-		times_equal_complex(&stap, factor);                                   // K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * staple
-
-		// accumulate M
-		plus_equal(M, &stap);
+		// staple: link12 = (1)^{dag} * (2)^{dag}, M += K_\mu\nu(x-\nu) * Z_\nu\mu(x-\nu) * link12 * (3)
+		// (boundary condition and twist, anticlockwise plaquette)
+		times_dag12(&link12, &(GC->lattice[rpimj][j]), &(GC->lattice[rmj][i]));
+		plus_equal_times_complex(M, &link12, &(GC->lattice[rmj][j]), plaquette_defect_coeff(geo, param, rmj, rpimj, r, i, j, c_def) * GC->Z[rmj][dirs_to_si(j, i)]);
 		}
 	}
 
@@ -544,7 +501,8 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 	// Q_{\mu\nu} is the clover on the plane (\mu,\nu)
 	// GC->clover_array[r][mu][nu] = (Q - Q^{dag})_{\mu\nu}(r)
 
-	GAUGE_GROUP link1, link2, link3, link12, stap, topo_stap, topo_M, aux;
+	GAUGE_GROUP const *link1, *link2, *link3; // links read in place (no copies)
+	GAUGE_GROUP link12, stap, topo_stap, topo_M, aux;
 
 	double const topo_staple_coeff = (param->d_theta) * ((double) NCOLOR) / (param->d_beta * 128.0 * PI * PI);
 	double complex factor;
@@ -594,12 +552,12 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 		//
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[rpi][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rpj][i])); // link2 = (2)
-		equal(&link3, &(GC->lattice[r][j]));   // link3 = (3)
+		link1 = &(GC->lattice[rpi][j]); // link1 = (1)
+		link2 = &(GC->lattice[rpj][i]); // link2 = (2)
+		link3 = &(GC->lattice[r][j]);   // link3 = (3)
 
-		times_dag2(&link12, &link1, &link2); // link12 = link1 * link2^{dag}
-		times_dag2(&stap, &link12, &link3);  // stap = link12 * link3^{dag}
+		times_dag2(&link12, link1, link2); // link12 = link1 * link2^{dag}
+		times_dag2(&stap, &link12, link3);  // stap = link12 * link3^{dag}
 
 		// clover insertion in (a)
 		times(&aux, &stap, CAr);    // stap * clover
@@ -612,15 +570,15 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (c)
-		times(&aux, &link1, CArpipj);   // link1 * clover
-		times_equal_dag(&aux, &link2);  // *= link2^{dag}
-		times_equal_dag(&aux, &link3);  // *= link3^{dag}
+		times(&aux, link1, CArpipj);   // link1 * clover
+		times_equal_dag(&aux, link2);  // *= link2^{dag}
+		times_equal_dag(&aux, link3);  // *= link3^{dag}
 		times_equal_real(&aux, Zrpipj); // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
 		times(&aux, &link12, CArpj);   // link1 * link2 * clover
-		times_equal_dag(&aux, &link3); // *= link3^{dag}
+		times_equal_dag(&aux, link3); // *= link3^{dag}
 		times_equal_real(&aux, Zrpj);  // bulk factor
 		plus_equal(&topo_stap, &aux);
 
@@ -648,12 +606,12 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 		//
 
 		// non-topo staple
-		equal(&link1, &(GC->lattice[rpimj][j])); // link1 = (1)
-		equal(&link2, &(GC->lattice[rmj][i]));   // link2 = (2)
-		equal(&link3, &(GC->lattice[rmj][j]));   // link3 = (3)
+		link1 = &(GC->lattice[rpimj][j]); // link1 = (1)
+		link2 = &(GC->lattice[rmj][i]);   // link2 = (2)
+		link3 = &(GC->lattice[rmj][j]);   // link3 = (3)
 
-		times_dag12(&link12, &link1, &link2); // link12 = link1^{dag} * link2^{dag}
-		times(&stap, &link12, &link3);        // stap = link12 * link3
+		times_dag12(&link12, link1, link2); // link12 = link1^{dag} * link2^{dag}
+		times(&stap, &link12, link3);        // stap = link12 * link3
 
 		// clover insertion in (a)
 		times(&aux, CArpi, &stap);    // clover * stap
@@ -667,14 +625,14 @@ void calcstaples_with_topo_with_defect(Gauge_Conf const *const GC,
 
 		// clover insertion in (c)
 		times(&aux, &link12, CArmj);  // link1^{dag} * link2^{dag} * clover
-		times_equal(&aux, &link3);    // *= link3
+		times_equal(&aux, link3);    // *= link3
 		times_equal_real(&aux, Zrmj); // bulk factor
 		plus_equal(&topo_stap, &aux);
 
 		// clover insertion in (d)
-		times_dag1(&aux, &link1, CArpimj); // link1^{dag} * clover
-		times_equal_dag(&aux, &link2);     // *= link2^{dag}
-		times_equal(&aux, &link3);         // *= link3
+		times_dag1(&aux, link1, CArpimj); // link1^{dag} * clover
+		times_equal_dag(&aux, link2);     // *= link2^{dag}
+		times_equal(&aux, link3);         // *= link3
 		times_equal_real(&aux, Zrpimj);    // bulk factor
 		plus_equal(&topo_stap, &aux);
 

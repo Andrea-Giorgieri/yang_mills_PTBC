@@ -952,6 +952,51 @@ static inline int scheck_SuN(SuN const *const restrict A)
 	}
 
 
+// fused products for the staples: no temporary matrix. Every element is computed with the same
+// operations, in the same order, as the sequence of the separate functions named in the comment.
+
+// A+=r*(B*C^{dag}) = times_dag2_SuN(aux, B, C); times_equal_complex_SuN(aux, r); plus_equal_SuN(A, aux)
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_dag2_complex_SuN(SuN *restrict A, SuN const *const restrict B,
+                                                     SuN const *const restrict C, double complex const r)
+	{
+	for(int i = 0; i < NCOLOR; i++)
+		{
+		for(int j = 0; j < NCOLOR; j++)
+			{
+			double complex sum = 0.0 + 0.0 * I;
+			for(int k = 0; k < NCOLOR; k++)
+				{
+				sum += B->comp[m(i, k)] * conj(C->comp[m(j, k)]);
+				}
+			sum *= r;
+			A->comp[m(i, j)] += sum;
+			}
+		}
+	}
+
+
+// A+=r*(B*C) = times_SuN(aux, B, C); times_equal_complex_SuN(aux, r); plus_equal_SuN(A, aux)
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_complex_SuN(SuN *restrict A, SuN const *const restrict B,
+                                                SuN const *const restrict C, double complex const r)
+	{
+	for(int i = 0; i < NCOLOR; i++)
+		{
+		for(int j = 0; j < NCOLOR; j++)
+			{
+			double complex sum = 0.0 + 0.0 * I;
+			for(int k = 0; k < NCOLOR; k++)
+				{
+				sum += B->comp[m(i, k)] * C->comp[m(k, j)];
+				}
+			sum *= r;
+			A->comp[m(i, j)] += sum;
+			}
+		}
+	}
+
+
 // SU(2) subgroups
 
 // given the NxN matrix "in", extracts the i, j lines and column and
@@ -959,22 +1004,24 @@ static inline int scheck_SuN(SuN const *const restrict A)
 // 4 xi^2 = redet2[s-s^(dag)+1*tr(s^(dag))]
 // u = [s-s^(dag)+1*tr(s^(dag))]/2/xi
 // (see Kennedy, Pendleton Phys. Lett. B 156, 393 (1985))
+// (the same from the four elements in_ii, in_ij, in_ji, in_jj of "in", used by ennetodue and ennetodue_times)
 ACC_ROUTINE_SEQ
-static inline void ennetodue(SuN const *const in, int const i, int const j, double *xi, Su2 *u)
+static inline void ennetodue_elements(double complex const in_ii, double complex const in_ij, double complex const in_ji,
+                                      double complex const in_jj, double *xi, Su2 *u)
 	{
 	double s[2][2][2], aux_re[2][2], aux_im[2][2];
 
-	s[0][0][0] = creal(in->comp[m(i, i)]);
-	s[0][0][1] = cimag(in->comp[m(i, i)]);
+	s[0][0][0] = creal(in_ii);
+	s[0][0][1] = cimag(in_ii);
 
-	s[0][1][0] = creal(in->comp[m(i, j)]);
-	s[0][1][1] = cimag(in->comp[m(i, j)]);
+	s[0][1][0] = creal(in_ij);
+	s[0][1][1] = cimag(in_ij);
 
-	s[1][0][0] = creal(in->comp[m(j, i)]);
-	s[1][0][1] = cimag(in->comp[m(j, i)]);
+	s[1][0][0] = creal(in_ji);
+	s[1][0][1] = cimag(in_ji);
 
-	s[1][1][0] = creal(in->comp[m(j, j)]);
-	s[1][1][1] = cimag(in->comp[m(j, j)]);
+	s[1][1][0] = creal(in_jj);
+	s[1][1][1] = cimag(in_jj);
 
 	aux_re[0][0] = s[0][0][0] + s[1][1][0];
 	aux_im[0][0] = s[0][0][1] - s[1][1][1];
@@ -1005,6 +1052,36 @@ static inline void ennetodue(SuN const *const in, int const i, int const j, doub
 	u->comp[1] = aux_im[0][1];
 	u->comp[2] = aux_re[0][1];
 	u->comp[3] = aux_im[0][0];
+	}
+
+
+ACC_ROUTINE_SEQ
+static inline void ennetodue(SuN const *const in, int const i, int const j, double *xi, Su2 *u)
+	{
+	ennetodue_elements(in->comp[m(i, i)], in->comp[m(i, j)], in->comp[m(j, i)], in->comp[m(j, j)], xi, u);
+	}
+
+
+// element (a, b) of B*C
+ACC_ROUTINE_SEQ
+static inline double complex times_element_SuN(SuN const *const B, SuN const *const C, int const a, int const b)
+	{
+	double complex sum = 0.0 + 0.0 * I;
+	for(int k = 0; k < NCOLOR; k++)
+		{
+		sum += B->comp[m(a, k)] * C->comp[m(k, b)];
+		}
+	return sum;
+	}
+
+
+// ennetodue of the product B*C without forming it: only the four elements needed by the (i, j) subgroup are computed
+// (4 N complex products instead of N^3; same values as times_equal_SuN followed by ennetodue)
+ACC_ROUTINE_SEQ
+static inline void ennetodue_times(SuN const *const B, SuN const *const C, int const i, int const j, double *xi, Su2 *u)
+	{
+	ennetodue_elements(times_element_SuN(B, C, i, i), times_element_SuN(B, C, i, j), times_element_SuN(B, C, j, i),
+	                   times_element_SuN(B, C, j, j), xi, u);
 	}
 
 

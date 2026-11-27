@@ -21,8 +21,8 @@
 //   ACC_VL_UPD   update, cooling, clovers, accept/restore with unitarization (no meaningful effect with no reductions)
 //   ACC_VL_FLOW  steps of the gradient flow
 //   ACC_VL_MEAS  measures and the reductions that drive decisions (plaquette sums of the swaps, multicanonic delta Q)
-// Defaults from phase 8b.1: 32 for the update (small rectangles of the hierarchical update spread over more SMs;
-// full-lattice kernels unchanged), 128 for flow and measures (32 brings nothing there).
+// Defaults (from benchmarks on A100): 32 for the update (small rectangles of the hierarchical update spread over more
+// SMs; full-lattice kernels unchanged), 128 for flow and measures (32 brings nothing there).
 #ifndef ACC_VL_UPD
 #define ACC_VL_UPD 32
 #endif

@@ -17,7 +17,6 @@
 ACC_ROUTINE_SEQ
 static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GParam const *const param, rng_t *rng)
 	{
-	SuN aux;
 	Su2 u, v, w;
 	double xi, p0;
 	double complex temp0, temp1;
@@ -27,9 +26,8 @@ static inline void single_heatbath_SuN(SuN *link, SuN const *const staple, GPara
 		{
 		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			equal_SuN(&aux, staple);     // aux=staple
-			times_equal_SuN(&aux, link); // aux=staple*link
-			ennetodue(&aux, i, j, &xi, &u);
+			// subgroup (i, j) of staple*link: only its four elements are computed
+			ennetodue_times(staple, link, i, j, &xi, &u);
 
 			xi *= param->d_beta * 2.0 / (double) NCOLOR;
 
@@ -131,7 +129,6 @@ static inline void single_overrelaxation_SuN(SuN *link, SuN const *const staple,
 	{
 	(void) rng; // random numbers are not needed in SU(N), N>2 (kept for a uniform interface)
 
-	SuN prod;
 	Su2 u, v;
 	double xi;
 
@@ -139,9 +136,8 @@ static inline void single_overrelaxation_SuN(SuN *link, SuN const *const staple,
 		{
 		for(int j = i + 1; j < NCOLOR; j++)
 			{
-			equal_SuN(&prod, staple);     // prod=staple
-			times_equal_SuN(&prod, link); // prod=staple*link
-			ennetodue(&prod, i, j, &xi, &u);
+			// subgroup (i, j) of staple*link, only its four elements are computed
+			ennetodue_times(staple, link, i, j, &xi, &u);
 
 			if(xi > MIN_VALUE)
 				{

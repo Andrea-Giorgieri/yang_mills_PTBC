@@ -385,6 +385,32 @@ static inline void times_dag12_Su2(Su2 *restrict A, Su2 const *const restrict B,
 	}
 
 
+// fused products for the staples (generic interface of gauge_group.h; for SU(2) just the sequence of functions)
+
+// A+=r*(B*C^{dag})
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_dag2_complex_Su2(Su2 *restrict A, Su2 const *const restrict B,
+                                                     Su2 const *const restrict C, double complex const r)
+	{
+	Su2 aux;
+	times_dag2_Su2(&aux, B, C);
+	times_equal_complex_Su2(&aux, r);
+	plus_equal_Su2(A, &aux);
+	}
+
+
+// A+=r*(B*C)
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_complex_Su2(Su2 *restrict A, Su2 const *const restrict B,
+                                                Su2 const *const restrict C, double complex const r)
+	{
+	Su2 aux;
+	times_Su2(&aux, B, C);
+	times_equal_complex_Su2(&aux, r);
+	plus_equal_Su2(A, &aux);
+	}
+
+
 // linear combinations
 
 // A=b*B+c*C

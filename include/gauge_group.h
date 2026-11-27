@@ -143,6 +143,20 @@ static inline void times_dag12(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE
 	GAUGE_IMPL(times_dag12)(A, B, C);
 	}
 
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_dag2_complex(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C,
+                                                 double complex const r)
+	{
+	GAUGE_IMPL(plus_equal_times_dag2_complex)(A, B, C, r);
+	}
+
+ACC_ROUTINE_SEQ
+static inline void plus_equal_times_complex(GAUGE_GROUP *A, GAUGE_GROUP const *const B, GAUGE_GROUP const *const C,
+                                            double complex const r)
+	{
+	GAUGE_IMPL(plus_equal_times_complex)(A, B, C, r);
+	}
+
 
 // linear combinations
 

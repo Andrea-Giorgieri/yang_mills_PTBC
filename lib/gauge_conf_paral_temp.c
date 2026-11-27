@@ -19,6 +19,8 @@
 #include "../include/memalign.h"
 #include "../include/random.h"
 
+// conf_translation copies the links as arrays of doubles
+_Static_assert(sizeof(GAUGE_GROUP) % sizeof(double) == 0, "GAUGE_GROUP must be made of doubles");
 
 // sums P1 and P2 of the configuration GC entering the swap action differences (see swap_group), on the device of GC:
 //   P_n = sum_{r in swap_rect, j != mu, n links of the plaquette (r,mu,j) on the defect} ReTr(Z plaq(r,mu,j))/N_c
@@ -58,6 +60,107 @@ void swap_plaquette_sums(Gauge_Conf const *const GC, Geometry const *const geo, 
 
 	*P1 = p1;
 	*P2 = p2;
+	}
+
+
+// sites of the swap rectangle summed by one gang in swap_plaquette_sums_replica
+#define SWAP_SUM_CHUNK 1024
+
+// sums P1[g], P2[g] of swap_plaquette_sums for all the configurations GC[g], 0 <= g < N_replica_pt.
+// On the devices a single reduction per configuration would cost a launch and a wait each (the host thread drives all
+// the devices in turn): instead every device runs one kernel over all its slots, in which each gang sums a chunk of
+// SWAP_SUM_CHUNK sites of one slot into acc_counters->swap_partial, copied back in the same queue; the kernels and the
+// copies of all the devices are queued before waiting once per device, then the chunks are added on the host in a
+// fixed order (same result in every run, equal to the single reduction up to rounding).
+// On the host (no device data): swap_plaquette_sums for every configuration.
+static void swap_plaquette_sums_replica(Gauge_Conf const *const GC, Geometry const *const geo, GParam const *const param,
+                                        Rectangle const *const swap_rectangle, Acc_Utils *const acc_counters,
+                                        double *const P1, double *const P2)
+	{
+	int const Nr = param->d_N_replica_pt;
+
+	#ifdef OPENACC_MODE
+	if(gc_on_device(&(GC[0])))
+		{
+		int const mu = param->d_defect_dir; // swaps change only the plaquettes (mu, j), j != mu, around the defect
+		long const vol_rect = swap_rectangle->d_vol_rect;
+		long const n_chunk = (vol_rect + SWAP_SUM_CHUNK - 1) / SWAP_SUM_CHUNK;
+		long const n_part = 2 * (long) Nr * n_chunk; // part[2 * q], part[2 * q + 1]: P1, P2 of chunk q = g * n_chunk + c
+
+		if(acc_counters->swap_partial_size != n_part)
+			{
+			free_double_on_devices(acc_counters->swap_partial, acc_counters->swap_partial_size);
+			acc_counters->swap_partial = alloc_double_on_devices(n_part);
+			acc_counters->swap_partial_size = n_part;
+			}
+		double *const part = acc_counters->swap_partial;
+
+		FOR_EACH_DEVICE(d)
+			{
+			select_device(d);
+			long const first = device_slot_begin(d);
+			long const n_sl = device_slot_end(d) - first;
+			long const q_begin = first * n_chunk;
+			long const n_q = n_sl * n_chunk;
+			if(n_q == 0) continue;
+
+			// one gang per chunk, the vector lanes of the gang reduce its sites
+			#pragma acc parallel loop gang vector_length(ACC_VL_MEAS) present(GC[first:n_sl], geo[0:1], param[0:1], swap_rectangle[0:1], part[2 * q_begin : 2 * n_q]) async(QUEUE_DEVICE)
+			for(long q = q_begin; q < q_begin + n_q; q++)
+				{
+				long const g = q / n_chunk;
+				long const begin = (q - g * n_chunk) * SWAP_SUM_CHUNK;
+				long const end = (begin + SWAP_SUM_CHUNK < vol_rect) ? begin + SWAP_SUM_CHUNK : vol_rect;
+				double p1 = 0.0, p2 = 0.0;
+
+				#pragma acc loop vector reduction(+:p1, p2)
+				for(long n = begin; n < end; n++)
+					{
+					long const r = swap_rectangle->rect_sites[n];
+					long const rpmu = nnp(geo, r, mu);
+					for(int i = 0; i < STDIM - 1; i++)
+						{
+						int const j = geo->d_orth_dir[mu][i];
+						int const n_def = plaquette_defect_links(geo, param, r, rpmu, nnp(geo, r, j), mu, j);
+						if(n_def == 1)
+							p1 += plaquettep(&(GC[g]), geo, param, r, mu, j);
+						else if(n_def == 2)
+							p2 += plaquettep(&(GC[g]), geo, param, r, mu, j);
+						}
+					}
+				part[2 * q] = p1;
+				part[2 * q + 1] = p2;
+				}
+
+			#pragma acc update self(part[2 * q_begin : 2 * n_q]) async(QUEUE_DEVICE)
+			}
+
+		FOR_EACH_DEVICE(d)
+			{
+			select_device(d);
+			wait_device_queue(1);
+			}
+
+		for(int g = 0; g < Nr; g++)
+			{
+			P1[g] = 0.0;
+			P2[g] = 0.0;
+			for(long c = 0; c < n_chunk; c++)
+				{
+				P1[g] += part[2 * (g * n_chunk + c)];
+				P2[g] += part[2 * (g * n_chunk + c) + 1];
+				}
+			}
+		return; // sums done: the loop below is only for configurations without device data
+		}
+	#else
+	(void) acc_counters;
+	#endif
+
+	// reached without OPENACC_MODE, or with OPENACC_MODE when the configurations have no device data (init_device_data
+	// not called, or force_host_compute): every swap_plaquette_sums then runs on the host
+	for(int g = 0; g < Nr; g++)
+		swap_plaquette_sums(&(GC[g]), geo, param, swap_rectangle, &(P1[g]), &(P2[g]));
 	}
 
 
@@ -133,8 +236,7 @@ void swap(Gauge_Conf *const GC, Geometry const *const geo, GParam const *const p
 		double *P1, *P2;
 		allocate_array_double(&P1, param->d_N_replica_pt, __FILE__, __LINE__);
 		allocate_array_double(&P2, param->d_N_replica_pt, __FILE__, __LINE__);
-		for(int g = 0; g < param->d_N_replica_pt; g++)
-			swap_plaquette_sums(&(GC[g]), geo, param, swap_rectangle, &(P1[g]), &(P2[g]));
+		swap_plaquette_sums_replica(GC, geo, param, swap_rectangle, acc_counters, P1, P2);
 
 		swap_group(GC, param, acc_counters, is_even_first, num_swaps_1, P1, P2);     // first group
 		swap_group(GC, param, acc_counters, 1 - is_even_first, num_swaps_2, P1, P2); // second group: reverse parity
@@ -201,27 +303,58 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 	int const dev = gc_on_device(GC);
 	(void) dev;
 
+	// The fields are contiguous blocks [volume][row] (lattice: STDIM links, Z: n_planes + 1 factors per site) and the
+	// translation only moves whole rows: both loops below copy one double per iteration, so that consecutive threads
+	// access consecutive addresses (a thread per link copying a whole matrix makes strided accesses and reaches a small
+	// fraction of the memory bandwidth). Segments of the iteration index: lattice, [cold lattice,] Z.
+	long const V = param->d_volume;
+	long const w_lat = (long) (STDIM * sizeof(GAUGE_GROUP) / sizeof(double)); // doubles per site of a lattice
+	long const w_Z = 2 * (long) (param->d_n_planes + 1);                       // doubles per site of Z
+	long const n_lat = V * w_lat;
+	#ifdef MULTICANONICAL_MODE
+	long const n_lat_all = 2 * n_lat; // lattice and lattice_cold
+	#else
+	long const n_lat_all = n_lat;
+	#endif
+
 	// translation in direction +dir, including the Z factors and cold lattice (read from the auxiliary copies, equal
-	// to the accepted configuration)
+	// to the accepted configuration): row r = row nnm(r, dir) of the copy
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], geo[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], geo[0:1]) firstprivate(dir, n_lat, n_lat_all, w_lat, w_Z) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long s = 0; s < (param->d_n_planes + 1) * (param->d_volume); s++)
+	for(long t = 0; t < n_lat_all + V * w_Z; t++)
 		{
-		// s = j * volume + r
-		long const r = s % (param->d_volume);
-		int const j = (int) ((s - r) / (param->d_volume));
-		if(j < STDIM)
+		double *dst;
+		double const *src;
+		long u, w;
+		if(t < n_lat)
 			{
-			equal(&(GC->lattice[r][j]), &(GC->lattice_copy[nnm(geo, r, dir)][j]));
-			#ifdef MULTICANONICAL_MODE
-			equal(&(GC->lattice_cold[r][j]), &(GC->lattice_copy_cold[nnm(geo, r, dir)][j]));
-			#endif
+			u = t;
+			w = w_lat;
+			dst = (double *) &(GC->lattice[0][0]);
+			src = (double const *) &(GC->lattice_copy[0][0]);
 			}
-		GC->Z[r][j] = GC->Z_copy[nnm(geo, r, dir)][j];
+		#ifdef MULTICANONICAL_MODE
+		else if(t < n_lat_all)
+			{
+			u = t - n_lat;
+			w = w_lat;
+			dst = (double *) &(GC->lattice_cold[0][0]);
+			src = (double const *) &(GC->lattice_copy_cold[0][0]);
+			}
+		#endif
+		else
+			{
+			u = t - n_lat_all;
+			w = w_Z;
+			dst = (double *) &(GC->Z[0][0]);
+			src = (double const *) &(GC->Z_copy[0][0]);
+			}
+		long const r = u / w;
+		dst[u] = src[nnm(geo, r, dir) * w + (u - r * w)];
 		}
 
 	// swap translated cold lattice with previous cold lattice
@@ -229,23 +362,19 @@ void conf_translation(Gauge_Conf *const GC, Geometry const *const geo, GParam co
 	swap_lattice_cold(GC);
 	#endif
 
-	// update the auxiliary confs
+	// update the auxiliary confs: lattice_copy = lattice, Z_copy = Z
 	#ifdef OPENACC_MODE
-	#pragma acc parallel loop gang vector if(dev) present(GC[0:1], param[0:1]) async(QUEUE_DEVICE)
+	#pragma acc parallel loop gang vector if(dev) present(GC[0:1]) firstprivate(n_lat) async(QUEUE_DEVICE)
 	#endif
 	#ifdef OPENMP_MODE
 	#pragma omp parallel for num_threads(NTHREADS)
 	#endif
-	for(long s = 0; s < (param->d_n_planes + 1) * (param->d_volume); s++)
+	for(long t = 0; t < n_lat + V * w_Z; t++)
 		{
-		// s = j * volume + r
-		long const r = s % (param->d_volume);
-		int const j = (int) ((s - r) / (param->d_volume));
-		if(j < STDIM)
-			{
-			equal(&(GC->lattice_copy[r][j]), &(GC->lattice[r][j]));
-			}
-		GC->Z_copy[r][j] = GC->Z[r][j];
+		if(t < n_lat)
+			((double *) &(GC->lattice_copy[0][0]))[t] = ((double const *) &(GC->lattice[0][0]))[t];
+		else
+			((double *) &(GC->Z_copy[0][0]))[t - n_lat] = ((double const *) &(GC->Z[0][0]))[t - n_lat];
 		}
 	}
 
@@ -297,6 +426,10 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 	for(int a = 0; a < param->d_N_replica_pt; a++)
 		acc_counters->replica_to_gc[a] = a;
 
+	// allocated at the first swap on the devices (its size depends on the swap rectangle)
+	acc_counters->swap_partial = NULL;
+	acc_counters->swap_partial_size = 0;
+
 	if(param->d_N_replica_pt == 1)
 		{
 		acc_counters->num_accepted_swap = NULL;
@@ -328,6 +461,7 @@ void init_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 void free_acc_utils(Acc_Utils *acc_counters, GParam const *const param)
 	{
 	free(acc_counters->replica_to_gc);
+	free_double_on_devices(acc_counters->swap_partial, acc_counters->swap_partial_size);
 
 	if(param->d_N_replica_pt > 1)
 		{

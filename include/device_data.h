@@ -78,8 +78,14 @@ void copy_gauge_conf_to_device(Gauge_Conf *GC, GParam const *param, int fields);
 void copy_gauge_conf_replica_to_host(Gauge_Conf *GC, GParam const *param, int fields);
 void copy_gauge_conf_replica_to_device(Gauge_Conf *GC, GParam const *param, int fields);
 
-// copy replica_index of all the configurations to their devices (after the swaps)
+// copy replica_index of all the configurations to their devices (after the swaps), in the queue QUEUE_DEVICE without
+// waiting: the kernels that follow in the queue read the new value
 void copy_replica_index_to_device(Gauge_Conf *GC, GParam const *param);
+
+// host array of n doubles, also allocated (not copied) on every used device; free_double_on_devices releases both
+// (NULL: nothing to do); without OPENACC_MODE only the host array
+double *alloc_double_on_devices(long n);
+void free_double_on_devices(double *a, long n);
 
 // copy the topological potential d_grid to every used device (after tune_topo_potential)
 void copy_topo_grid_to_device(GParam *param);

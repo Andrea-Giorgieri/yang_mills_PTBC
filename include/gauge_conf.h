@@ -120,6 +120,8 @@ typedef struct Acc_Utils
 	double *acc_swap;        // acceptance of swaps during parallel tempering
 	double *metro_swap_prob; // to store swap probabilities
 	FILE *swaptrackfilep;    // pointer to file to track replicas during parallel tempering
+	double *swap_partial;    // partial sums of the swaps on the devices (host array present on every device), or NULL
+	long swap_partial_size;  // number of elements of swap_partial
 
 	long *num_accepted_metro_multicanonic; // number of accepted multicanonic Metropolis updates
 	long *num_metro_multicanonic;          // number of proposed multicanonic Metropolis updates

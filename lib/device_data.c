@@ -17,6 +17,7 @@
 #include "../include/gauge_group.h"
 #include "../include/geometry.h"
 #include "../include/gparam.h"
+#include "../include/memalign.h"
 #include "../include/random.h"
 
 
@@ -653,16 +654,53 @@ void copy_gauge_conf_replica_to_device(Gauge_Conf *GC, GParam const *param, int 
 void copy_replica_index_to_device(Gauge_Conf *GC, GParam const *param)
 	{
 	#ifdef OPENACC_MODE
+	// all the compute regions run in QUEUE_DEVICE, so the copy is ordered after the kernels still reading the previous
+	// value and before the next ones; the host changes replica_index again only in the next swap, after waiting for
+	// the queues of all the devices (swap sums)
 	for(int g = 0; g < param->d_N_replica_pt; g++)
 		{
 		select_device(GC[g].device);
-		acc_wait_all();
-		acc_update_device(&(GC[g].replica_index), sizeof(int));
+		acc_update_device_async(&(GC[g].replica_index), sizeof(int), QUEUE_DEVICE);
 		}
 	#else
 	(void) GC;
 	(void) param;
 	#endif
+	}
+
+
+double *alloc_double_on_devices(long const n)
+	{
+	double *a;
+	allocate_array_double(&a, n, __FILE__, __LINE__);
+	#ifdef OPENACC_MODE
+	FOR_EACH_DEVICE(d)
+		{
+		select_device(d);
+		acc_create(a, (size_t) n * sizeof(double));
+		}
+	#endif
+	return a;
+	}
+
+
+void free_double_on_devices(double *a, long const n)
+	{
+	if(a == NULL) return;
+	#ifdef OPENACC_MODE
+	FOR_EACH_DEVICE(d)
+		{
+		select_device(d);
+		if(acc_is_present(a, (size_t) n * sizeof(double)))
+			{
+			acc_wait_all();
+			acc_delete(a, (size_t) n * sizeof(double));
+			}
+		}
+	#else
+	(void) n;
+	#endif
+	free(a);
 	}
 
 

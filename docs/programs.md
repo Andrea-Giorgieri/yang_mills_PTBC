@@ -90,8 +90,7 @@ yang_mills_local_agf input_file
   potential file then has one column of V.
 - Output: data file and the other measurement files, `conf_file` / `twist_file` and backups, numbered configurations,
   `multicanonic_acc_file`, log file.
-- Typical use: θ term with open boundary conditions and a θ profile (production inputs in
-  [`prod_inputs/theta_obc`](../prod_inputs/theta_obc)).
+- Typical use: θ term with open boundary conditions and a θ profile.
 
 Main: [src/yang_mills_local_agf.c](../src/yang_mills_local_agf.c).
 

@@ -3,8 +3,7 @@
 This note proves that the action difference of a swap between two replicas can be written as a combination of **only two
 sums per configuration**, $P_1$ and $P_2$, which depend neither on the replica pair nor on the replica index.
 It is the basis of `swap_plaquette_sums` (host path), `swap_plaquette_sums_replica` (GPU path; its implementation is
-described in [swap_translation_gpu.md](swap_translation_gpu.md)) and `swap_group` in `lib/gauge_conf_paral_temp.c`
-(porting phase 7c).
+described in [swap_translation_gpu.md](swap_translation_gpu.md)) and `swap_group` in `lib/gauge_conf_paral_temp.c`.
 
 ## 1. Definitions (as in the code)
 

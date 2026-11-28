@@ -19,10 +19,7 @@ Topics are organized in pages, linked to each other. For an overview of the proj
 | [output_files.md](output_files.md) | Formats of configuration, twist, data, density, slice, PTBC and multicanonical files |
 | [swap_p1p2.md](swap_p1p2.md) | Derivation of the PTBC swap action difference in terms of two sums per configuration |
 | [swap_translation_gpu.md](swap_translation_gpu.md) | GPU implementation of the swap sums, replica index copies and translation: block sums, asynchronous queues, coalesced copies |
-| [link_layout.md](link_layout.md) | Storage layout of the gauge links (planned AoSoA with blocks of B sites): choice, benchmarks, performance model, meaning of `Link_block` |
-
-Benchmark results of the GPU port: [bench8/results/README.md](../bench8/results/README.md) and
-[bench9/results/README.md](../bench9/results/README.md).
+| [link_layout.md](link_layout.md) | Storage layout of the gauge links (AoSoA with blocks of B sites): choice, benchmarks, performance model, meaning of `Link_block`, implementation |
 
 
 ## Where to start
@@ -47,4 +44,4 @@ Benchmark results of the GPU port: [bench8/results/README.md](../bench8/results/
 | Maths of the swap sums | [swap_p1p2.md](swap_p1p2.md) |
 | GPU implementation of swaps and translation | [swap_translation_gpu.md](swap_translation_gpu.md) |
 | Data layout, struct sizes, even/odd order, device memory, multi-GPU | [architecture_and_portability.md](architecture_and_portability.md) |
-| Planned link layout and the choice of B | [link_layout.md](link_layout.md) |
+| Link layout, the choice of B and its implementation | [link_layout.md](link_layout.md) |

@@ -141,7 +141,7 @@ Normalized trace: tr = (1/N) Re Tr below.
 | `polyakov_density_meas` | local Polyakov loop (Re and Im of tr) for every direction | binary `polyakov_density_file_dir<μ>` |
 | `energy_slices_meas` | clover energy averaged on each slice x_0 = const | `energy_slices_file` |
 | `charge_slices_meas` | topological charge summed on each slice x_0 = const | `charge_slices_file` |
-| `charge_p_slices_meas` | Fourier components in direction ν = `test_flag` of the charge on each slice x_0 (feature in development) | `charge_slices_file` |
+| `charge_p_slices_meas` | Fourier components in direction ν = `test_flag` (temporary name) of the charge on each slice x_0 | `charge_slices_file` |
 | `action_meas` | Wilson and θ parts of the action, total action and multicanonical potential (diagnostic) | data file |
 
 Slices take into account the translation of the configuration (they are reported in the original coordinates).
@@ -173,12 +173,6 @@ and Q = Σ_x q(x). Implementation: `loc_topcharge` in [lib/gauge_conf_meas.c](..
 independent permutations in `g_indep_perm_dir` ([lib/geometry.c](../lib/geometry.c)). With a θ profile and
 `meas_effective_charge 1`, q(x) is multiplied by the profile f(x_μ). This derivation is taken from the README of the original
 `yang-mills` package ("A note on the topological charge"), where the factor 1/π² is left implicit in the last step.
-
-> **To be verified.** `loc_topcharge` computes (N/(128π²)) Σ_i s_i tr(C_{ρσ}(C_{μν}† − C_{μν})) with
-> tr = (1/N) Re Tr, permutations (0123), (0213), (0312) and signs s = (−1, +1, −1), i.e. s_i = −ε_{μνρσ}. Written in
-> the form above this is +1/(128π²) Σ ε Re Tr(C_{μν}[C_{ρσ} − C_{ρσ}†]), with the opposite overall sign. The two agree
-> if the clover built by `clover` satisfies C_{μν} ≃ 4 − 4i a² F_{μν} (i.e. links U = exp(−i a A)). The convention
-> has not been checked here.
 
 Availability: topological observables (`charge_meas`, `charge_density_meas`, `charge_slices_meas`,
 `charge_p_slices_meas`, `charge_prime_meas`, `chi_prime_meas`) are allowed only for D = 4 with N ≥ 2, and for D = 2

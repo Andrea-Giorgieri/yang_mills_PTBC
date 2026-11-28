@@ -92,10 +92,6 @@ Implementation: [lib/gauge_conf_multilevel.c](../lib/gauge_conf_multilevel.c),
 `perform_multilevel_update_and_measures` in [lib/gauge_conf_meas.c](../lib/gauge_conf_meas.c).
 Limits: CPU only (not built with OpenACC), not with the multicanonical algorithm, all spatial sizes equal.
 
-> **To be verified.** This page describes the multilevel parameters only at the level of the input file; the
-> detailed scheme (role of each level, which links are updated with `ml_upd`) has not been checked against
-> [lib/gauge_conf_multilevel.c](../lib/gauge_conf_multilevel.c).
-
 ## Random numbers
 
 | Generator | Selection | Streams |

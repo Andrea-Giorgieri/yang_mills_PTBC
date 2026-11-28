@@ -48,7 +48,7 @@ reductions that drive decisions).
 - Reductions (observables, charge differences) use `reduction(+:...)` in both modes; the host waits for the device
   queue only when it needs the scalar result (`wait_device_queue`). Exception: on the GPUs the swap sums are computed
   in blocks, one kernel per device, and the block sums are added on the host in a fixed order
-  ([swap_translation_gpu.md](swap_translation_gpu.md), in Italian).
+  ([swap_translation_gpu.md](swap_translation_gpu.md)).
 - Kernels are launched asynchronously in the queue `QUEUE_DEVICE` of each GPU; the host synchronizes only for
   swaps, multicanonical tests, measurements and I/O.
 
@@ -61,16 +61,19 @@ reductions that drive decisions).
 | `GParam` | input parameters and derived constants | [include/gparam.h](../include/gparam.h) |
 | `Rect_Utils` | site lists of the PTBC rectangles | [include/geometry.h](../include/geometry.h) |
 
-- Link matrices are stored as structures: U(1) one complex number, SU(2) four real numbers
-  (a_0 + i a·σ), SU(N) N×N complex numbers in row-major order (`comp[m(i,j)]`), aligned to 32 bytes
-  (`DOUBLE_ALIGN`). The alignment also rounds `sizeof` up to a multiple of 32 bytes: U(1) 32 B (16 of data), SU(2)
-  32 B, SU(3) 160 B (144), SU(5) 416 B (400); a 4D SU(3) site row is 640 B. A different storage (AoSoA with blocks of
-  `Link_block` sites) is planned: [link_layout.md](link_layout.md) (in Italian).
-- Links are stored site by site, all directions of a site together (`lattice[r][μ]`).
-- Every 2D array (`lattice`, `Z`, neighbour tables, …) is one contiguous memory block plus a table of row pointers
-  (`allocate_array_*_2d` in [lib/memalign.c](../lib/memalign.c)). This makes host–device copies single block
-  transfers.
-- The site index used in memory is the even/odd lexicographic index (`cart_to_lexeo` in
+- Local matrices are structures: U(1) one complex number, SU(2) four real numbers (a_0 + i a·σ), SU(N) N×N complex
+  numbers in row-major order (`comp[m(i,j)]`), aligned to 32 bytes (`DOUBLE_ALIGN`, which also rounds `sizeof` up
+  to a multiple of 32 bytes: U(1) 32 B for 16 of data, SU(3) 160 B for 144).
+- The links of a configuration (`lattice`, `lattice_copy`, the cold lattices, the auxiliary lattices of the flow)
+  and the boundary factors `Z` are **not** arrays of these structures: they are flat arrays in an AoSoA layout with
+  blocks of `Link_block` (B, default 32) consecutive sites, the site index fastest inside a block, then the matrix
+  element, then the direction ([include/link_layout.h](../include/link_layout.h)). A link is reached with
+  `LINK(lattice, r, μ, param)` (its elements are B apart) and a factor with `ZF(Z, r, k, param)`; kernels operate
+  on links in place with the operations of `link_layout.h` (suffixes `l`/`f`), other code copies a link to a local
+  matrix (`load_link`, `store_link`). Choice, benchmarks and implementation: [link_layout.md](link_layout.md).
+- Each lattice and `Z` is one aligned memory block (`allocate_lattice`, `allocate_Z`); the other 2D arrays
+  (neighbour tables, …) are one contiguous block plus a table of row pointers (`allocate_array_*_2d` in
+  [lib/memalign.c](../lib/memalign.c)). Host–device copies are single block transfers.- The site index used in memory is the even/odd lexicographic index (`cart_to_lexeo` in
   [lib/geometry.c](../lib/geometry.c)): lexicographic order with direction 0 running fastest, even sites first.
 
 ## Device memory management (OpenACC)

@@ -109,7 +109,7 @@ The trimming depends on how the rectangle is used:
   reduction over the swap rectangle (border 1 around the defect), on the device holding the configuration
   (`swap_plaquette_sums` on the host; on the GPUs `swap_plaquette_sums_replica`, block sums per device added on the
   host in a fixed order, see [swap_translation_gpu.md](swap_translation_gpu.md)). The derivation is in
-  [swap_p1p2.md](swap_p1p2.md) (both in Italian).
+  [swap_p1p2.md](swap_p1p2.md).
 - An accepted swap **exchanges the replica indices**, not the lattices: each configuration stays in its memory slot
   `GC[i]` for the whole run (with its twist factors, translation and multicanonical charge), and the map
   `replica_to_gc[a]` gives the slot of the configuration that currently has index a (`metropolis_single_swap`). On GPUs

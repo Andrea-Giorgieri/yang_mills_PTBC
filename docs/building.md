@@ -39,7 +39,7 @@ Passed as `VAR=value` on the `configure` command line ([configure.ac](../configu
 | `Num_threads` | `NTHREADS` | 1 | Number of OpenMP threads (only with `--enable-use-openmp`; forced to 1 otherwise) |
 | `Num_devices` | `MAX_DEVICES` | 4 | Maximum number of GPUs per node used by one process (OpenACC). Also used on CPU to simulate the splitting of replicas among devices |
 | `Num_levels` | `NLEVELS` | 1 | Number of levels of the multilevel algorithm (multilevel programs only) |
-| `Link_block` | `LINK_BLOCK` | 32 | Sites per block of the AoSoA storage of the gauge links; power of 2 from 1 to 256 (1 = AoS). Not used by the code yet: see [Link block size](#link-block-size) |
+| `Link_block` | `LINK_BLOCK` | 32 | Sites per block of the AoSoA storage of the gauge links; power of 2 from 1 to 256 (1 = AoS); see [Link block size](#link-block-size) |
 | `OPENACC_CFLAGS` | – | `-acc=gpu` for nvc, `-fopenacc` otherwise | Compiler flags enabling OpenACC. With nvc configure appends `-acc=noautopar` (also to user flags, unless they already mention `autopar`) |
 | `CC`, `CFLAGS`, `LIBS` | – | – | Usual Autoconf variables. If `CFLAGS`/`CPPFLAGS` are not set, configure leaves them empty (no `-O2 -g`) |
 
@@ -53,9 +53,9 @@ Notes:
 
 ### Link block size
 
-`Link_block` (B) is the number of consecutive sites of the even/odd ordering that will share a memory block in the
-AoSoA storage of the gauge links; inside a block the site index runs fastest. B = 1 is the plain array of structures
-(one site after the other).
+`Link_block` (B) is the number of consecutive sites of the even/odd ordering that share a memory block in the
+AoSoA storage of the gauge links and of the boundary factors Z; inside a block the site index runs fastest. B = 1 is
+the plain array of structures (one site after the other, without the 32-byte padding of the matrix structures).
 
 - **Default:** 32 (best on average on A100 GPUs and on Sapphire Rapids CPUs in the benchmarks of
   [link_layout.md](link_layout.md)).
@@ -69,12 +69,13 @@ AoSoA storage of the gauge links; inside a block the site index runs fastest. B 
   U(1) and SU(N ≥ 3), B ≥ 16 for SU(2); CPU: larger blocks were faster up to B = 32) and padding (if V/2 is not a
   multiple of B the even half is padded with fewer than B unused sites) are explained in
   [link_layout.md](link_layout.md).
+- **Results:** every B does the same operations in the same order, so with gcc the configurations are bitwise
+  identical for every B (checked); compilers that vectorize or contract differently for different addresses (icc,
+  nvc on the GPU) can change the last bits. The configuration files have the same format for every B.
 - **Exception: CPU builds of 2D SU(N ≥ 5).** Without OpenACC, with `ST_dim=2` and `N_c ≥ 5`, use `Link_block=1`: in
   the benchmarks every block size B > 1 was slower than the plain AoS for 2D SU(5) on the CPU (B = 32 3–14 %
   slower), while every other group, dimension and GPU build gains with B = 32
-  ([link_layout.md](link_layout.md#71-results-of-the-edge-cases)). SU(4) and 3D were not measured.
-- **Status:** the parameter is defined, but the code does not use it yet: the links are still stored one site after
-  the other.
+  ([link_layout.md](link_layout.md#4-benchmark-summary)). SU(4) and 3D were not measured.
 
 ## Enable options
 
